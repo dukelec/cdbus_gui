@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--link rel="icon" type="image/png" href="./img/icon.png" /-->
+<title>CDBUS Tools - Ctrl</title>
+
+<link rel="stylesheet" href="./libs/bulma-0.9.1.min.css">
+<link rel="stylesheet" href="./libs/bulma-tooltip-v1.2.0.min.css">
+
+<style>
+
+.columns.is-gapless>.is-1.reg_btn_rw {
+    width: 30px;
+    margin: 1px 1px 1px 1px;
+    border-radius: 6px 6px 6px 6px;
+    border-width: 0.1px;
+    border-style: dashed;
+    /*background: #73AD81;*/
+    
+    /* txt center: */
+    display: flex;
+    justify-content: center; /* align horizontal */
+    align-items: center; /* align vertical */
+}
+.reg_btn_rw:hover {
+    /*background-color: yellow;*/
+    cursor: pointer;
+}
+
+.columns.is-gapless:not(:last-child) {
+    margin-bottom: 0rem;
+}
+
+</style>
+
+</head>
+<body>
+
+<section class="section">
+
+    <div class="container">
+        <h1 class="title">Regs</h1>
+        <div class="content">
+
+
+<div class="columns">
+  <div class="column" id="reg_list0">
+  
+    <div class="columns is-mobile is-gapless">
+      <div class="column">
+        name (addr)<br>
+        description sdfasdf asdfadsf asdfasdf asdfasdf
+      </div>
+      <div class="column">
+        val1 (dft) (hex)
+      </div>
+      <div class="column is-1" style="width: 40px; margin-right: 2px;">
+            <div id="outer">
+                <div class="bbb"></div>
+                <div class="bbb txt_center" style="flex-grow : 1 !important;">R</div>
+                <div class="bbb"></div>
+            </div>
+      
+      </div>
+      <div class="column is-1 aaa"></div>
+    </div>
+    
+    <div class="columns is-mobile is-gapless">
+      <div class="column">
+        name (addr)<br>
+        description
+      </div>
+      <div class="column">
+        val2.1 (dft)<br>
+        val2.2 (dft)
+      </div>
+      <div class="column is-1 aaa">
+        read
+      </div>
+      <div class="column is-1 aaa">
+        write
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="column">
+
+    <div class="columns is-mobile is-gapless">
+      <div class="column">
+        name (addr)<br>
+        description
+      </div>
+      <div class="column">
+        val3 (dft)
+      </div>
+      <div class="column">
+        read | write
+      </div>
+    </div>
+    
+    <div class="columns is-mobile is-gapless">
+      <div class="column">
+        name (addr)<br>
+        description
+      </div>
+      <div class="column">
+        val4.1 (dft)<br>
+        val4.2 (dft)<br>
+        val4.3 (dft)
+      </div>
+      <div class="column">
+        read | write
+      </div>
+    </div>
+    
+  </div>
+</div>
+
+
+        </div>
+    </div>
+
+</section>
+
+</body>
+<script src="./libs/konva-7.2.2.min.js" defer></script>
+<script src="./libs/msgpack-ygoe-9045d01.min.js" defer></script>
+<script type="module" src="./ctrl.js"></script>
+</html>

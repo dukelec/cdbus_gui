@@ -38,87 +38,68 @@
 </head>
 <body>
 
+
 <section class="section">
 
     <div class="container">
-        <h1 class="title">Regs</h1>
-        <div class="content">
-
-
-<div class="columns">
-  <div class="column" id="reg_list0">
-  
-    <div class="columns is-mobile is-gapless">
-      <div class="column">
-        name (addr)<br>
-        description sdfasdf asdfadsf asdfasdf asdfasdf
-      </div>
-      <div class="column">
-        val1 (dft) (hex)
-      </div>
-      <div class="column is-1" style="width: 40px; margin-right: 2px;">
-            <div id="outer">
-                <div class="bbb"></div>
-                <div class="bbb txt_center" style="flex-grow : 1 !important;">R</div>
-                <div class="bbb"></div>
+    
+        <h2 class="title">Regs</h2>
+        
+        <div class="columns">
+            <div class="column">
+                <button id="dev_read_info">read info</button>
             </div>
-      
-      </div>
-      <div class="column is-1 aaa"></div>
-    </div>
-    
-    <div class="columns is-mobile is-gapless">
-      <div class="column">
-        name (addr)<br>
-        description
-      </div>
-      <div class="column">
-        val2.1 (dft)<br>
-        val2.2 (dft)
-      </div>
-      <div class="column is-1 aaa">
-        read
-      </div>
-      <div class="column is-1 aaa">
-        write
-      </div>
-    </div>
-    
-  </div>
-  
-  <div class="column">
+            <div class="column">
+                <button id="dev_read_all">read reg</button>
+            </div>
+            <div class="column">
+                <button id="dev_read_dft">read default</button>
+            </div>
+        </div>
+        <div class="container">
+            Device Info: <span id="dev_info"></span>
+        </div>
+        <br>
+        
+        
+        <div class="content">
+        
+            <div class="columns">
+              <div class="column" id="reg_list0">
+              </div>
+              
+              <div class="column">
 
-    <div class="columns is-mobile is-gapless">
-      <div class="column">
-        name (addr)<br>
-        description
-      </div>
-      <div class="column">
-        val3 (dft)
-      </div>
-      <div class="column">
-        read | write
-      </div>
-    </div>
-    
-    <div class="columns is-mobile is-gapless">
-      <div class="column">
-        name (addr)<br>
-        description
-      </div>
-      <div class="column">
-        val4.1 (dft)<br>
-        val4.2 (dft)<br>
-        val4.3 (dft)
-      </div>
-      <div class="column">
-        read | write
-      </div>
-    </div>
-    
-  </div>
-</div>
-
+                <div class="columns is-mobile is-gapless">
+                  <div class="column">
+                    name (addr)<br>
+                    description
+                  </div>
+                  <div class="column">
+                    val3 (dft)
+                  </div>
+                  <div class="column">
+                    read | write
+                  </div>
+                </div>
+                
+                <div class="columns is-mobile is-gapless">
+                  <div class="column">
+                    name (addr)<br>
+                    description
+                  </div>
+                  <div class="column">
+                    val4.1 (dft)<br>
+                    val4.2 (dft)<br>
+                    val4.3 (dft)
+                  </div>
+                  <div class="column">
+                    read | write
+                  </div>
+                </div>
+                
+              </div>
+            </div>
 
         </div>
     </div>

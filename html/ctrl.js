@@ -6,7 +6,7 @@
 
 import { L } from './lang/lang.js'
 import {
-    escape_html, date2num, val2hex,
+    escape_html, date2num, val2hex, dat2str,
     read_file, download, readable_size, blob2dat } from './utils/helper.js'
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
@@ -56,12 +56,6 @@ function init_ws() {
     ws.onopen = async function(evt) {
         console.log("ws onopen");
         csa.ws_ns.connections['server'] = ws;
-        
-        // read dev info for test
-        await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
-        console.log('proxy wait ret');
-        let ret = await csa.proxy_sock.recvfrom(1000);
-        console.log('proxy ret', ret);
     }
     ws.onmessage = async function(evt) {
         let dat = await blob2dat(evt.data);
@@ -102,14 +96,14 @@ function init_reg_list() {
             for (let n = 0; n < count; n++) {
                 html_input += `
                     <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="dft val" id="reg_dft.${reg[R_ID]}">
-                      <input type="text" id="reg.${reg[R_ID]}.${n}">
+                      <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
                     </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
                 `; 
             }
         } else {
             html_input = `
                 <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="dft val" id="reg_dft.${reg[R_ID]}">
-                  <input type="text" id="reg.${reg[R_ID]}">
+                  <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
                 </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
             `; 
         }
@@ -230,9 +224,141 @@ function cal_reg_rw(rw='r') {
     return reg_rw;
 }
 
-function read_reg_val(r_idx, read_dft=false) {
-    // 
+
+function reg2str(dat, ofs, fmt, show) { // todo: handle hex display
+    let ret = '';
+    let val;
+    let dv = new DataView(dat.buffer);
+    fmt = fmt.replace(/\W/g, '') // remove non-alphanumeric chars
+    for (let f of fmt) {
+        switch (f) {
+        case 'c':
+            ret += `${dat2str(dat.slice(ofs, ofs + 1))} `;
+            ofs += 1; break;
+        case 'b':
+            val = dv.getInt8(ofs, true)
+            ret += `${val} `;
+            ofs += 1; break;
+        case 'B':
+            val = dv.getUint8(ofs, true)
+            if (show == 2)
+                ret += `${val2hex(val, 2)} `;
+            else
+                ret += `${val} `;
+            ofs += 1; break;
+        case 'h':
+            val = dv.getInt16(ofs, true)
+            ret += `${val} `;
+            ofs += 2; break;
+        case 'H':
+            val = dv.getUint16(ofs, true)
+            if (show == 1)
+                ret += `0x${val2hex(val)} `
+            else
+                ret += `${val} `;
+            console.log('HHHHH', val, typeof(val));
+            ofs += 2; break;
+        case 'i':
+            val = dv.getInt32(ofs, true)
+            ret += `${val} `;
+            ofs += 4; break;
+        case 'I':
+            val = dv.getUint32(ofs, true)
+            ret += `${val} `;
+            console.log('IIII', val, typeof(val));
+            ofs += 4; break;
+        case 'f':
+            val = dv.getFloat32(ofs, true)
+            ret += `${val} `;
+            ofs += 4; break;
+        }
+    }
+    return ret;
 }
+
+async function read_reg_val(r_idx, read_dft=false) {
+    let addr = csa.cfg_reg_r[r_idx][0];
+    let len = csa.cfg_reg_r[r_idx][1];
+    
+    let dat = new Uint8Array([0x00, 0, 0, len]);
+    let dv = new DataView(dat.buffer);
+    dv.setUint16(1, addr, true)
+
+    await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+    console.log('read reg wait ret');
+    let ret = await csa.proxy_sock.recvfrom(1000);
+    console.log('read reg ret', ret);
+    if (ret && ret[0].dat[0] == 0x80) {
+        //document.getElementById('dev_info').innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
+        
+        let start = addr;
+        let found_start = false;
+        for (let i = 0; i < csa.cfg_reg.length; i++) {
+            let r = csa.cfg_reg[i];
+            
+            console.log(`${ret[0].dat.length} --------- ${start}, ${r[R_ADDR]}`);
+            if (!found_start) {
+                if (start == r[R_ADDR]) {
+                    found_start = true;
+                } else {
+                    continue;
+                }
+            }
+            
+            let ofs = r[R_ADDR] - start;
+            if (ofs >= ret[0].dat.length)
+                break;
+            
+            if (r[R_FMT][0] == '{') {
+                console.log(`{{{{{??`);
+                let one_size = fmt_size(r[R_FMT]);
+                let count = Math.trunc(r[R_LEN] / one_size);
+                for (let n = 0; n < count; n++) {
+                    let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                    elem.value = '';
+                    elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
+                    console.log(`{{{{{{{{: ${elem.value}`);
+                }
+            }else if (r[R_FMT][0] == '[') {
+                let one_size = fmt_size(r[R_FMT]);
+                let count = Math.trunc(r[R_LEN] / one_size);
+                let elem = document.getElementById(`reg.${r[R_ID]}`);
+                elem.value = '';
+                for (let n = 0; n < count; n++) {
+                    elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
+                }
+                
+            } else {
+                let elem = document.getElementById(`reg.${r[R_ID]}`);
+                elem.value = '';
+                elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
+                console.log(`elem val: ${elem.value}`);
+            }
+            
+            
+        }
+    } else {
+        alert('read reg err');
+    }
+}
+
+
+document.getElementById('dev_read_info').onclick = async function() {
+    document.getElementById('dev_info').innerHTML = 'reading ...';
+    await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+    console.log('read info wait ret');
+    let ret = await csa.proxy_sock.recvfrom(1000);
+    console.log('read info ret', ret);
+    if (ret)
+        document.getElementById('dev_info').innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
+    else
+        document.getElementById('dev_info').innerHTML = 'time out';
+};
+
+document.getElementById('dev_read_all').onclick = async function() {
+    for (let i = 0; i < csa.cfg_reg_r.length; i++)
+        await read_reg_val(i);
+};
 
 
 window.addEventListener('load', async function() {
@@ -268,7 +394,8 @@ window.addEventListener('load', async function() {
     csa.cfg_reg_r = [
         // addr   len
         [ 0x0002, 0x3],
-        [ 0x000c, 0x168-0xc+24],
+        [ 0x000c, 0x16-0xc+3],
+        [ 0x000168, 24+4],
     ];
     csa.cfg_reg_w = [
         // addr   len

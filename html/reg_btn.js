@@ -13,37 +13,45 @@ import { csa } from './ctrl.js';
 
 
 function init_reg_list() {
-
-    let list = document.getElementById('reg_list0');
-    list.innerHTML = '';
+    let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
+    list[0].innerHTML = list[1].innerHTML = '';
     
+    let max_line = 0; // balance left and right list
     for (let i = 0; i < csa.cfg_reg.length; i++) {
         let reg = csa.cfg_reg[i];
-        
+        if (reg[R_FMT][0] == '{')
+            max_line += Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
+        else
+            max_line += 1;
+    }
+    
+    let cur_line = 0;
+    for (let i = 0; i < csa.cfg_reg.length; i++) {
+        let reg = csa.cfg_reg[i];
+        let count = 1;
         let html_input = '';
         
         if (reg[R_FMT][0] == '{') {
-            let count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
+            count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
             for (let n = 0; n < count; n++) {
                 html_input += `
-                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="dft val" id="reg_dft.${reg[R_ID]}">
+                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --" id="reg_dft.${reg[R_ID]}.${n}">
                       <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
                     </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
                 `; 
             }
         } else {
             html_input = `
-                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="dft val" id="reg_dft.${reg[R_ID]}">
+                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --" id="reg_dft.${reg[R_ID]}">
                   <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
                 </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
             `; 
         }
         
-        
         let html = `
             <div class="columns is-mobile is-gapless">
               <div class="column">
-                <div class="level is-mobile">
+                <div class="level is-mobile" style="margin: 5px 0 5px 0;">
                   <span class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" data-tooltip="${reg[R_DESC]}">${reg[R_ID]}</span>
                   <span class="level-right" style="margin: 0 8px 0 4px; font-family: monospace;">0x${val2hex(reg[R_ADDR])}</span>
                 </div>
@@ -54,8 +62,8 @@ function init_reg_list() {
               <div class="column is-1 reg_btn_rw" id="reg_btn_r.${reg[R_ID]}">R</div>
               <div class="column is-1 reg_btn_rw" id="reg_btn_w.${reg[R_ID]}">W</div>
             </div>`;
-        list.insertAdjacentHTML('beforeend', html);
-        //list.lastElementChild.getElementsByTagName("button")[0].onclick = async function() { };
+        list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', html);
+        cur_line += count;
     }
 }
 
@@ -98,9 +106,16 @@ function update_reg_rw_btn(rw='r') {
         btn.style['background'] = '';
         btn.style['margin-top'] = '';
         btn.style['margin-bottom'] = '';
+        btn.onclick = null;
         
         if (rw_idx != null) {
             btn.style['background'] = color;
+
+            if (rw == 'w')
+                btn.onclick = async () => { await write_reg_val(rw_idx); };
+            else
+                btn.onclick = async () => { await read_reg_val(rw_idx); };
+
             let disconn_pre = false;
             let disconn_next = false;
             if (reg_pre && reg_pre[R_ADDR] + reg_pre[R_LEN] != reg[R_ADDR])
@@ -113,7 +128,7 @@ function update_reg_rw_btn(rw='r') {
                 btn.style['border-width'] = '0 0.1px 0.1px 0.1px';
                 if (!disconn_pre)
                     btn.style['border-radius'] = '0 0 6px 6px';
-                    
+            
             } else if (rw_idx == rw_idx_pre && rw_idx == rw_idx_next) {
                 btn.style['margin-top'] = '0';
                 btn.style['margin-bottom'] = '0';

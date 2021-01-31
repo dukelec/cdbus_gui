@@ -132,25 +132,44 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
-                    let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
-                    elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
+                    if (read_dft) {
+                        let elem = document.getElementById(`reg_dft.${r[R_ID]}.${n}`);
+                        elem.setAttribute('data-tooltip', 'Default: ' + reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]));
+                    } else {
+                        let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                        elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
+                    }
                 }
             }else if (r[R_FMT][0] == '[') {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
-                let elem = document.getElementById(`reg.${r[R_ID]}`);
-                elem.value = '';
+                let val = '';
                 for (let n = 0; n < count; n++)
-                    elem.value = [elem.value, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(' ');
+                    val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(' ');
+                
+                if (read_dft)
+                    document.getElementById(`reg.${r[R_ID]}`).value = val;
+                else
+                    document.getElementById(`reg_dft.${r[R_ID]}`).setAttribute('data-tooltip', 'Default: ' + val);
                 
             } else {
-                let elem = document.getElementById(`reg.${r[R_ID]}`);
-                elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
+                if (read_dft) {
+                    let elem = document.getElementById(`reg_dft.${r[R_ID]}`);
+                    elem.setAttribute('data-tooltip', 'Default: ' + reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]));
+                } else {
+                    let elem = document.getElementById(`reg.${r[R_ID]}`);
+                    elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
+                }
             }
             
         }
     } else {
         console.warn('read reg err');
+    }
+    
+    if (csa.cfg_reg_r[r_idx][3] == null && !read_dft) {
+        console.log('read default');
+        await read_reg_val(r_idx, true); 
     }
 }
 

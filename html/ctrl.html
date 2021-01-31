@@ -47,16 +47,13 @@
         
         <div class="columns">
             <div class="column">
-                <button id="dev_read_info">read info</button>
+                <button id="dev_read_info">Read Info</button>
             </div>
             <div class="column">
-                <button id="dev_read_all">read all</button>
+                <button id="dev_read_all">Read All</button>
             </div>
             <div class="column">
-                <button id="dev_read_dft">read default</button>
-            </div>
-            <div class="column">
-                <button id="dev_write_all">write all</button>
+                <button id="dev_write_all">Write All</button>
             </div>
         </div>
         <div class="container">
@@ -64,52 +61,16 @@
         </div>
         <br>
         
-        
         <div class="content">
-        
             <div class="columns">
-              <div class="column" id="reg_list0">
-              </div>
-              
-              <div class="column">
-
-                <div class="columns is-mobile is-gapless">
-                  <div class="column">
-                    name (addr)<br>
-                    description
-                  </div>
-                  <div class="column">
-                    val3 (dft)
-                  </div>
-                  <div class="column">
-                    read | write
-                  </div>
-                </div>
-                
-                <div class="columns is-mobile is-gapless">
-                  <div class="column">
-                    name (addr)<br>
-                    description
-                  </div>
-                  <div class="column">
-                    val4.1 (dft)<br>
-                    val4.2 (dft)<br>
-                    val4.3 (dft)
-                  </div>
-                  <div class="column">
-                    read | write
-                  </div>
-                </div>
-                
-              </div>
+              <div class="column" id="reg_list0"></div>
+              <div class="column" id="reg_list1"></div>
             </div>
-
         </div>
-        
         
         <div class="container">
             Logs: <br>
-            <div style="overflow: scroll; height: 260px; color: white; background: black;" id="dev_log"></div>
+            <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black;" id="dev_log"></div>
         </div>
         
     </div>

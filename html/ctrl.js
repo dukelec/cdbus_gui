@@ -29,6 +29,7 @@ async function dbg_service() {
         console.log('dbg get', dat);
         let elem = document.getElementById('dev_log');
         elem.innerHTML = [elem.innerHTML, `${dat2str(dat[0].dat.slice(1))}`].filter(Boolean).join('<br>');
+        elem.scrollBy(0, 100); // TODO: allow disable sroll; allow insert newline on UI
     }
 }
 
@@ -124,7 +125,7 @@ window.addEventListener('load', async function() {
         [ 0x000168, 24+4,       null, null],
     ];
     csa.cfg_reg_w = [
-        // addr   len           read-before-write (not change reserved value)
+        // addr   len           read-before-write (for reserved value)
         [ 0x0002, 0x3,          null],
         [ 0x000c, 0x16-0xc+3,   null],
         [ 0x000168, 24+4,       null],

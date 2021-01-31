@@ -13,6 +13,7 @@ import { Idb } from './utils/idb.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
+import { make_chart } from './plot.js';
 
 let csa = {
     db: null,
@@ -135,6 +136,7 @@ window.addEventListener('load', async function() {
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     cal_reg_rw('r');
+    make_chart();
 });
 
 export { csa };

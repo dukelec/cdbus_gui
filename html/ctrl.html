@@ -8,6 +8,7 @@
 
 <link rel="stylesheet" href="./libs/bulma-0.9.1.min.css">
 <link rel="stylesheet" href="./libs/bulma-tooltip-v1.2.0.min.css">
+<link rel="stylesheet" href="./libs/uPlot-e33d6aa.min.css">
 
 <style>
 
@@ -72,6 +73,12 @@
             Logs: <br>
             <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black;" id="dev_log"></div>
         </div>
+        <br>
+        
+        
+        <div class="container">
+            <div id="dev_plot0"></div>
+        </div>
         
     </div>
 
@@ -80,5 +87,6 @@
 </body>
 <script src="./libs/konva-7.2.2.min.js" defer></script>
 <script src="./libs/msgpack-ygoe-9045d01.min.js" defer></script>
+<script src="./libs/uPlot-e33d6aa.iife.min.js" defer></script>
 <script type="module" src="./ctrl.js"></script>
 </html>

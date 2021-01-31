@@ -18,15 +18,17 @@ let csa = {
     db: null,
     ws_ns: null,
     cmd_sock: null,
-    proxy_sock: null
+    proxy_sock: null,
+    dbg_sock: null // port9 debug
 };
 
-async function ui_init_service() {
-    let ui_init_sock = new CDWebSocket(csa.ws_ns, 'update_ui');
+async function dbg_service() {
+    // TODO: support ANSI color
     while (true) {
-        let dat = await ui_init_sock.recvfrom();
-        console.log('ui_init get', dat);
-        await ui_init_sock.sendto({'status': 'ok'}, dat[1]);
+        let dat = await csa.dbg_sock.recvfrom();
+        console.log('dbg get', dat);
+        let elem = document.getElementById('dev_log');
+        elem.innerHTML = [elem.innerHTML, `${dat2str(dat[0].dat.slice(1))}`].filter(Boolean).join('<br>');
     }
 }
 
@@ -98,9 +100,10 @@ window.addEventListener('load', async function() {
     csa.ws_ns = new CDWebSocketNS(`/${csa.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
     csa.proxy_sock = new CDWebSocket(csa.ws_ns, 0xcdcd);
+    csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
     csa.db = await new Idb();
     
-    ui_init_service();
+    dbg_service();
     init_ws();
 
     // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float

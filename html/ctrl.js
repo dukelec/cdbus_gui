@@ -6,7 +6,7 @@
 
 import { L } from './lang/lang.js'
 import {
-    escape_html, date2num, val2hex, dat2str,
+    escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
     read_file, download, readable_size, blob2dat } from './utils/helper.js'
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
@@ -225,51 +225,67 @@ function cal_reg_rw(rw='r') {
 }
 
 
-function reg2str(dat, ofs, fmt, show) { // todo: handle hex display
+function reg2str(dat, ofs, fmt, show) {
     let ret = '';
-    let val;
     let dv = new DataView(dat.buffer);
-    fmt = fmt.replace(/\W/g, '') // remove non-alphanumeric chars
+    fmt = fmt.replace(/\W/g, ''); // remove non-alphanumeric chars
     for (let f of fmt) {
         switch (f) {
         case 'c':
-            ret += `${dat2str(dat.slice(ofs, ofs + 1))} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dat2str(dat.slice(ofs,ofs+1))}`].filter(Boolean).join(' ');
+            }
             ofs += 1; break;
         case 'b':
-            val = dv.getInt8(ofs, true)
-            ret += `${val} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getInt8(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 1; break;
         case 'B':
-            val = dv.getUint8(ofs, true)
-            if (show == 2)
-                ret += `${val2hex(val, 2)} `;
-            else
-                ret += `${val} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getUint8(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 1; break;
         case 'h':
-            val = dv.getInt16(ofs, true)
-            ret += `${val} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+2), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getInt16(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 2; break;
         case 'H':
-            val = dv.getUint16(ofs, true)
-            if (show == 1)
-                ret += `0x${val2hex(val)} `
-            else
-                ret += `${val} `;
-            console.log('HHHHH', val, typeof(val));
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+2), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getUint16(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 2; break;
         case 'i':
-            val = dv.getInt32(ofs, true)
-            ret += `${val} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getInt32(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 4; break;
         case 'I':
-            val = dv.getUint32(ofs, true)
-            ret += `${val} `;
-            console.log('IIII', val, typeof(val));
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getUint32(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 4; break;
         case 'f':
-            val = dv.getFloat32(ofs, true)
-            ret += `${val} `;
+            switch (show) {
+            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
+            default: ret = [ret, `${dv.getFloat32(ofs, true)}`].filter(Boolean).join(' ');
+            }
             ofs += 4; break;
         }
     }
@@ -280,23 +296,22 @@ async function read_reg_val(r_idx, read_dft=false) {
     let addr = csa.cfg_reg_r[r_idx][0];
     let len = csa.cfg_reg_r[r_idx][1];
     
-    let dat = new Uint8Array([0x00, 0, 0, len]);
+    let dat = new Uint8Array([read_dft ? 0x01 : 0x00, 0, 0, len]);
     let dv = new DataView(dat.buffer);
-    dv.setUint16(1, addr, true)
+    dv.setUint16(1, addr, true);
 
     await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('read reg wait ret');
     let ret = await csa.proxy_sock.recvfrom(1000);
     console.log('read reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
-        //document.getElementById('dev_info').innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
+        csa.cfg_reg_r[r_idx][read_dft ? 3 : 2] = ret[0].dat.slice(1);
         
         let start = addr;
         let found_start = false;
         for (let i = 0; i < csa.cfg_reg.length; i++) {
             let r = csa.cfg_reg[i];
             
-            console.log(`${ret[0].dat.length} --------- ${start}, ${r[R_ADDR]}`);
             if (!found_start) {
                 if (start == r[R_ADDR]) {
                     found_start = true;
@@ -306,40 +321,171 @@ async function read_reg_val(r_idx, read_dft=false) {
             }
             
             let ofs = r[R_ADDR] - start;
-            if (ofs >= ret[0].dat.length)
+            if (ofs >= len)
                 break;
             
             if (r[R_FMT][0] == '{') {
-                console.log(`{{{{{??`);
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
                     let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
-                    elem.value = '';
-                    elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
-                    console.log(`{{{{{{{{: ${elem.value}`);
+                    elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                 }
             }else if (r[R_FMT][0] == '[') {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 let elem = document.getElementById(`reg.${r[R_ID]}`);
                 elem.value = '';
-                for (let n = 0; n < count; n++) {
-                    elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
-                }
+                for (let n = 0; n < count; n++)
+                    elem.value = [elem.value, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(' ');
                 
             } else {
                 let elem = document.getElementById(`reg.${r[R_ID]}`);
-                elem.value = '';
-                elem.value += reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
-                console.log(`elem val: ${elem.value}`);
+                elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
             }
-            
             
         }
     } else {
-        alert('read reg err');
+        console.warn('read reg err');
     }
+}
+
+function str2reg(dat, ofs, fmt, show, str, s_idx) {
+    console.log(`str2reg: ${ofs}, ${fmt}, ${show}, ${str}, ${s_idx}`);
+    let dv = new DataView(dat.buffer);
+    fmt = fmt.replace(/\W/g, ''); // remove non-alphanumeric chars
+    let str_a = str.split(' ');
+    for (let f of fmt) {
+        switch (f) {
+        case 'c':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
+            default: dat.set(str2dat(str[s_idx]), ofs);
+            }
+            ofs += 1; break;
+        case 'b':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
+            default: dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 1; break;
+        case 'B':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
+            default: dv.setUint8(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 1; break;
+        case 'h':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,2), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
+            default: dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 2; break;
+        case 'H':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,2), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
+            default: dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 2; break;
+        case 'i':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
+            default: dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 4; break;
+        case 'I':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
+            default: dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
+            }
+            ofs += 4; break;
+        case 'f':
+            switch (show) {
+            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
+            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
+            default: dv.setFloat32(ofs, parseFloat(str_a[s_idx]), true);
+            }
+            ofs += 4; break;
+        }
+        s_idx += 1;
+    }
+}
+
+async function write_reg_val(w_idx) {
+    let addr = csa.cfg_reg_w[w_idx][0];
+    let len = csa.cfg_reg_w[w_idx][1];
+    
+    if (csa.cfg_reg_w[w_idx][2] == null) { // read-before-write
+        let dat = new Uint8Array([0x00, 0, 0, len]);
+        let dv = new DataView(dat.buffer);
+        dv.setUint16(1, addr, true);
+        
+        await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+        console.log('read-before-write wait ret');
+        let ret = await csa.proxy_sock.recvfrom(1000);
+        console.log('read-before-write ret', ret);
+        if (ret && ret[0].dat[0] == 0x80) {
+            csa.cfg_reg_w[w_idx][2] = ret[0].dat.slice(1);
+        } else {
+            console.log('read-before-write err');
+            return;
+        }
+    }
+    
+    let dat = new Uint8Array(3 + len);
+    let dv = new DataView(dat.buffer);
+    dv.setUint16(1, addr, true);
+    dat[0] = 0x20;
+    dat.set(csa.cfg_reg_w[w_idx][2], 3);
+    
+    console.info('begore write reg:', dat2hex(dat, ' '));
+
+    let start = addr;
+    let found_start = false;
+    for (let i = 0; i < csa.cfg_reg.length; i++) {
+        let r = csa.cfg_reg[i];
+        
+        if (!found_start) {
+            if (start == r[R_ADDR]) {
+                found_start = true;
+            } else {
+                continue;
+            }
+        }
+        
+        let ofs = r[R_ADDR] - start;
+        if (ofs >= len)
+            break;
+        
+        if (r[R_FMT][0] == '{') {
+            let one_size = fmt_size(r[R_FMT]);
+            let count = Math.trunc(r[R_LEN] / one_size);
+            for (let n = 0; n < count; n++) {
+                let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, 0);
+            }
+        }else if (r[R_FMT][0] == '[') {
+            let one_size = fmt_size(r[R_FMT]);
+            let count = Math.trunc(r[R_LEN] / one_size);
+            let elem = document.getElementById(`reg.${r[R_ID]}`);
+            for (let n = 0; n < count; n++)
+                str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, n);
+            
+        } else {
+            let elem = document.getElementById(`reg.${r[R_ID]}`);
+            str2reg(dat, r[R_ADDR]-start+3, r[R_FMT], r[R_SHOW], elem.value, 0);
+        }
+        
+    }
+    
+    console.info('write reg:', dat2hex(dat, ' '));
 }
 
 
@@ -358,6 +504,11 @@ document.getElementById('dev_read_info').onclick = async function() {
 document.getElementById('dev_read_all').onclick = async function() {
     for (let i = 0; i < csa.cfg_reg_r.length; i++)
         await read_reg_val(i);
+};
+
+document.getElementById('dev_write_all').onclick = async function() {
+    for (let i = 0; i < csa.cfg_reg_w.length; i++)
+        await write_reg_val(i);
 };
 
 
@@ -392,15 +543,16 @@ window.addEventListener('load', async function() {
         [ 0x0300, 10, '[c]',   0, 'test_str',     'test string' ]
     ];
     csa.cfg_reg_r = [
-        // addr   len
-        [ 0x0002, 0x3],
-        [ 0x000c, 0x16-0xc+3],
-        [ 0x000168, 24+4],
+        // addr   len           dat   dft
+        [ 0x0002, 0x3,          null, null],
+        [ 0x000c, 0x16-0xc+3,   null, null],
+        [ 0x000168, 24+4,       null, null],
     ];
     csa.cfg_reg_w = [
-        // addr   len
-        [ 0x0002, 0x3],
-        [ 0x0208, 0x4],
+        // addr   len           read-before-write (not change reserved value)
+        [ 0x0002, 0x3,          null],
+        [ 0x000c, 0x16-0xc+3,   null],
+        [ 0x000168, 24+4,       null],
     ];
     
     init_reg_list();

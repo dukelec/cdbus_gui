@@ -47,9 +47,19 @@ async function aes256(dat, key, type='encrypt') {
         return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-CBC', iv: iv}, _key, dat));
 }
 
-function dat2hex(dat, join='') {
-    const dat_array = Array.from(dat);
+function dat2hex(dat, join='', le=false) {
+    let dat_array = Array.from(dat);
+    if (le)
+        dat_array = dat_array.reverse();
     return dat_array.map(b => b.toString(16).padStart(2, '0')).join(join);
+}
+
+function hex2dat(hex, le=false) {
+    hex = hex.replace('0x', '').replace(/\s/g,'')
+    let ret = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    if (le)
+        return ret.reverse();
+    return ret;
 }
 
 function dat2str(dat) {
@@ -188,7 +198,7 @@ async function blob2dat(blob) {
 export {
     read_file, load_img, date2num,
     sha256, aes256,
-    dat2hex, dat2str, str2dat, val2hex,
+    dat2hex, hex2dat, dat2str, str2dat, val2hex,
     cpy, Queue,
     download,
     escape_html, readable_size,

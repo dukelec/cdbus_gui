@@ -9,6 +9,23 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
 import { csa } from './ctrl.js';
 
 
+let shift_key = false;
+let ctrl_key = false;
+
+window.addEventListener('keydown', function(e) {
+    if (e.keyCode == 16)
+        shift_key = true;
+    if (e.keyCode == 17)
+        ctrl_key = true;
+});
+window.addEventListener('keyup', function(e) {
+    if (e.keyCode == 16)
+        shift_key = false;
+    if (e.keyCode == 17)
+        ctrl_key = false;
+});
+
+
 function wheelZoomPlugin(opts) {
 	let factor = opts.factor || 0.75;
 
@@ -52,25 +69,36 @@ function wheelZoomPlugin(opts) {
 						e.preventDefault();
 
 						let left0 = e.clientX;
-					//	let top0 = e.clientY;
+						let top0 = e.clientY;
 
 						let scXMin0 = u.scales.x.min;
 						let scXMax0 = u.scales.x.max;
+						let scYMin0 = u.scales.y.min;
+						let scYMax0 = u.scales.y.max;
 
 						let xUnitsPerPx = u.posToVal(1, 'x') - u.posToVal(0, 'x');
+						let yUnitsPerPx = u.posToVal(1, 'y') - u.posToVal(0, 'y');
 
 						function onmove(e) {
 							e.preventDefault();
 
 							let left1 = e.clientX;
-						//	let top1 = e.clientY;
+							let top1 = e.clientY;
 
 							let dx = xUnitsPerPx * (left1 - left0);
+							let dy = yUnitsPerPx * (top1 - top0);
 
-							u.setScale('x', {
-								min: scXMin0 - dx,
-								max: scXMax0 - dx,
-							});
+					        u.batch(() => {
+						        u.setScale("x", {
+								    min: scXMin0 - dx,
+								    max: scXMax0 - dx,
+						        });
+
+						        u.setScale("y", {
+								    min: scYMin0 - dy,
+								    max: scYMax0 - dy,
+						        });
+					        });
 						}
 
 						function onup(e) {
@@ -95,16 +123,19 @@ function wheelZoomPlugin(opts) {
 					let yVal = u.posToVal(top, "y");
 					let oxRange = u.scales.x.max - u.scales.x.min;
 					let oyRange = u.scales.y.max - u.scales.y.min;
+					
+					let factor_x = shift_key ? 1.0 : factor;
+					let factor_y = ctrl_key ? 1.0 : factor;
 
-					let nxRange = e.deltaY < 0 ? oxRange * factor : oxRange / factor;
+					let nxRange = e.deltaY < 0 ? oxRange * factor_x : oxRange / factor_x;
 					let nxMin = xVal - leftPct * nxRange;
 					let nxMax = nxMin + nxRange;
-					[nxMin, nxMax] = clamp(nxRange, nxMin, nxMax, xRange, xMin, xMax);
+					//[nxMin, nxMax] = clamp(nxRange, nxMin, nxMax, xRange, xMin, xMax);
 
-					let nyRange = e.deltaY < 0 ? oyRange * factor : oyRange / factor;
+					let nyRange = e.deltaY < 0 ? oyRange * factor_y : oyRange / factor_y;
 					let nyMin = yVal - btmPct * nyRange;
 					let nyMax = nyMin + nyRange;
-					[nyMin, nyMax] = clamp(nyRange, nyMin, nyMax, yRange, yMin, yMax);
+					//[nyMin, nyMax] = clamp(nyRange, nyMin, nyMax, yRange, yMin, yMax);
 
 					u.batch(() => {
 						u.setScale("x", {
@@ -252,6 +283,9 @@ function make_chart() {
 			wheelZoomPlugin({factor: 0.90}),
 			touchZoomPlugin()
 		],
+		cursor: {
+			drag: { x: true, y: true, dist: 10 }
+		},
 		scales: {
 			x: {
 				time: false,
@@ -261,7 +295,7 @@ function make_chart() {
 		//	}
 		},
 		series: [
-			{},
+			{ label: "N" }, // show x value
 			{
 				label: "One",
 				stroke: "red",
@@ -280,6 +314,11 @@ function make_chart() {
 	];
 
 	let u = new uPlot(opts, data, document.getElementById('dev_plot0'));
+	u.setData([
+		[ 1, 2, 3, 4, 5, 6, 7,  8,  9],
+		[40,43,60,65,71,73,80, 40, 20],
+		[18,24,37,55,55,60,63, 30, 10],
+	]);
 }
 
 export {

@@ -13,14 +13,15 @@ import { Idb } from './utils/idb.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
-import { make_chart } from './plot.js';
+import { init_plots } from './plot.js';
 
 let csa = {
     db: null,
     ws_ns: null,
     cmd_sock: null,
     proxy_sock: null,
-    dbg_sock: null // port9 debug
+    dbg_sock: null,     // port 9 debug
+    dbg_raw_sock: null, // port 0xa debug
 };
 
 async function dbg_service() {
@@ -103,6 +104,7 @@ window.addEventListener('load', async function() {
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
     csa.proxy_sock = new CDWebSocket(csa.ws_ns, 0xcdcd);
     csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
+    csa.dbg_raw_sock = new CDWebSocket(csa.ws_ns, 0xa);
     csa.db = await new Idb();
     
     dbg_service();
@@ -131,12 +133,28 @@ window.addEventListener('load', async function() {
         [ 0x000c, 0x16-0xc+3,   null],
         [ 0x000168, 24+4,       null],
     ];
+    csa.cfg_plot = {
+        'mask': 0x0162, // uint8_t raw dbg mask
+        'color_dft': [ '#00000080', 'green', 'blue', 'yellow', 'black', 'red', 'cyan', 'purple' ], // start from index 1
+        'fmt': [
+            'I5.HHFB - N, I, A, V, P',
+            'I.bbFBB - N, n1, n2, p1, p2'
+        ],
+        'color': [ // use color_dft if not exist
+        ],
+        'cal': [
+            [ 'diff13: _D(1) - _D(3)' ] // data1 - data3
+        ]
+    };
+    csa.cfg_pic = {
+        'fmt': 'jpg'
+    };
     
     init_reg_list();
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     cal_reg_rw('r');
-    make_chart();
+    init_plots();
 });
 
 export { csa };

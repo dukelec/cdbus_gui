@@ -309,6 +309,15 @@ async function write_reg_val(w_idx) {
     }
     
     console.info('write reg:', dat2hex(dat, ' '));
+    await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+    console.log('write reg wait ret');
+    let ret = await csa.proxy_sock.recvfrom(1000);
+    console.log('write reg ret', ret);
+    if (ret && ret[0].dat[0] == 0x80) {
+        console.log('write reg succeeded');
+    } else {
+        console.log('write reg err');
+    }
 }
 
 export {

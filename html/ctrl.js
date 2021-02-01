@@ -14,6 +14,7 @@ import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
+import { dbg_raw_service, dbg_service } from './dbg.js';
 
 let csa = {
     db: null,
@@ -24,16 +25,6 @@ let csa = {
     dbg_raw_sock: null, // port 0xa debug
 };
 
-async function dbg_service() {
-    // TODO: support ANSI color
-    while (true) {
-        let dat = await csa.dbg_sock.recvfrom();
-        console.log('dbg get', dat);
-        let elem = document.getElementById('dev_log');
-        elem.innerHTML = [elem.innerHTML, `${dat2str(dat[0].dat.slice(1))}`].filter(Boolean).join('<br>');
-        elem.scrollBy(0, 100); // TODO: allow disable sroll; allow insert newline on UI
-    }
-}
 
 function init_ws() {
     let ws_url = `ws://${window.location.hostname}:8080/${csa.tgt}`;
@@ -108,6 +99,7 @@ window.addEventListener('load', async function() {
     csa.db = await new Idb();
     
     dbg_service();
+    dbg_raw_service();
     init_ws();
 
     // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
@@ -134,14 +126,15 @@ window.addEventListener('load', async function() {
         [ 0x000168, 24+4,       null],
     ];
     csa.cfg_plot = {
-        'mask': 0x0162, // uint8_t raw dbg mask
+        'mask_addr': 0x0162, // uint8_t raw dbg mask
         'color_dft': [ '#00000080', 'green', 'blue', 'yellow', 'black', 'red', 'cyan', 'purple' ], // start from index 1
         'fmt': [
-            'I5.HHFB - N, I, A, V, P',
+            'I1.fffHH - N, I, A, V, P', // number before . is cnt_inc (>= 1)
             'I.bbFBB - N, n1, n2, p1, p2'
         ],
         'color': [ // use color_dft if not exist
         ],
+        'depth': [ 1000, 1000 ], // limit depth, 0: no limit
         'cal': [
             [ 'diff13: _D(1) - _D(3)' ] // data1 - data3
         ]

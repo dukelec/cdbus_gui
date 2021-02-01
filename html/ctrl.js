@@ -109,7 +109,7 @@ window.addEventListener('load', async function() {
         [ 0x0004, 1,  'B',     0, 'conf_from',    '0: default config, 1: load from flash' ],
         [ 0x000c, 4,  'I',     0, 'bus_baud_low', 'RS-485 baud rate for first byte' ],
         [ 0x0016, 3,  '[B]',   2, 'dbg_dst_addr', 'Send debug message to this address' ],
-        [ 0x0168, 24, '{H,H}', 1, 'dbg_raw[0]',   'Config raw debug for current loop' ],
+        [ 0x0164, 24, '{H,H}', 1, 'dbg_raw[0]',   'Config raw debug for current loop' ],
         [ 0x0208, 4,  'i',     0, 'tc_pos',       'Set target position' ],
         [ 0x0300, 10, '[c]',   0, 'test_str',     'test string' ]
     ];
@@ -117,13 +117,13 @@ window.addEventListener('load', async function() {
         // addr   len           dat   dft
         [ 0x0002, 0x3,          null, null],
         [ 0x000c, 0x16-0xc+3,   null, null],
-        [ 0x000168, 24+4,       null, null],
+        [ 0x000164, 24+4,       null, null],
     ];
     csa.cfg_reg_w = [
         // addr   len           read-before-write (for reserved value)
         [ 0x0002, 0x3,          null],
         [ 0x000c, 0x16-0xc+3,   null],
-        [ 0x000168, 24+4,       null],
+        [ 0x000164, 24+4,       null],
     ];
     csa.cfg_plot = {
         'mask_addr': 0x0162, // uint8_t raw dbg mask

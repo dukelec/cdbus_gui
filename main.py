@@ -91,13 +91,6 @@ async def cdbus_proxy_service():
             print('cdbus_tx done')
 
 
-async def dev_report():
-    sock = CDWebSocket(ws_ns, 'update_ui')
-    await sock.sendto({'state': state}, ('client', 'update_ui'))
-    dat, src = await sock.recvfrom()
-    #print('update_ui ret', dat)
-    sock.delete()
-
 async def dev_service(): # cdbus hw setup
     sock = CDWebSocket(ws_ns, 'dev')
     while True:

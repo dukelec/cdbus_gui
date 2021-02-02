@@ -16,13 +16,13 @@
         <div class="columns">
         
             <div class="column">
-                <input type="text" id="dev_port" value="ttyACM0" onchange="localStorage.user_name=this.value;">
+                <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0" onchange="localStorage.user_name=this.value;">
             </div>
             <div class="column">
-                <input type="text" id="dev_baud" value="115200" onchange="localStorage.user_name=this.value;">
+                <input type="text" placeholder="Rate (Ignore for USB-CDC)" id="dev_baud" value="115200" onchange="localStorage.user_name=this.value;">
             </div>
             <div class="column">
-                <label class="checkbox"><input type="checkbox" id="dev_bridge" checked> Bridge</label>
+                <label class="checkbox"><input type="checkbox" id="dev_bridge" checked> CDBUS Bridge</label>
             </div>
             
             <div class="column">

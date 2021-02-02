@@ -38,17 +38,6 @@ async function dbg_service() {
     }
 }
 
-
-async function ui_init_service() {
-    let ui_init_sock = new CDWebSocket(ws_ns, 'update_ui');
-    while (true) {
-        let dat = await ui_init_sock.recvfrom();
-        console.log('ui_init get', dat);
-        await ui_init_sock.sendto({'status': 'ok'}, dat[1]);
-    }
-}
-
-
 async function init_serial_cfg() {
     let ser_cfg = await db.get('tmp', 'ser_cfg');
     let port = document.getElementById('dev_port');
@@ -71,7 +60,7 @@ async function init_serial_cfg() {
 }
 
 async function init_cfg_list() {
-    let sel_ops = '<option value=""></option>';
+    let sel_ops = '<option value="">--</option>';
     for (let op of cfgs)
         sel_ops += `<option value="${op}">${op}</option>`;
     let list = document.getElementById('cfg_list');
@@ -82,8 +71,8 @@ async function init_cfg_list() {
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';
         let name = (devs && devs[i]) ? devs[i].name : '';
         let html = `
-            <input type="text" value="${name}" id="cfg${i}.name">
-            <input type="text" value="${tgt}" id="cfg${i}.tgt">
+            <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
+            <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
             <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
             <button id="cfg${i}.btn">Open</button> <br>
         `;
@@ -96,7 +85,7 @@ async function init_cfg_list() {
             let c = document.getElementById(`cfg${i}.cfg`).value;
             console.log(`t: ${t}, c: ${c}`);
             if (!t || !c) {
-                alert('empty not allowed');
+                alert('Empty not allowed');
                 return;
             }
             window.open(`ctrl.html?tgt=${t}&cfg=${c}`, "_blank");
@@ -160,7 +149,7 @@ document.getElementById('btn_dev_get').onclick = async function() {
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
-    document.getElementById('dev_status').innerHTML = `${dat[0].port} | ${dat[0].online}`
+    document.getElementById('dev_status').innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'}`
     
     let list = document.getElementById('dev_list');
     list.innerHTML = '';
@@ -182,6 +171,10 @@ document.getElementById('btn_dev_open').onclick = async function() {
     let port = document.getElementById('dev_port').value;
     let baud = parseInt(document.getElementById('dev_baud').value);
     let bridge = document.getElementById('dev_bridge').checked;
+    if (!port || !baud) {
+        alert('Empty not allowed');
+        return;
+    }
     await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_open ret', dat);
@@ -196,14 +189,10 @@ document.getElementById('btn_dev_close').onclick = async function() {
     await document.getElementById('btn_dev_get').onclick();
 };
 
-
 window.addEventListener('load', async function() {
     console.log("load app");
     db = await new Idb();
-    ui_init_service();
     dbg_service();
     init_ws();
 });
-
-
 

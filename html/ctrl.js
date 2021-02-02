@@ -80,6 +80,14 @@ function init_ws() {
 
 document.getElementById('dev_read_info').onclick = async function() {
     document.getElementById('dev_info').innerHTML = 'reading ...';
+    
+    await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
+    let dat = await csa.cmd_sock.recvfrom(500);
+    if (!dat || !dat[0].online) {
+        alert('Serial disconnected');
+        return;
+    }
+    
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
     console.log('read info wait ret');
     let ret = await csa.proxy_sock.recvfrom(1000);
@@ -113,6 +121,7 @@ window.addEventListener('load', async function() {
         alert("no tgt or cfg");
         return;
     }
+    document.getElementById('tgt_name').innerHTML = `< ${csa.arg.tgt} | ${csa.arg.cfg} >`;
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');

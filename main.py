@@ -147,6 +147,10 @@ async def file_service(): # config r/w
                 c = json5.load(c_file)
                 await sock.sendto(c, src)
         
+        elif dat['action'] == 'get_bin':
+            with open(dat['path'], 'rb') as b_file:
+                await sock.sendto(b_file.read(), src)
+        
         else:
             await sock.sendto('err: file: unknown cmd', src)
 

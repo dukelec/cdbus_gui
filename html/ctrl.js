@@ -15,6 +15,7 @@ import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
 import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
+import { do_iap } from './iap.js';
 
 let csa = {
     arg: {},            // url args
@@ -97,6 +98,8 @@ document.getElementById('dev_write_all').onclick = async function() {
     for (let i = 0; i < csa.cfg.reg_w.length; i++)
         await write_reg_val(i);
 };
+
+document.getElementById('iap_btn').onclick = do_iap;
 
 
 window.addEventListener('load', async function() {

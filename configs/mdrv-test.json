@@ -38,6 +38,11 @@
     },
     "pic": {
         "fmt": "jpg"
+    },
+    "iap": {
+        "keep_bl": 0x0006, // uint8_t keep in bootloader
+        "addr": 0x08006800,
+        "check": "read" // or crc
     }
 }
 

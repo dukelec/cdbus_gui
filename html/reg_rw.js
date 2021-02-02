@@ -149,9 +149,9 @@ async function read_reg_val(r_idx, read_dft=false) {
                     val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(' ');
                 
                 if (read_dft)
-                    document.getElementById(`reg.${r[R_ID]}`).value = val;
-                else
                     document.getElementById(`reg_dft.${r[R_ID]}`).setAttribute('data-tooltip', 'Default: ' + val);
+                else
+                    document.getElementById(`reg.${r[R_ID]}`).value = val;
                 
             } else {
                 if (read_dft) {
@@ -166,6 +166,7 @@ async function read_reg_val(r_idx, read_dft=false) {
         }
     } else {
         console.warn('read reg err');
+        return;
     }
     
     if (!read_dft && !csa.dat.reg_dft_r[r_idx]) {

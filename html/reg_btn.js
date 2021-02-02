@@ -17,8 +17,8 @@ function init_reg_list() {
     list[0].innerHTML = list[1].innerHTML = '';
     
     let max_line = 0; // balance left and right list
-    for (let i = 0; i < csa.cfg_reg.length; i++) {
-        let reg = csa.cfg_reg[i];
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let reg = csa.cfg.reg[i];
         if (reg[R_FMT][0] == '{')
             max_line += Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
         else
@@ -26,8 +26,8 @@ function init_reg_list() {
     }
     
     let cur_line = 0;
-    for (let i = 0; i < csa.cfg_reg.length; i++) {
-        let reg = csa.cfg_reg[i];
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let reg = csa.cfg.reg[i];
         let count = 1;
         let html_input = '';
         
@@ -77,25 +77,25 @@ function in_reg_rw(reg_rw, addr) { // test if in range
 }
 
 function update_reg_rw_btn(rw='r') {
-    let reg_rw = rw == 'r' ? csa.cfg_reg_r : csa.cfg_reg_w;
+    let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
     
-    for (let i = 0; i < csa.cfg_reg.length; i++) {
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
         let reg_pre = null;
         let reg_next = null;
         let btn_pre = null;
         let btn_next = null;
         let rw_idx_pre = null;
         let rw_idx_next = null;
-        let reg = csa.cfg_reg[i];
+        let reg = csa.cfg.reg[i];
         let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
         let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
         if (i > 0) {
-            reg_pre = csa.cfg_reg[i-1];
+            reg_pre = csa.cfg.reg[i-1];
             btn_pre = document.getElementById(`reg_btn_${rw}.${reg_pre[R_ID]}`);
             rw_idx_pre = in_reg_rw(reg_rw, reg_pre[R_ADDR]);
         }
-        if (i < csa.cfg_reg.length - 2) {
-            reg_next = csa.cfg_reg[i+1];
+        if (i < csa.cfg.reg.length - 2) {
+            reg_next = csa.cfg.reg[i+1];
             btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
             rw_idx_next = in_reg_rw(reg_rw, reg_next[R_ADDR]);
         }
@@ -155,8 +155,8 @@ function cal_reg_rw(rw='r') {
     let reg_rw = [];
     let start = null;
     
-    for (let i = 0; i < csa.cfg_reg.length; i++) {
-        let reg = csa.cfg_reg[i];
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let reg = csa.cfg.reg[i];
         let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
         
         if (btn.style['background'] != '') {

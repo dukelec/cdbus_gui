@@ -51,7 +51,7 @@ function make_chart(eid, name, series) {
 
 async function plot_set_en() {
     let msk = 0;
-    for (let i = 0; i < csa.cfg_plot.fmt.length; i++) {
+    for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         if (document.getElementById(`plot${i}_en`).checked)
             msk |= 1 << i;
     }
@@ -59,10 +59,10 @@ async function plot_set_en() {
     
     let dat = new Uint8Array([0x20, 0, 0, msk]);
     let dv = new DataView(dat.buffer);
-    dv.setUint16(1, csa.cfg_plot.mask_addr, true);
+    dv.setUint16(1, csa.cfg.plot.mask_addr, true);
     
     for (let i = 0; i < 3; i++) {
-        await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+        await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('plot_set_en wait ret');
         let ret = await csa.proxy_sock.recvfrom(500 * (i+1));
         console.log('plot_set_en ret', ret);
@@ -80,29 +80,29 @@ function init_plots() {
     let list = document.getElementById('plot_list');
     list.insertAdjacentHTML('beforeend', `Plots: <br>`);
     csa.plots = [];
-    csa.plots_dat = [];
+    csa.dat.plots = [];
     
-    for (let i = 0; i < csa.cfg_plot.fmt.length; i++) {
-        let f = csa.cfg_plot.fmt[i];
+    for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
+        let f = csa.cfg.plot.fmt[i];
         let f_fmt = f.split(' - ')[0];
         let f_str = f.slice(f_fmt.length + ' - '.length);
         let series_num = f_fmt.split('.')[1].length + 1;
         let series = [];
         
-        csa.plots_dat.push([]);
+        csa.dat.plots.push([]);
         for (let s = 0; s < series_num; s++) {
-            let color = csa.cfg_plot.length > i ? csa.cfg_plot[i][s] : null;
+            let color = csa.cfg.plot.length > i ? csa.cfg.plot[i][s] : null;
             if (!color)
-                color = csa.cfg_plot.color_dft[s];
+                color = csa.cfg.plot.color_dft[s];
             if (!color)
-                color = csa.cfg_plot.color_dft[0];
+                color = csa.cfg.plot.color_dft[0];
             let name = f_str.split(',')[s];
             if (!name)
                 name = '~';
             else
                 name = name.trim();
             series.push({ label: name, stroke: color });
-            csa.plots_dat[i].push([]);
+            csa.dat.plots[i].push([]);
         }
         
         let html = `

@@ -56,16 +56,16 @@ async function dbg_raw_service() {
         //console.log('dbg_raw get', dat2hex(dat, ' '));
         
         let idx = dat[0] & 0x3f;
-        if (idx >= csa.cfg_plot.fmt.length) {
+        if (idx >= csa.cfg.plot.fmt.length) {
             console.log('dbg_raw: drop');
             continue;
         }
         let rm_oldest = false;
-        if (csa.cfg_plot.depth[idx] != 0 && csa.plots_dat[idx][0].length > csa.cfg_plot.depth[idx])
+        if (csa.cfg.plot.depth[idx] != 0 && csa.dat.plots[idx][0].length > csa.cfg.plot.depth[idx])
             rm_oldest = true;
         
         let ofs = 1;
-        let f = csa.cfg_plot.fmt[idx].split(' - ')[0];
+        let f = csa.cfg.plot.fmt[idx].split(' - ')[0];
 
         if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
             let grp_size = fmt_size(f);
@@ -73,9 +73,9 @@ async function dbg_raw_service() {
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, f);
                 for (let i = 0; i < grp_vals.length; i++) {
-                    csa.plots_dat[idx][i].push(grp_vals[i]);
+                    csa.dat.plots[idx][i].push(grp_vals[i]);
                     if (rm_oldest)
-                        csa.plots_dat[idx][i].shift();
+                        csa.dat.plots[idx][i].shift();
                 }
                 ofs += grp_size;
             }
@@ -90,21 +90,21 @@ async function dbg_raw_service() {
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
-                csa.plots_dat[idx][0].push(cnt_start + cnt_inc * loop);
+                csa.dat.plots[idx][0].push(cnt_start + cnt_inc * loop);
                 if (rm_oldest)
-                    csa.plots_dat[idx][0].shift();
+                    csa.dat.plots[idx][0].shift();
                 for (let i = 0; i < grp_vals.length; i++) {
-                    csa.plots_dat[idx][i+1].push(grp_vals[i]);
+                    csa.dat.plots[idx][i+1].push(grp_vals[i]);
                     if (rm_oldest)
-                        csa.plots_dat[idx][i+1].shift();
+                        csa.dat.plots[idx][i+1].shift();
                 }
                 loop += 1;
                 ofs += grp_size;
             }
         }
         
-        csa.plots[idx].setData(csa.plots_dat[idx]);
-        //console.log(csa.plots_dat[idx]);
+        csa.plots[idx].setData(csa.dat.plots[idx]);
+        //console.log(csa.dat.plots[idx]);
     }
 }
 

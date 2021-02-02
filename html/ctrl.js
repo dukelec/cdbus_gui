@@ -17,17 +17,25 @@ import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
 
 let csa = {
+    arg: {},            // url args
     db: null,
+    
     ws_ns: null,
     cmd_sock: null,
     proxy_sock: null,
     dbg_sock: null,     // port 9 debug
     dbg_raw_sock: null, // port 0xa debug
+    
+    cfg: {},            // device config
+    dat: {
+        reg_dft_r: [],  // first read flag
+        reg_rbw: []     // read before write data
+    },                  // runtime data
 };
 
 
 function init_ws() {
-    let ws_url = `ws://${window.location.hostname}:8080/${csa.tgt}`;
+    let ws_url = `ws://${window.location.hostname}:8080/${csa.arg.tgt}`;
     let ws = new WebSocket(ws_url);
     
     ws.onopen = async function(evt) {
@@ -59,7 +67,7 @@ function init_ws() {
 
 document.getElementById('dev_read_info').onclick = async function() {
     document.getElementById('dev_info').innerHTML = 'reading ...';
-    await csa.proxy_sock.sendto({'dst': [csa.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+    await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
     console.log('read info wait ret');
     let ret = await csa.proxy_sock.recvfrom(1000);
     console.log('read info ret', ret);
@@ -70,12 +78,12 @@ document.getElementById('dev_read_info').onclick = async function() {
 };
 
 document.getElementById('dev_read_all').onclick = async function() {
-    for (let i = 0; i < csa.cfg_reg_r.length; i++)
+    for (let i = 0; i < csa.cfg.reg_r.length; i++)
         await read_reg_val(i);
 };
 
 document.getElementById('dev_write_all').onclick = async function() {
-    for (let i = 0; i < csa.cfg_reg_w.length; i++)
+    for (let i = 0; i < csa.cfg.reg_w.length; i++)
         await write_reg_val(i);
 };
 
@@ -84,14 +92,14 @@ window.addEventListener('load', async function() {
     console.log("load ctrl");
     let url_arg = new URLSearchParams(location.search);
 
-    csa.tgt = url_arg.get('tgt')
-    csa.cfg = url_arg.get('cfg')
-    if (!csa.tgt || !csa.cfg) {
+    csa.arg.tgt = url_arg.get('tgt')
+    csa.arg.cfg = url_arg.get('cfg')
+    if (!csa.arg.tgt || !csa.arg.cfg) {
         alert("no tgt or cfg");
         return;
     }
     
-    csa.ws_ns = new CDWebSocketNS(`/${csa.tgt}`);
+    csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
     csa.proxy_sock = new CDWebSocket(csa.ws_ns, 0xcdcd);
     csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
@@ -104,7 +112,7 @@ window.addEventListener('load', async function() {
 
     // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
     // show: 0: normal, 1: hex, 2: bytes
-    csa.cfg_reg = [
+    csa.cfg.reg = [
         [ 0x0002, 2,  'H',     1, 'conf_ver',     'Magic Code: 0xcdcd' ],
         [ 0x0004, 1,  'B',     0, 'conf_from',    '0: default config, 1: load from flash' ],
         [ 0x000c, 4,  'I',     0, 'bus_baud_low', 'RS-485 baud rate for first byte' ],
@@ -113,19 +121,19 @@ window.addEventListener('load', async function() {
         [ 0x0208, 4,  'i',     0, 'tc_pos',       'Set target position' ],
         [ 0x0300, 10, '[c]',   0, 'test_str',     'test string' ]
     ];
-    csa.cfg_reg_r = [
-        // addr   len           dat   dft
-        [ 0x0002, 0x3,          null, null],
-        [ 0x000c, 0x16-0xc+3,   null, null],
-        [ 0x000164, 24+4,       null, null],
+    csa.cfg.reg_r = [
+        // addr   len
+        [ 0x0002, 0x3],
+        [ 0x000c, 0x16-0xc+3],
+        [ 0x000164, 24+4],
     ];
-    csa.cfg_reg_w = [
-        // addr   len           read-before-write (for reserved value)
-        [ 0x0002, 0x3,          null],
-        [ 0x000c, 0x16-0xc+3,   null],
-        [ 0x000164, 24+4,       null],
+    csa.cfg.reg_w = [
+        // addr   len
+        [ 0x0002, 0x3],
+        [ 0x000c, 0x16-0xc+3],
+        [ 0x000164, 24+4],
     ];
-    csa.cfg_plot = {
+    csa.cfg.plot = {
         'mask_addr': 0x0162, // uint8_t raw dbg mask
         'color_dft': [ '#00000080', 'green', 'blue', 'yellow', 'black', 'red', 'cyan', 'purple' ], // start from index 1
         'fmt': [
@@ -139,7 +147,7 @@ window.addEventListener('load', async function() {
             [ 'diff13: _D(1) - _D(3)' ] // data1 - data3
         ]
     };
-    csa.cfg_pic = {
+    csa.cfg.pic = {
         'fmt': 'jpg'
     };
     

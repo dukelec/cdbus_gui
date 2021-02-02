@@ -55,7 +55,7 @@ function wheelZoomPlugin(opts) {
                 yRange = yMax - yMin;
 
                 let plot = u.root.querySelector(".u-over");
-                let rect = plot.getBoundingClientRect();
+                //let rect = plot.getBoundingClientRect();
 
                 // wheel drag pan
                 plot.addEventListener("mousedown", e => {
@@ -111,7 +111,8 @@ function wheelZoomPlugin(opts) {
                     e.preventDefault();
 
                     let {left, top} = u.cursor;
-
+                    let rect = plot.getBoundingClientRect();
+                    
                     let leftPct = left/rect.width;
                     let btmPct = 1 - top/rect.height;
                     let xVal = u.posToVal(left, "x");

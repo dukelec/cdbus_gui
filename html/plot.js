@@ -14,7 +14,7 @@ function make_chart(eid, name, series) {
     let opts = {
         title: name,
         width: 1200,
-        height: 400,
+        height: 200,
         plugins: [
             wheelZoomPlugin({factor: 0.90}),
             touchZoomPlugin()
@@ -106,13 +106,41 @@ function init_plots() {
         }
         
         let html = `
-            <label class="checkbox"><input type="checkbox" id="plot${i}_en"> Enable Plot${i}</label><br>
+            <label class="checkbox"><input type="checkbox" id="plot${i}_en"> Enable Plot${i}</label>
+            <select id="plot${i}_size" value="none">
+                <option value="1200x200">1200x200</option>
+                <option value="1200x400">1200x400</option>
+                <option value="1200x800">1200x800</option>
+                <option value="1800x1000">1800x1000</option>
+                <option value="none">Hide</option>
+            </select>
+            <button id="plot${i}_clear">Clear</button>
+            <br>
             <div id="plot${i}"></div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
         document.getElementById(`plot${i}_en`).onchange = async () => await plot_set_en();
-        csa.plots.push(make_chart(`plot${i}`, `Plot${i}`, series));
+        let u = make_chart(`plot${i}`, `Plot${i}`, series);
+        csa.plots.push(u);
+        
+        document.getElementById(`plot${i}_size`).onchange = async () => {
+            let size = document.getElementById(`plot${i}_size`).value;
+            if (size == 'none') {
+                document.getElementById(`plot${i}`).style.display = 'none';
+            } else {
+                let ss = size.split('x');
+                let width = parseInt(ss[0]);
+                let height = parseInt(ss[1]);
+                u.setSize({width, height});
+                document.getElementById(`plot${i}`).style.display = 'block';
+            }
+        };
+        document.getElementById(`plot${i}_clear`).onclick = async () => {
+            for (let s = 0; s < series_num; s++)
+                csa.dat.plots[i][s] = [];
+            csa.plots[i].setData(csa.dat.plots[i]);
+        };
     }
 }
 

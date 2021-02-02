@@ -24,8 +24,8 @@ from cdnet.dispatch import *
 from cdnet.parser import *
 
 #logger_init(logging.VERBOSE)
-logger_init(logging.DEBUG)
-#logger_init(logging.INFO)
+#logger_init(logging.DEBUG)
+logger_init(logging.INFO)
 logging.getLogger('websockets').setLevel(logging.WARNING)
 
 csa = {

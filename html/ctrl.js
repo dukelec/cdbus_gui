@@ -35,12 +35,23 @@ let csa = {
 
 
 function init_ws() {
-    let ws_url = `ws://${window.location.hostname}:8080/${csa.arg.tgt}`;
+    let ws_url = `ws://${window.location.hostname}:8910/${csa.arg.tgt}`;
     let ws = new WebSocket(ws_url);
     
     ws.onopen = async function(evt) {
         console.log("ws onopen");
         csa.ws_ns.connections['server'] = ws;
+        
+        await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'file']);
+        let dat = await csa.cmd_sock.recvfrom(1000);
+        console.log('get_cfg ret', dat);
+        csa.cfg = dat[0];
+        
+        init_reg_list();
+        update_reg_rw_btn('r');
+        update_reg_rw_btn('w');
+        cal_reg_rw('r');
+        init_plots();
     }
     ws.onmessage = async function(evt) {
         let dat = await blob2dat(evt.data);
@@ -109,53 +120,6 @@ window.addEventListener('load', async function() {
     dbg_service();
     dbg_raw_service();
     init_ws();
-
-    // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
-    // show: 0: normal, 1: hex, 2: bytes
-    csa.cfg.reg = [
-        [ 0x0002, 2,  'H',     1, 'conf_ver',     'Magic Code: 0xcdcd' ],
-        [ 0x0004, 1,  'B',     0, 'conf_from',    '0: default config, 1: load from flash' ],
-        [ 0x000c, 4,  'I',     0, 'bus_baud_low', 'RS-485 baud rate for first byte' ],
-        [ 0x0016, 3,  '[B]',   2, 'dbg_dst_addr', 'Send debug message to this address' ],
-        [ 0x0164, 24, '{H,H}', 1, 'dbg_raw[0]',   'Config raw debug for current loop' ],
-        [ 0x0208, 4,  'i',     0, 'tc_pos',       'Set target position' ],
-        [ 0x0300, 10, '[c]',   0, 'test_str',     'test string' ]
-    ];
-    csa.cfg.reg_r = [
-        // addr   len
-        [ 0x0002, 0x3],
-        [ 0x000c, 0x16-0xc+3],
-        [ 0x000164, 24+4],
-    ];
-    csa.cfg.reg_w = [
-        // addr   len
-        [ 0x0002, 0x3],
-        [ 0x000c, 0x16-0xc+3],
-        [ 0x000164, 24+4],
-    ];
-    csa.cfg.plot = {
-        'mask_addr': 0x0162, // uint8_t raw dbg mask
-        'color_dft': [ '#00000080', 'green', 'blue', 'yellow', 'black', 'red', 'cyan', 'purple' ], // start from index 1
-        'fmt': [
-            'I1.fffHH - N, I, A, V, P', // number before . is cnt_inc (>= 1)
-            'I.bbFBB - N, n1, n2, p1, p2'
-        ],
-        'color': [ // use color_dft if not exist
-        ],
-        'depth': [ 1000, 1000 ], // limit depth, 0: no limit
-        'cal': [
-            [ 'diff13: _D(1) - _D(3)' ] // data1 - data3
-        ]
-    };
-    csa.cfg.pic = {
-        'fmt': 'jpg'
-    };
-    
-    init_reg_list();
-    update_reg_rw_btn('r');
-    update_reg_rw_btn('w');
-    cal_reg_rw('r');
-    init_plots();
 });
 
 export { csa };

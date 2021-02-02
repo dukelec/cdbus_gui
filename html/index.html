@@ -12,7 +12,7 @@
 
 <section class="section">
     <div class="container">
-        <h1 class="title">連接</h1>
+        <h1 class="title is-size-4">Serial</h1>
         <div class="columns">
         
             <div class="column">
@@ -26,23 +26,23 @@
             </div>
             
             <div class="column">
-                <button id="btn_dev_get">get</button>
+                <button id="btn_dev_get">Refresh</button>
             </div>
             <div class="column">
-                <button id="btn_dev_open">open</button>
+                <button id="btn_dev_open">Open</button>
             </div>
             <div class="column">
-                <button id="btn_dev_close">close</button>
+                <button id="btn_dev_close">Close</button>
             </div>
         </div>
         <div class="container">
-            Current device: <span id="dev_status"></span>
+            Current: <span id="dev_status"></span>
         </div>
     </div>
 
     <br>
     <div class="container">
-        <h1 class="title">All devices</h1>
+        <h1 class="title is-size-4">Available</h1>
         <div class="content">
             <ul class="content" id="dev_list">
               <!--li>item1</li-->
@@ -53,9 +53,8 @@
 
     <br>
     <div class="container">
-        <h3 class="title is-size-4">傳感器數據</h3>
-        <div id="konva-parent">
-            <div id="konva-container" style="border: 1px solid;"></div>
+        <h3 class="title is-size-4">Devices</h3>
+        <div id="cfg_list">
         </div>
     </div>
 </section>

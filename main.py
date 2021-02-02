@@ -4,7 +4,7 @@ import os, sys
 import _thread
 import datetime
 import copy
-import json
+import json5
 import asyncio
 import aiohttp
 import websockets
@@ -33,7 +33,8 @@ csa = {
     'dev': None,    # serial device
     'net': 0x00,    # local net
     'mac': 0x00,    # local mac
-    'proxy': None   # cdbus frame proxy socket
+    'proxy': None,  # cdbus frame proxy socket
+    'cfgs': []      # config list
 }
 
 # only support dev address in format 80:NN:MM and a0:NN:MM
@@ -125,21 +126,35 @@ async def dev_service(): # cdbus hw setup
             await sock.sendto('successed', src)
         
         else:
-            await sock.sendto('err: unknown cmd', src)
+            await sock.sendto('err: dev: unknown cmd', src)
             
 
 async def file_service(): # config r/w
+    for cfg in os.listdir('configs'):
+        if cfg.endswith('.json'):
+            csa['cfgs'].append(cfg)
+    
     sock = CDWebSocket(ws_ns, 'file')
     while True:
         dat, src = await sock.recvfrom()
         print('file ser', dat)
-        await sock.sendto({'is_reply': True, 'status': 'successed', 'list': 'ret'}, src)
+        
+        if dat['action'] == 'get_cfgs':
+            await sock.sendto(csa['cfgs'], src)
+        
+        elif dat['action'] == 'get_cfg':
+            with open(os.path.join('configs', dat['cfg'])) as c_file:
+                c = json5.load(c_file)
+                await sock.sendto(c, src)
+        
+        else:
+            await sock.sendto('err: file: unknown cmd', src)
 
 
 async def open_brower():
-    proc = await asyncio.create_subprocess_shell('/opt/google/chrome/chrome --app=http://localhost:8080')
+    proc = await asyncio.create_subprocess_shell('/opt/google/chrome/chrome --app=http://localhost:8910')
     await proc.communicate()
-    #proc = await asyncio.create_subprocess_shell('chromium --app=http://localhost:8080')
+    #proc = await asyncio.create_subprocess_shell('chromium --app=http://localhost:8910')
     #await proc.communicate()
     print('open brower done.')
 

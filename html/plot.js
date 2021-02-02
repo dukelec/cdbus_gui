@@ -78,7 +78,7 @@ async function plot_set_en() {
 
 function init_plots() {
     let list = document.getElementById('plot_list');
-    list.insertAdjacentHTML('beforeend', `Plots: <br>`);
+    list.insertAdjacentHTML('beforeend', `<h2 class="title is-size-4">Plots</h2>`);
     csa.plots = [];
     csa.dat.plots = [];
     

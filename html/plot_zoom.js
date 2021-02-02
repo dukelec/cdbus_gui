@@ -240,6 +240,7 @@ function touchZoomPlugin(opts) {
         }
 
         plot.addEventListener("touchstart", function(e) {
+            e.preventDefault();
             rect = plot.getBoundingClientRect();
 
             storePos(fr, e);

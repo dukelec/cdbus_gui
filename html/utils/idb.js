@@ -5,7 +5,7 @@
  */
 
 class Idb {
-    constructor(db_name = 'cde', store_list = ['var', 'tmp']) {
+    constructor(db_name = 'cd', store_list = ['var', 'tmp']) {
         
         let _dbp = new Promise((resolve, reject) => {
             const openreq = indexedDB.open(db_name, 1);

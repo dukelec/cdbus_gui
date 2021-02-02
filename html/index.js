@@ -6,7 +6,7 @@
 
 import { L } from './lang/lang.js'
 import {
-    escape_html, date2num,
+    escape_html, date2num, val2hex,
     read_file, download, readable_size, blob2dat } from './utils/helper.js'
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
@@ -15,6 +15,7 @@ import { Idb } from './utils/idb.js';
 let db = null;
 let ws_ns = new CDWebSocketNS('/');
 let cmd_sock = new CDWebSocket(ws_ns, 'cmd');
+let cfgs = null;
 
 
 async function ui_init_service() {
@@ -26,13 +27,93 @@ async function ui_init_service() {
     }
 }
 
+
+async function init_serial_cfg() {
+    let ser_cfg = await db.get('tmp', 'ser_cfg');
+    let port = document.getElementById('dev_port');
+    let baud = document.getElementById('dev_baud');
+    let bridge = document.getElementById('dev_bridge');
+    
+    if (ser_cfg) {
+        port.value = ser_cfg.port;
+        baud.value = ser_cfg.baud;
+        bridge.checked = ser_cfg.bridge;
+    }
+    
+    port.onchange = baud.onchange = bridge.onchange = async () => {
+        await db.set('tmp', 'ser_cfg', {
+            port: port.value,
+            baud: baud.value,
+            bridge: bridge.checked
+        });
+    };
+}
+
+async function init_cfg_list() {
+    let sel_ops = '<option value=""></option>';
+    for (let op of cfgs)
+        sel_ops += `<option value="${op}">${op}</option>`;
+    let list = document.getElementById('cfg_list');
+    
+    let devs = await db.get('tmp', 'dev_list');
+    for (let i = 0; i < 10; i++) {
+        let tgt = (devs && devs[i]) ? devs[i].tgt : `80:00:${val2hex(i+1,2)}`;
+        let cfg = (devs && devs[i]) ? devs[i].cfg : '';
+        let name = (devs && devs[i]) ? devs[i].name : '';
+        let html = `
+            <input type="text" value="${name}" id="cfg${i}.name">
+            <input type="text" value="${tgt}" id="cfg${i}.tgt">
+            <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
+            <button id="cfg${i}.btn">Open</button> <br>
+        `;
+        
+        list.insertAdjacentHTML('beforeend', html);
+        document.getElementById(`cfg${i}.cfg`).value = `${cfg}`;
+        
+        document.getElementById(`cfg${i}.btn`).onclick = async () => {
+            let t = document.getElementById(`cfg${i}.tgt`).value;
+            let c = document.getElementById(`cfg${i}.cfg`).value;
+            console.log(`t: ${t}, c: ${c}`);
+            if (!t || !c) {
+                alert('empty not allowed');
+                return;
+            }
+            window.open(`ctrl.html?tgt=${t}&cfg=${c}`, "_blank");
+        };
+        
+        document.getElementById(`cfg${i}.name`).onchange =
+                document.getElementById(`cfg${i}.tgt`).onchange =
+                document.getElementById(`cfg${i}.cfg`).onchange = async () => {
+            
+            let devs = [];
+            for (let n = 0; n < 10; n++) {
+                devs.push({
+                    tgt: document.getElementById(`cfg${n}.tgt`).value,
+                    cfg: document.getElementById(`cfg${n}.cfg`).value,
+                    name: document.getElementById(`cfg${n}.name`).value,
+                });
+            }
+            await db.set('tmp', 'dev_list', devs);
+        };
+    }
+}
+
+
 function init_ws() {
-    let ws_url = 'ws://' + window.location.hostname + ':8080';
+    let ws_url = 'ws://' + window.location.hostname + ':8910';
     let ws = new WebSocket(ws_url);
     
-    ws.onopen = function(evt) {
+    ws.onopen = async function(evt) {
         console.log("ws onopen");
         ws_ns.connections['server'] = ws;
+        
+        await cmd_sock.sendto({'action': 'get_cfgs'}, ['server', 'file']);
+        let dat = await cmd_sock.recvfrom(1000);
+        console.log('get_cfgs ret', dat);
+        cfgs = dat[0];
+        await init_cfg_list();
+        await init_serial_cfg();
+        await document.getElementById('btn_dev_get').onclick();
     }
     ws.onmessage = async function(evt) {
         let dat = await blob2dat(evt.data);
@@ -83,6 +164,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
     await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_open ret', dat);
+    await document.getElementById('btn_dev_get').onclick();
 };
 
 document.getElementById('btn_dev_close').onclick = async function() {
@@ -90,6 +172,7 @@ document.getElementById('btn_dev_close').onclick = async function() {
     await cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_close ret', dat);
+    await document.getElementById('btn_dev_get').onclick();
 };
 
 

@@ -43,18 +43,24 @@ async function init_serial_cfg() {
     let port = document.getElementById('dev_port');
     let baud = document.getElementById('dev_baud');
     let bridge = document.getElementById('dev_bridge');
+    let local_net = document.getElementById('local_net');
+    let local_mac = document.getElementById('local_mac');
     
     if (ser_cfg) {
         port.value = ser_cfg.port;
         baud.value = ser_cfg.baud;
         bridge.checked = ser_cfg.bridge;
+        local_net.value = ser_cfg.local_net;
+        local_mac.value = ser_cfg.local_mac;
     }
     
-    port.onchange = baud.onchange = bridge.onchange = async () => {
+    port.onchange = baud.onchange = bridge.onchange = local_net.onchange = local_mac.onchange = async () => {
         await db.set('tmp', 'ser_cfg', {
             port: port.value,
             baud: baud.value,
-            bridge: bridge.checked
+            bridge: bridge.checked,
+            local_net: local_net.value,
+            local_mac: local_mac.value
         });
     };
 }
@@ -74,7 +80,7 @@ async function init_cfg_list() {
             <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
             <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
             <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
-            <button id="cfg${i}.btn">Open</button> <br>
+            <button id="cfg${i}.btn">Open Window</button> <br>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -143,13 +149,29 @@ function init_ws() {
     }
 }
 
+
+document.getElementById('set_local').onclick = async function() {
+    console.log('set_local');
+    let net = document.getElementById('local_net').value;
+    let mac = document.getElementById('local_mac').value;
+    if (!net || !mac) {
+        alert('Empty not allowed');
+        return;
+    }
+    await cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
+    let dat = await cmd_sock.recvfrom(1000);
+    console.log('set_local ret', dat);
+    await document.getElementById('btn_dev_get').onclick();
+};
     
 document.getElementById('btn_dev_get').onclick = async function() {
     console.log('start get');
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
-    document.getElementById('dev_status').innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'}`
+    document.getElementById('dev_status').innerHTML = `
+        ${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: ${dat[0].net} mac: ${dat[0].mac})
+    `;
     
     let list = document.getElementById('dev_list');
     list.innerHTML = '';

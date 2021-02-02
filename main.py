@@ -100,9 +100,9 @@ async def dev_service(): # cdbus hw setup
         if dat['action'] == 'get':
             ports = get_ports()
             if csa['dev']:
-                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': csa['dev'].online}, src)
+                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': csa['dev'].online, 'net': csa['net'], 'mac': csa['mac']}, src)
             else:
-                await sock.sendto({'ports': ports, 'port': None, 'online': False}, src)
+                await sock.sendto({'ports': ports, 'port': None, 'online': False, 'net': csa['net'], 'mac': csa['mac']}, src)
         
         elif dat['action'] == 'open' and not csa['dev']:
             try:
@@ -120,6 +120,12 @@ async def dev_service(): # cdbus hw setup
             csa['dev'].stop()
             print('stop finished')
             csa['dev'] = None
+            await sock.sendto('successed', src)
+        
+        elif dat['action'] == 'set_local':
+            print('set_local')
+            csa['net'] = dat['net']
+            csa['mac'] = dat['mac']
             await sock.sendto('successed', src)
         
         else:

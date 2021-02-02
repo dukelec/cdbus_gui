@@ -16,22 +16,11 @@
         <div class="columns">
         
             <div class="column">
-                <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0" onchange="localStorage.user_name=this.value;">
-            </div>
-            <div class="column">
-                <input type="text" placeholder="Rate (Ignore for USB-CDC)" id="dev_baud" value="115200" onchange="localStorage.user_name=this.value;">
-            </div>
-            <div class="column">
+                <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0">
+                <input type="text" placeholder="Rate (Ignore for USB-CDC)" id="dev_baud" value="115200">
                 <label class="checkbox"><input type="checkbox" id="dev_bridge" checked> CDBUS Bridge</label>
-            </div>
-            
-            <div class="column">
                 <button id="btn_dev_get">Refresh</button>
-            </div>
-            <div class="column">
                 <button id="btn_dev_open">Open</button>
-            </div>
-            <div class="column">
                 <button id="btn_dev_close">Close</button>
             </div>
         </div>
@@ -54,6 +43,9 @@
     <br>
     <div class="container">
         <h3 class="title is-size-4">Devices</h3>
+        <input type="text" placeholder="Local NET" id="local_net" value="0x00">
+        <input type="text" placeholder="Local MAC" id="local_mac" value="0x00">
+        <button id="set_local">Set local NET & MAC</button><br><br>
         <div id="cfg_list">
         </div>
     </div>

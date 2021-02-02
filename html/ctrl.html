@@ -80,7 +80,15 @@
         
         <div class="container">
             <h2 class="title is-size-4">IAP</h2>
-            <input type="text" size="100" id="iap_path"> <button id="iap_btn">Write</button> <br>
+            <input type="text" size="100" id="iap_path">
+            <select id="iap_check" value="read">
+                <option value="read">Read back check</option>
+                <option value="crc">Read CRC check</option>
+                <option value="none">No check</option>
+            </select>
+            <label class="checkbox"><input type="checkbox" id="iap_reboot" checked> Reboot</label>
+            <button id="iap_btn">Write</button> <br>
+            
             Progress: <span id="iap_progress">--</span>
         </div>
         

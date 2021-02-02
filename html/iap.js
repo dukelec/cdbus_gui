@@ -60,6 +60,7 @@ async function flash_write(addr, dat, blk_size=128) {
         if (ret)
             return -1;
         cur += size;
+        document.getElementById('iap_progress').innerHTML = `write ${Math.round((cur - addr) / dat.length * 100)}%`;
     }
 }
 
@@ -94,6 +95,7 @@ async function flash_read(addr, len, blk_size=128) {
             return null;
         buf = Uint8Array.from([...buf, ...ret]);
         cur += size;
+        document.getElementById('iap_progress').innerHTML = `read ${Math.round((cur - addr) / len * 100)}%`;
     }
 }
 
@@ -154,8 +156,20 @@ async function keep_in_bl() {
     }
 }
 
+async function do_reboot() {
+    let d = new Uint8Array([0x20, 0, 0, 1]);
+    let dv = new DataView(d.buffer);
+    dv.setUint16(1, csa.cfg.iap.reboot, true);
+    
+    await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
+    console.log('reboot wait ret');
+    let ret = await csa.proxy_sock.recvfrom(500);
+    console.log('reboot ret', ret);
+}
+
 
 async function do_iap() {
+    document.getElementById('iap_progress').innerHTML = '--';
     let path = document.getElementById('iap_path').value;
     if (!path) {
         alert('path empty');
@@ -188,13 +202,17 @@ async function do_iap() {
         return;
     }
     
-    if (csa.cfg.iap.check == "crc") {
+    let check = document.getElementById('iap_check').value;
+    
+    if (check == "crc") {
         let crc_back = await flash_read_crc(addr, len);
         if (crc_back != crc_ori) {
             alert(`read crc: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`);
             return;
         }
-    } else if (csa.cfg.iap.check == "read") {
+        document.getElementById('iap_progress').innerHTML = 'Succeeded with crc check.';
+        
+    } else if (check == "read") {
         let buf = await flash_read(addr, len);
         if (!buf) {
             alert(`write failed`);
@@ -205,11 +223,41 @@ async function do_iap() {
             alert(`read back: crc: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`);
             return;
         }
+        document.getElementById('iap_progress').innerHTML = 'Succeeded with read back check.';
     }
     
-    alert('IAP succeeded.');
+    document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
+    
+    let reboot = document.getElementById('iap_reboot').checked;
+    if (reboot)
+        await do_reboot();
 };
 
+async function init_iap() {
+    let iap_cfg = await csa.db.get('tmp', 'iap_cfg');
+    let path = document.getElementById('iap_path');
+    let check = document.getElementById('iap_check');
+    let reboot = document.getElementById('iap_reboot');
+    
+    if (iap_cfg && csa.arg.tgt in iap_cfg) {
+        path.value = iap_cfg[csa.arg.tgt].path;
+        check.value = iap_cfg[csa.arg.tgt].check;
+        reboot.checked = iap_cfg[csa.arg.tgt].reboot;
+    }
+    
+    path.onchange = check.onchange = reboot.onchange = async () => {
+        let cfg = await csa.db.get('tmp', 'iap_cfg');
+        if (!cfg)
+            cfg = [];
+        cfg[csa.arg.tgt] = {
+            path: path.value,
+            check: check.value,
+            reboot: reboot.checked
+        };
+        await csa.db.set('tmp', 'iap_cfg', cfg);
+    };
+}
 
-export { do_iap };
+
+export { do_iap, init_iap };
 

@@ -44,6 +44,10 @@ async def cdbus_rx_rpt(rx):
     ret = await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/{src[0]}', dst[1]))
     if ret:
         print(f'proxy -> html, {ret}: /{src[0]}:{dst[1]}, {dat}')
+    
+    print(src, dst)
+    if src[1] == 0x9 or src[1] == 0x1: # dbg and dev_info msg also send to index.html
+        await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/', 0x9))
 
 def cdbus_rx():
     print('start cdbus_rx')

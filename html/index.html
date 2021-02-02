@@ -57,10 +57,19 @@
         <div id="cfg_list">
         </div>
     </div>
+    
+    <br>
+    <div class="container">
+        <h2 class="title is-size-4">Logs</h2>
+        <button id="log_clear">Clear</button>
+        <button id="log_blank">Add blank</button> <br><br>
+        <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black; resize: both;" id="dev_log"></div>
+    </div>
 </section>
 
 </body>
 <script src="./libs/konva-7.2.2.min.js" defer></script>
 <script src="./libs/msgpack-ygoe-9045d01.min.js" defer></script>
+<script src="./libs/ansi_up-5.0.0.js" defer></script>
 <script type="module" src="./index.js"></script>
 </html>

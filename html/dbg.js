@@ -109,12 +109,19 @@ async function dbg_raw_service() {
 }
 
 async function dbg_service() {
+    document.getElementById('log_clear').onclick = () => {
+        document.getElementById('dev_log').innerHTML = '';
+    };
+    document.getElementById('log_blank').onclick = () => {
+        document.getElementById('dev_log').innerHTML += '<br>';
+    };
+
     let ansi_up = new AnsiUp;
     while (true) {
         let dat = await csa.dbg_sock.recvfrom();
         console.log('dbg get', dat);
         let elem = document.getElementById('dev_log');
-        let txt = `${dat2str(dat[0].dat.slice(1))}`;
+        let txt = `${new Date().getTime()}: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);
         elem.innerHTML = [elem.innerHTML, html].filter(Boolean).join('<br>');
         elem.scrollBy(0, 100); // TODO: allow disable sroll; allow insert newline on UI

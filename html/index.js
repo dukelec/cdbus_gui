@@ -5,9 +5,8 @@
  */
 
 import { L } from './lang/lang.js'
-import {
-    escape_html, date2num, val2hex,
-    read_file, download, readable_size, blob2dat } from './utils/helper.js'
+import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+         read_file, download, readable_size, blob2dat } from './utils/helper.js';
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
@@ -15,7 +14,29 @@ import { Idb } from './utils/idb.js';
 let db = null;
 let ws_ns = new CDWebSocketNS('/');
 let cmd_sock = new CDWebSocket(ws_ns, 'cmd');
+let dbg_sock = new CDWebSocket(ws_ns, 9);
 let cfgs = null;
+
+
+async function dbg_service() {
+    document.getElementById('log_clear').onclick = () => {
+        document.getElementById('dev_log').innerHTML = '';
+    };
+    document.getElementById('log_blank').onclick = () => {
+        document.getElementById('dev_log').innerHTML += '<br>';
+    };
+    
+    let ansi_up = new AnsiUp;
+    while (true) {
+        let dat = await dbg_sock.recvfrom();
+        console.log('dbg get', dat);
+        let elem = document.getElementById('dev_log');
+        let txt = `${new Date().getTime()} [${dat[0].src[0]}]: ${dat2str(dat[0].dat.slice(1))}`;
+        let html = ansi_up.ansi_to_html(txt);
+        elem.innerHTML = [elem.innerHTML, html].filter(Boolean).join('<br>');
+        elem.scrollBy(0, 100); // TODO: allow disable sroll; allow insert newline on UI
+    }
+}
 
 
 async function ui_init_service() {
@@ -180,6 +201,7 @@ window.addEventListener('load', async function() {
     console.log("load app");
     db = await new Idb();
     ui_init_service();
+    dbg_service();
     init_ws();
 });
 

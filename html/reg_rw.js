@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 import { csa } from './ctrl.js';
 
@@ -39,7 +39,10 @@ function reg2str(dat, ofs, fmt, show) {
             switch (show) {
             case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
-            default: ret = [ret, `${dat2str(dat.slice(ofs,ofs+1))}`].filter(Boolean).join(' ');
+            default:
+                let d = dat.slice(ofs,ofs+1);
+                if (d != 0)
+                    ret = [ret, `${dat2str(d)}`].filter(Boolean).join(' ');
             }
             ofs += 1; break;
         case 'b':
@@ -145,8 +148,9 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 let val = '';
+                let join = r[R_FMT][1] == 'c' ? '' : ' ';
                 for (let n = 0; n < count; n++)
-                    val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(' ');
+                    val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(join);
                 
                 if (read_dft)
                     document.getElementById(`reg_dft.${r[R_ID]}`).setAttribute('data-tooltip', 'Default: ' + val);

@@ -2,32 +2,58 @@
     // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
     // show: 0: normal, 1: hex, 2: bytes
     "reg": [
-        [ 0x0002, 2,  "H",     1, "conf_ver",     "Magic Code: 0xcdcd" ],
-        [ 0x0004, 1,  "B",     0, "conf_from",    "0: default config, 1: load from flash" ],
-        [ 0x000c, 4,  "I",     0, "bus_baud_low", "RS-485 baud rate for first byte" ],
-        [ 0x0016, 3,  "[B]",   2, "dbg_dst_addr", "Send debug message to this address" ],
-        [ 0x0164, 24, "{H,H}", 1, "dbg_raw[0]",   "Config raw debug for current loop" ],
-        [ 0x0208, 4,  "i",     0, "tc_pos",       "Set target position" ],
-        [ 0x0300, 10, "[c]",   0, "test_str",     "test string" ]
+        [ 0x0002, 2, "H", 1, "conf_ver", "Magic Code: 0xcdcd" ],
+        [ 0x0004, 1, "b", 0, "conf_from", "0: default config, 1: load from flash" ],
+        [ 0x0005, 1, "b", 0, "do_reboot", "Write 1 to reboot" ],
+        [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+
+        [ 0x0009, 1, "B", 1, "bus_mac", "RS-485 port id, range: 0~254" ],
+        [ 0x000c, 4, "I", 0, "bus_baud_low", "RS-485 baud rate for first byte" ],
+        [ 0x0010, 4, "I", 0, "bus_baud_high", "RS-485 baud rate for follow bytes" ],
+        [ 0x0014, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
+        [ 0x0016, 3, "[B]", 2, "dbg_dst_addr", "Send debug message to this address" ],
+        [ 0x001a, 2, "H", 1, "dbg_dst_port", "Send debug message to this port" ],
+
+        [ 0x0020, 20, "{H,H}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
+        [ 0x0034, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
+        [ 0x0048, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
+
+        [ 0x005c, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
+        [ 0x0060, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
+        [ 0x0062, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
+        [ 0x0063, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
+        [ 0x0064, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
+        [ 0x007c, 24, "{H,H}", 1, "dbg_raw[1]", "Config raw debug for plot1" ],
+
+        [ 0x0094, 4, "i", 0, "tc_pos", "Set target position" ],
+        [ 0x0098, 4, "I", 0, "tc_speed", "Set target speed" ],
+        [ 0x009c, 4, "I", 0, "tc_accel", "Set target accel" ],
+        [ 0x00a0, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
+
+        [ 0x00a4, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
+
+        // --------------- Follows are not writable: -------------------
+        [ 0x00a5, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
+        [ 0x00a8, 4, "i", 0, "cur_pos", "Motor current position" ],
+        [ 0x00ac, 4, "f", 0, "tc_vc", "Motor current speed" ],
+        [ 0x00b0, 4, "f", 0, "tc_ac", "Motor current accel" ],
+
+        [ 0x00b8, 10, "[c]", 0, "string_test", "String test" ],
     ],
     "reg_r": [
         // addr   len
-        [ 0x0002, 0x3 ],
-        [ 0x000c, 0xd ],
-        [ 0x0164, 0x1c ],
+        [ 0x0002, 192 ], // 0xb8-2+10=192
     ],
     "reg_w": [
         // addr   len
-        [ 0x0002, 0x3 ],
-        [ 0x000c, 0xd ],
-        [ 0x0164, 0x1c ],
+        [ 0x0002, 192 ],
     ],
     "plot": {
-        "mask_addr": 0x0162, // uint8_t raw dbg mask
+        "mask_addr": 0x0062, // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "yellow", "black", "red", "cyan", "purple" ], // start from index 1
         "fmt": [
+            "I.iIBi - N, tc_pos, tc_speed, tc_state, cur_pos",
             "I1.fffHH - N, I, A, V, P", // number before . is cnt_inc (>= 1)
-            "I.bbFBB - N, n1, n2, p1, p2"
         ],
         "color": [ // use color_dft if not exist
         ],

@@ -52,7 +52,7 @@ function init_ws() {
         init_reg_list();
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
-        cal_reg_rw('r');
+        //cal_reg_rw('r');
         init_plots();
         init_iap();
     }

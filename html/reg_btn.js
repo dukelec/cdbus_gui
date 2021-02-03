@@ -94,7 +94,7 @@ function update_reg_rw_btn(rw='r') {
             btn_pre = document.getElementById(`reg_btn_${rw}.${reg_pre[R_ID]}`);
             rw_idx_pre = in_reg_rw(reg_rw, reg_pre[R_ADDR]);
         }
-        if (i < csa.cfg.reg.length - 2) {
+        if (i < csa.cfg.reg.length - 1) {
             reg_next = csa.cfg.reg[i+1];
             btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
             rw_idx_next = in_reg_rw(reg_rw, reg_next[R_ADDR]);
@@ -116,12 +116,12 @@ function update_reg_rw_btn(rw='r') {
             else
                 btn.onclick = async () => { await read_reg_val(rw_idx); };
 
-            let disconn_pre = false;
-            let disconn_next = false;
-            if (reg_pre && reg_pre[R_ADDR] + reg_pre[R_LEN] != reg[R_ADDR])
-                disconn_pre = true;
-            if (reg_next && reg[R_ADDR] + reg[R_LEN] != reg_next[R_ADDR])
-                disconn_next = true;
+            let disconn_pre = true;
+            let disconn_next = true;
+            if (reg_pre && reg_pre[R_ADDR] + reg_pre[R_LEN] == reg[R_ADDR])
+                disconn_pre = false;
+            if (reg_next && reg[R_ADDR] + reg[R_LEN] == reg_next[R_ADDR])
+                disconn_next = false;
             
             if (rw_idx == rw_idx_pre && rw_idx != rw_idx_next) {
                 btn.style['margin-top'] = '0';
@@ -138,9 +138,9 @@ function update_reg_rw_btn(rw='r') {
                     btn.style['border-radius'] = '0 0 0 0';
                 else if (disconn_pre && !disconn_next)
                     btn.style['border-radius'] = '6px 6px 0 0';
-                else if (!disconn_next && disconn_next)
+                else if (!disconn_pre && disconn_next)
                     btn.style['border-radius'] = '0 0 6px 6px';
-                    
+                
             } else if (rw_idx != rw_idx_pre && rw_idx == rw_idx_next) {
                 btn.style['margin-bottom'] = '0';
                 btn.style['border-width'] = '0.1px 0.1px 0 0.1px';

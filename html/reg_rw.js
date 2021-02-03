@@ -326,7 +326,16 @@ async function write_reg_val(w_idx) {
     }
 }
 
+function reg_idx_by_name(name) {
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let r = csa.cfg.reg[i];
+        if (r[R_ID] == name)
+            return i;
+    }
+    return null;
+}
+
 export {
-    fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
+    fmt_size, reg2str, read_reg_val, str2reg, write_reg_val, reg_idx_by_name,
     R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC
 };

@@ -107,7 +107,7 @@ async function flash_read_crc(addr, len) {
     dv.setUint32(5, len, true);
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
-    console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: $(val2hex(len))}`);
+    console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
     let ret = await csa.proxy_sock.recvfrom(1000);
     console.log('flash_read_crc', ret);
     if (ret && ret[0].dat[0] == 0x80) {

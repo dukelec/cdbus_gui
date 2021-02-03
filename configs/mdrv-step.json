@@ -42,22 +42,22 @@
     ],
     "reg_r": [
         // addr   len
-        [ 0x0002, 192 ], // 0xb8-2+10=192
+        [ 0x0002, 192 ],                // 0xb8-2+10=192
     ],
     "reg_w": [
         // addr   len
         [ 0x0002, 192 ],
     ],
     "plot": {
-        "mask_addr": 0x0062, // uint8_t raw dbg mask
+        "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "yellow", "black", "red", "cyan", "purple" ], // start from index 1
         "fmt": [
             "I.iIBif - N, tc_pos, tc_speed, tc_state, cur_pos, tc_vc",
             "I1.fffHH - N, I, A, V, P", // number before . is cnt_inc (>= 1)
         ],
-        "color": [ // use color_dft if not exist
+        "color": [                      // use color_dft if not exist
         ],
-        "depth": [ 10000, 10000 ], // limit depth, 0: no limit
+        "depth": [ 10000, 10000 ],      // limit depth, 0: no limit
         "cal": [
             [ "diff13: _D(1) - _D(3)" ] // data1 - data3
         ]
@@ -66,8 +66,8 @@
         "fmt": "jpg"
     },
     "iap": {
-        "reboot": 0x0005, // uint8_t reboot
-        "keep_bl": 0x0006, // uint8_t keep in bootloader
+        "reboot": 0x0005,               // uint8_t reboot
+        "keep_bl": 0x0006,              // uint8_t keep in bootloader
         "addr": 0x08006800
     }
 }

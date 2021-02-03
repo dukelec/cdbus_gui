@@ -197,6 +197,10 @@ async function button_edit() {
         // save to idb
         await csa.db.set('tmp', `reg_r.${csa.arg.name}`, csa.dat.reg_r);
         await csa.db.set('tmp', `reg_w.${csa.arg.name}`, csa.dat.reg_w);
+        console.log('new reg_r values:');
+        console.log(JSON.stringify(csa.dat.reg_r));
+        console.log('new reg_w values:');
+        console.log(JSON.stringify(csa.dat.reg_w));
     }
 }
 

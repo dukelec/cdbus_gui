@@ -6,6 +6,8 @@
 
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
+import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val, reg_idx_by_name,
+         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 import { csa } from './ctrl.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
 
@@ -50,6 +52,13 @@ function make_chart(eid, name, series) {
 
 
 async function plot_set_en() {
+    let idx = reg_idx_by_name(csa.cfg.plot.mask);
+    if (idx == null) {
+        alert(`plot.mask not found`);
+        return;
+    }
+    let mask_addr = csa.cfg.reg[idx][R_ADDR];
+    
     let msk = 0;
     for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         if (document.getElementById(`plot${i}_en`).checked)
@@ -59,7 +68,7 @@ async function plot_set_en() {
     
     let dat = new Uint8Array([0x20, 0, 0, msk]);
     let dv = new DataView(dat.buffer);
-    dv.setUint16(1, csa.cfg.plot.mask_addr, true);
+    dv.setUint16(1, mask_addr, true);
     
     for (let i = 0; i < 3; i++) {
         await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);

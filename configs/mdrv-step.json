@@ -52,12 +52,12 @@
         "mask_addr": 0x0062, // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "yellow", "black", "red", "cyan", "purple" ], // start from index 1
         "fmt": [
-            "I.iIBi - N, tc_pos, tc_speed, tc_state, cur_pos",
+            "I.iIBif - N, tc_pos, tc_speed, tc_state, cur_pos, tc_vc",
             "I1.fffHH - N, I, A, V, P", // number before . is cnt_inc (>= 1)
         ],
         "color": [ // use color_dft if not exist
         ],
-        "depth": [ 1000, 1000 ], // limit depth, 0: no limit
+        "depth": [ 10000, 10000 ], // limit depth, 0: no limit
         "cal": [
             [ "diff13: _D(1) - _D(3)" ] // data1 - data3
         ]

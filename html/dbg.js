@@ -114,6 +114,8 @@ async function dbg_service() {
     };
     document.getElementById('log_blank').onclick = () => {
         document.getElementById('dev_log').innerHTML += '<br>';
+        if (document.getElementById('scroll_end').checked)
+            document.getElementById('dev_log').scrollBy(0, 1000);
     };
 
     let ansi_up = new AnsiUp;
@@ -124,7 +126,8 @@ async function dbg_service() {
         let txt = `${new Date().getTime()}: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);
         elem.innerHTML = [elem.innerHTML, html].filter(Boolean).join('<br>');
-        elem.scrollBy(0, 100); // TODO: allow disable sroll; allow insert newline on UI
+        if (document.getElementById('scroll_end').checked)
+            elem.scrollBy(0, 1000);
     }
 }
 

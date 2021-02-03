@@ -1,9 +1,20 @@
 #!/bin/bash
 
-which gnome-terminal > /dev/null && TERM=gnome-terminal
-which xfce4-terminal > /dev/null && TERM=xfce4-terminal
+which gnome-terminal 2> /dev/null && XTERM=gnome-terminal
+which xfce4-terminal 2> /dev/null && XTERM=xfce4-terminal
+[ "$TERM" == "" ] && exit -1
+
+tty -s; if [ $? -ne 0 ]; then $XTERM -e "\"$0\""; exit; fi
 
 cd "$(dirname "$(realpath "$0")")"
 
-$TERM --title "${name}" -e "./main.py"
+function anykey_exit()
+{
+  read -n1 -r -p "Press any key to exit..."
+  exit
+}
+
+./main.py
+
+anykey_exit
 

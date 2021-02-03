@@ -16,6 +16,7 @@ import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
 import { init_iap, do_iap } from './iap.js';
+import { export_data, import_data } from './export.js';
 
 let csa = {
     arg: {},            // url args
@@ -109,6 +110,8 @@ document.getElementById('dev_write_all').onclick = async function() {
 };
 
 document.getElementById('iap_btn').onclick = do_iap;
+document.getElementById(`export_btn`).onclick = export_data;
+document.getElementById(`import_btn`).onclick = import_data;
 
 
 window.addEventListener('load', async function() {
@@ -117,11 +120,12 @@ window.addEventListener('load', async function() {
 
     csa.arg.tgt = url_arg.get('tgt')
     csa.arg.cfg = url_arg.get('cfg')
+    csa.arg.name = url_arg.get('name')
     if (!csa.arg.tgt || !csa.arg.cfg) {
         alert("no tgt or cfg");
         return;
     }
-    document.getElementById('tgt_name').innerHTML = `< ${csa.arg.tgt} | ${csa.arg.cfg} >`;
+    document.getElementById('tgt_name').innerHTML = ` - ${csa.arg.name} < ${csa.arg.tgt} | ${csa.arg.cfg} >`;
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');

@@ -141,7 +141,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                         elem.value = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                     }
                 }
-            }else if (r[R_FMT][0] == '[') {
+            } else if (r[R_FMT][0] == '[') {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 let val = '';
@@ -296,7 +296,7 @@ async function write_reg_val(w_idx) {
                 let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
                 str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, 0);
             }
-        }else if (r[R_FMT][0] == '[') {
+        } else if (r[R_FMT][0] == '[') {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
             let elem = document.getElementById(`reg.${r[R_ID]}`);

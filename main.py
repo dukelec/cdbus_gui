@@ -174,5 +174,6 @@ if __name__ == "__main__":
     asyncio.get_event_loop().create_task(dev_service())
     asyncio.get_event_loop().create_task(cdbus_proxy_service())
     #asyncio.get_event_loop().create_task(open_brower())
+    print('Please open url: http://localhost:8910')
     asyncio.get_event_loop().run_forever()
 

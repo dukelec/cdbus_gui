@@ -89,12 +89,13 @@ async function init_cfg_list() {
         document.getElementById(`cfg${i}.btn`).onclick = async () => {
             let t = document.getElementById(`cfg${i}.tgt`).value;
             let c = document.getElementById(`cfg${i}.cfg`).value;
+            let n = document.getElementById(`cfg${i}.name`).value;
             console.log(`t: ${t}, c: ${c}`);
             if (!t || !c) {
                 alert('Empty not allowed');
                 return;
             }
-            window.open(`ctrl.html?tgt=${t}&cfg=${c}`, "_blank");
+            window.open(`ctrl.html?tgt=${t}&cfg=${c}&name=${n}`, "_blank");
         };
         
         document.getElementById(`cfg${i}.name`).onchange =

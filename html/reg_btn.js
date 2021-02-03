@@ -77,7 +77,7 @@ function in_reg_rw(reg_rw, addr) { // test if in range
 }
 
 function update_reg_rw_btn(rw='r') {
-    let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
+    let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
     
     for (let i = 0; i < csa.cfg.reg.length; i++) {
         let reg_pre = null;
@@ -172,9 +172,10 @@ function cal_reg_rw(rw='r') {
 }
 
 
-function button_edit() {
+async function button_edit() {
     if (document.getElementById('button_edit').style.background == '') {
         document.getElementById('button_edit').style.background = 'yellow';
+        document.getElementById('button_subs').style.display = 'inline-block';
         
         for (let i = 0; i < csa.cfg.reg.length; i++) {
             let reg = csa.cfg.reg[i];
@@ -190,16 +191,19 @@ function button_edit() {
         
     } else {
         document.getElementById('button_edit').style.background = '';
+        document.getElementById('button_subs').style.display = 'none';
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
         // save to idb
+        await csa.db.set('tmp', `reg_r.${csa.arg.name}`, csa.dat.reg_r);
+        await csa.db.set('tmp', `reg_w.${csa.arg.name}`, csa.dat.reg_w);
     }
 }
 
 function toggle_group() {
     for (let rw of ['r', 'w']) {
         let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
-        let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
+        let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
         
         for (let i = 0; i < csa.cfg.reg.length; i++) {
             let reg = csa.cfg.reg[i];
@@ -228,9 +232,9 @@ function toggle_group() {
         }
     }
     
-    csa.cfg.reg_r = cal_reg_rw('r');
+    csa.dat.reg_r = cal_reg_rw('r');
     update_reg_rw_btn('r');
-    csa.cfg.reg_w = cal_reg_rw('w');
+    csa.dat.reg_w = cal_reg_rw('w');
     update_reg_rw_btn('w');
     // re-install onclick callback:
     document.getElementById('button_edit').style.background = '';
@@ -240,7 +244,7 @@ function toggle_group() {
 function toggle_enable() {
     for (let rw of ['r', 'w']) {
         let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
-        let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
+        let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
         
         for (let i = 0; i < csa.cfg.reg.length; i++) {
             let reg = csa.cfg.reg[i];
@@ -274,15 +278,55 @@ function toggle_enable() {
         }
     }
     
-    csa.cfg.reg_r = cal_reg_rw('r');
+    csa.dat.reg_r = cal_reg_rw('r');
     update_reg_rw_btn('r');
-    csa.cfg.reg_w = cal_reg_rw('w');
+    csa.dat.reg_w = cal_reg_rw('w');
     update_reg_rw_btn('w');
     // re-install onclick callback:
     document.getElementById('button_edit').style.background = '';
     button_edit();
 }
 
+function button_all() {
+    for (let rw of ['r', 'w']) {
+        let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
+        
+        for (let i = 0; i < csa.cfg.reg.length; i++) {
+            let reg = csa.cfg.reg[i];
+            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            btn.style.color = 'yellow';
+        }
+    }
+}
 
-export { init_reg_list, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable };
+async function button_def() {
+    csa.dat.reg_r = csa.cfg.reg_r;
+    csa.dat.reg_w = csa.cfg.reg_w;
+    await csa.db.set('tmp', `reg_r.${csa.arg.name}`, null);
+    await csa.db.set('tmp', `reg_w.${csa.arg.name}`, null);
+    update_reg_rw_btn('r');
+    update_reg_rw_btn('w');
+}
+
+async function init_reg_rw() {
+    let reg_r = await csa.db.get('tmp', `reg_r.${csa.arg.name}`);
+    let reg_w = await csa.db.get('tmp', `reg_w.${csa.arg.name}`);
+    if (reg_r && reg_w) {
+        csa.dat.reg_r = reg_r;
+        csa.dat.reg_w = reg_w;
+    } else {
+        csa.dat.reg_r = csa.cfg.reg_r;
+        csa.dat.reg_w = csa.cfg.reg_w;
+    }
+}
+
+
+document.getElementById(`button_edit`).onclick = button_edit;
+document.getElementById(`toggle_group`).onclick = toggle_group;
+document.getElementById(`toggle_enable`).onclick = toggle_enable;
+document.getElementById(`button_all`).onclick = button_all;
+document.getElementById(`button_def`).onclick = button_def;
+
+
+export { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable };
 

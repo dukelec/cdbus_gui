@@ -100,8 +100,8 @@ function reg2str(dat, ofs, fmt, show) {
 }
 
 async function read_reg_val(r_idx, read_dft=false) {
-    let addr = csa.cfg.reg_r[r_idx][0];
-    let len = csa.cfg.reg_r[r_idx][1];
+    let addr = csa.dat.reg_r[r_idx][0];
+    let len = csa.dat.reg_r[r_idx][1];
     
     let dat = new Uint8Array([read_dft ? 0x01 : 0x00, 0, 0, len]);
     let dv = new DataView(dat.buffer);
@@ -248,8 +248,8 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
 }
 
 async function write_reg_val(w_idx) {
-    let addr = csa.cfg.reg_w[w_idx][0];
-    let len = csa.cfg.reg_w[w_idx][1];
+    let addr = csa.dat.reg_w[w_idx][0];
+    let len = csa.dat.reg_w[w_idx][1];
     
     if (!csa.dat.reg_rbw[w_idx]) { // read-before-write
         let dat = new Uint8Array([0x00, 0, 0, len]);

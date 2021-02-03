@@ -234,27 +234,23 @@ async function do_iap() {
 };
 
 async function init_iap() {
-    let iap_cfg = await csa.db.get('tmp', 'iap_cfg');
+    let iap_cfg = await csa.db.get('tmp', `iap_cfg.${csa.arg.name}`);
     let path = document.getElementById('iap_path');
     let check = document.getElementById('iap_check');
     let reboot = document.getElementById('iap_reboot');
     
-    if (iap_cfg && csa.arg.tgt in iap_cfg) {
-        path.value = iap_cfg[csa.arg.tgt].path;
-        check.value = iap_cfg[csa.arg.tgt].check;
-        reboot.checked = iap_cfg[csa.arg.tgt].reboot;
+    if (iap_cfg) {
+        path.value = iap_cfg.path;
+        check.value = iap_cfg.check;
+        reboot.checked = iap_cfg.reboot;
     }
     
     path.onchange = check.onchange = reboot.onchange = async () => {
-        let cfg = await csa.db.get('tmp', 'iap_cfg');
-        if (!cfg)
-            cfg = [];
-        cfg[csa.arg.tgt] = {
+        await csa.db.set('tmp', `iap_cfg.${csa.arg.name}`, {
             path: path.value,
             check: check.value,
             reboot: reboot.checked
-        };
-        await csa.db.set('tmp', 'iap_cfg', cfg);
+        });
     };
 }
 

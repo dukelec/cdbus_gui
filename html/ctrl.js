@@ -12,7 +12,7 @@ import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { init_reg_list, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable } from './reg_btn.js';
+import { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
 import { init_iap, do_iap } from './iap.js';
@@ -30,6 +30,8 @@ let csa = {
     
     cfg: {},            // device config
     dat: {
+        reg_r: null,
+        reg_w: null,
         reg_dft_r: [],  // first read flag
         reg_rbw: []     // read before write data
     },                  // runtime data
@@ -50,6 +52,7 @@ function init_ws() {
         csa.cfg = dat[0];
         
         init_reg_list();
+        await init_reg_rw();
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
         //cal_reg_rw('r');
@@ -100,21 +103,18 @@ document.getElementById('dev_read_info').onclick = async function() {
 };
 
 document.getElementById('dev_read_all').onclick = async function() {
-    for (let i = 0; i < csa.cfg.reg_r.length; i++)
+    for (let i = 0; i < csa.dat.reg_r.length; i++)
         await read_reg_val(i);
 };
 
 document.getElementById('dev_write_all').onclick = async function() {
-    for (let i = 0; i < csa.cfg.reg_w.length; i++)
+    for (let i = 0; i < csa.dat.reg_w.length; i++)
         await write_reg_val(i);
 };
 
 document.getElementById('iap_btn').onclick = do_iap;
 document.getElementById(`export_btn`).onclick = export_data;
 document.getElementById(`import_btn`).onclick = import_data;
-document.getElementById(`button_edit`).onclick = button_edit;
-document.getElementById(`toggle_group`).onclick = toggle_group;
-document.getElementById(`toggle_enable`).onclick = toggle_enable;
 
 
 window.addEventListener('load', async function() {

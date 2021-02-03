@@ -91,7 +91,7 @@ async function init_cfg_list() {
             let c = document.getElementById(`cfg${i}.cfg`).value;
             let n = document.getElementById(`cfg${i}.name`).value;
             console.log(`t: ${t}, c: ${c}`);
-            if (!t || !c) {
+            if (!t || !c || !n) {
                 alert('Empty not allowed');
                 return;
             }

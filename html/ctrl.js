@@ -12,7 +12,7 @@ import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { init_reg_list, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
+import { init_reg_list, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
 import { init_iap, do_iap } from './iap.js';
@@ -112,6 +112,9 @@ document.getElementById('dev_write_all').onclick = async function() {
 document.getElementById('iap_btn').onclick = do_iap;
 document.getElementById(`export_btn`).onclick = export_data;
 document.getElementById(`import_btn`).onclick = import_data;
+document.getElementById(`button_edit`).onclick = button_edit;
+document.getElementById(`toggle_group`).onclick = toggle_group;
+document.getElementById(`toggle_enable`).onclick = toggle_enable;
 
 
 window.addEventListener('load', async function() {

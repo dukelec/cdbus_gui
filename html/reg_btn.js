@@ -104,6 +104,7 @@ function update_reg_rw_btn(rw='r') {
         btn.style['border-radius'] = '';
         btn.style['border-width'] = '';
         btn.style['background'] = '';
+        btn.style['color'] = '';
         btn.style['margin-top'] = '';
         btn.style['margin-bottom'] = '';
         btn.onclick = null;
@@ -170,5 +171,118 @@ function cal_reg_rw(rw='r') {
     return reg_rw;
 }
 
-export { init_reg_list, update_reg_rw_btn, cal_reg_rw };
+
+function button_edit() {
+    if (document.getElementById('button_edit').style.background == '') {
+        document.getElementById('button_edit').style.background = 'yellow';
+        
+        for (let i = 0; i < csa.cfg.reg.length; i++) {
+            let reg = csa.cfg.reg[i];
+            let btn_r = document.getElementById(`reg_btn_r.${reg[R_ID]}`);
+            let btn_w = document.getElementById(`reg_btn_w.${reg[R_ID]}`);
+            btn_r.onclick = () => {
+                btn_r.style.color = btn_r.style.color ? '' : 'yellow';
+            };
+            btn_w.onclick = () => {
+                btn_w.style.color = btn_w.style.color ? '' : 'yellow';
+            };
+        }
+        
+    } else {
+        document.getElementById('button_edit').style.background = '';
+        update_reg_rw_btn('r');
+        update_reg_rw_btn('w');
+        // save to idb
+    }
+}
+
+function toggle_group() {
+    for (let rw of ['r', 'w']) {
+        let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
+        let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
+        
+        for (let i = 0; i < csa.cfg.reg.length; i++) {
+            let reg = csa.cfg.reg[i];
+            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn_next = null;
+            
+            let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
+            if (i < csa.cfg.reg.length - 1) {
+                let reg_next = csa.cfg.reg[i+1];
+                btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
+            }
+            
+            if (btn.style.background && btn.style.color) {
+                if (btn.style['margin-bottom'] == '') { // has margin
+                    if (btn_next && btn_next.style.background && btn_next.style.color) { // next selected
+                        btn.style['margin-bottom'] = '0';
+                        btn_next.style['margin-top'] = '0';
+                    }
+                } else {
+                    if (btn_next && btn_next.style.background && btn_next.style.color) { // next selected
+                        btn.style['margin-bottom'] = '';
+                        btn_next.style['margin-top'] = '';
+                    }
+                }
+            }
+        }
+    }
+    
+    csa.cfg.reg_r = cal_reg_rw('r');
+    update_reg_rw_btn('r');
+    csa.cfg.reg_w = cal_reg_rw('w');
+    update_reg_rw_btn('w');
+    // re-install onclick callback:
+    document.getElementById('button_edit').style.background = '';
+    button_edit();
+}
+
+function toggle_enable() {
+    for (let rw of ['r', 'w']) {
+        let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
+        let reg_rw = rw == 'r' ? csa.cfg.reg_r : csa.cfg.reg_w;
+        
+        for (let i = 0; i < csa.cfg.reg.length; i++) {
+            let reg = csa.cfg.reg[i];
+            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn_pre = null;
+            let btn_next = null;
+            
+            let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
+            if (i > 0) {
+                let reg_pre = csa.cfg.reg[i-1];
+                btn_pre = document.getElementById(`reg_btn_${rw}.${reg_pre[R_ID]}`);
+            }
+            if (i < csa.cfg.reg.length - 1) {
+                let reg_next = csa.cfg.reg[i+1];
+                btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
+            }
+            
+            if (btn.style.color) {
+                btn.style['margin-top'] = '';
+                btn.style['margin-bottom'] = '';
+                if (btn_pre)
+                    btn_pre.style['margin-bottom'] = '';
+                if (btn_next)
+                    btn_next.style['margin-top'] = '';
+                if (btn.style.background) {
+                    btn.style.background = '';
+                } else {
+                    btn.style.background = color;
+                }
+            }
+        }
+    }
+    
+    csa.cfg.reg_r = cal_reg_rw('r');
+    update_reg_rw_btn('r');
+    csa.cfg.reg_w = cal_reg_rw('w');
+    update_reg_rw_btn('w');
+    // re-install onclick callback:
+    document.getElementById('button_edit').style.background = '';
+    button_edit();
+}
+
+
+export { init_reg_list, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable };
 

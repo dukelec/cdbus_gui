@@ -107,7 +107,7 @@ async function flash_read_crc(addr, len) {
     dv.setUint32(5, len, true);
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
-    console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${$(val2hex(len))}`);
+    console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: $(val2hex(len))}`);
     let ret = await csa.proxy_sock.recvfrom(1000);
     console.log('flash_read_crc', ret);
     if (ret && ret[0].dat[0] == 0x80) {
@@ -224,9 +224,9 @@ async function do_iap() {
             return;
         }
         document.getElementById('iap_progress').innerHTML = 'Succeeded with read back check.';
+    } else {
+        document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
     }
-    
-    document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
     
     let reboot = document.getElementById('iap_reboot').checked;
     if (reboot)

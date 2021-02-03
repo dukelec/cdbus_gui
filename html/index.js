@@ -83,7 +83,7 @@ async function init_cfg_list() {
             <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
             <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
             <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
-            <button id="cfg${i}.btn">Open Window</button> <br>
+            <button class="button is-small" id="cfg${i}.btn">Open Window</button> <br>
         `;
         
         list.insertAdjacentHTML('beforeend', html);

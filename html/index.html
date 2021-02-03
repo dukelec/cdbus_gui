@@ -19,9 +19,9 @@
                 <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0">
                 <input type="text" placeholder="Rate (Ignore for USB-CDC)" id="dev_baud" value="115200">
                 <label class="checkbox"><input type="checkbox" id="dev_bridge" checked> CDBUS Bridge</label>
-                <button id="btn_dev_get">Refresh</button>
-                <button id="btn_dev_open">Open</button>
-                <button id="btn_dev_close">Close</button>
+                <button class="button is-small" id="btn_dev_get">Refresh</button>
+                <button class="button is-small" id="btn_dev_open">Open</button>
+                <button class="button is-small" id="btn_dev_close">Close</button>
             </div>
         </div>
         <div class="container">
@@ -45,7 +45,7 @@
         <h3 class="title is-size-4">Devices</h3>
         <input type="text" placeholder="Local NET" id="local_net" value="0x00">
         <input type="text" placeholder="Local MAC" id="local_mac" value="0x00">
-        <button id="set_local">Set local NET & MAC</button><br><br>
+        <button class="button is-small" id="set_local">Set local NET & MAC</button><br><br>
         <div id="cfg_list">
         </div>
     </div>
@@ -54,8 +54,8 @@
     <div class="container">
         <h2 class="title is-size-4">Logs</h2>
         <label class="checkbox"><input type="checkbox" id="scroll_end" checked> Scroll end</label>
-        <button id="log_clear">Clear</button>
-        <button id="log_blank">Add blank</button> <br><br>
+        <button class="button is-small" id="log_clear">Clear</button>
+        <button class="button is-small" id="log_blank">Add blank</button> <br><br>
         <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black; resize: both;" id="dev_log"></div>
     </div>
 </section>

@@ -46,16 +46,16 @@
         
         <div class="columns">
             <div class="column">
-                <button id="dev_read_info">Read Info</button>
-                <button id="dev_read_all">Read All</button>
-                <button id="dev_write_all">Write All</button>
+                <button class="button is-small" id="dev_read_info">Read Info</button>
+                <button class="button is-small" id="dev_read_all">Read All</button>
+                <button class="button is-small" id="dev_write_all">Write All</button>
                 |
-                <button id="button_edit">Button Edit</button>
+                <button class="button is-small" id="button_edit">Button Edit</button>
                 <span id="button_subs" style="display: none;">
-                <button id="toggle_group">Toggle Group</button>
-                <button id="toggle_enable">Toggle Enable</button>
-                <button id="button_all">Select All</button>
-                <button id="button_def">Load Default</button>
+                <button class="button is-small" id="toggle_group">Toggle Group</button>
+                <button class="button is-small" id="toggle_enable">Toggle Enable</button>
+                <button class="button is-small" id="button_all">Select All</button>
+                <button class="button is-small" id="button_def">Load Default</button>
                 </span>
             </div>
         </div>
@@ -74,8 +74,8 @@
         <div class="container">
             <h2 class="title is-size-4">Logs</h2>
             <label class="checkbox"><input type="checkbox" id="scroll_end" checked> Scroll end</label>
-            <button id="log_clear">Clear</button>
-            <button id="log_blank">Add blank</button> <br><br>
+            <button class="button is-small" id="log_clear">Clear</button>
+            <button class="button is-small" id="log_blank">Add blank</button> <br><br>
             <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black; resize: both;" id="dev_log"></div>
         </div>
         <br>
@@ -92,7 +92,7 @@
                 <option value="none">No check</option>
             </select>
             <label class="checkbox"><input type="checkbox" id="iap_reboot" checked> Reboot</label>
-            <button id="iap_btn">Write</button> <br>
+            <button class="button is-small" id="iap_btn">Write</button> <br>
             
             Progress: <span id="iap_progress">--</span>
         </div>
@@ -100,7 +100,8 @@
         
         <div class="container">
             <h2 class="title is-size-4">Export & Import</h2>
-            <button id="export_btn">Export Data</button> <button id="import_btn">Import Data</button>
+            <button class="button is-small" id="export_btn">Export Data</button>
+            <button class="button is-small" id="import_btn">Import Data</button>
             <input id="input_file" type="file" style="display:none;">
         </div>
         

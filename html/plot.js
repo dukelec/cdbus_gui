@@ -123,7 +123,7 @@ function init_plots() {
                 <option value="1800x1000">1800x1000</option>
                 <option value="none">Hide</option>
             </select>
-            <button id="plot${i}_clear">Clear</button>
+            <button class="button is-small" id="plot${i}_clear">Clear</button>
             <br>
             <div id="plot${i}"></div>
         `;

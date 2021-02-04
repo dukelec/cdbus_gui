@@ -2,7 +2,8 @@
     // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
     // show: 0: normal, 1: hex, 2: bytes
     "reg": [
-        [ 0x0002, 2, "H", 1, "conf_ver", "Magic Code: 0xcdcd" ],
+        [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
+        [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
         [ 0x0004, 1, "b", 0, "conf_from", "0: default config, 1: load from flash" ],
         [ 0x0005, 1, "b", 0, "do_reboot", "Write 1 to reboot" ],
         [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
@@ -42,7 +43,7 @@
     ],
     "reg_r": [
         // addr   len
-        [ 0x0002, 192 ],                // 0xb8-2+10=192
+        [ 0x0002, 192 ],
     ],
     "reg_w": [
         // addr   len

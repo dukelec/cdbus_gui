@@ -91,6 +91,9 @@ function init_plots() {
     csa.plots = [];
     csa.dat.plots = [];
     
+    if (!csa.cfg.plot)
+        return;
+    
     for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         let f = csa.cfg.plot.fmt[i];
         let f_fmt = f.split(' - ')[0];

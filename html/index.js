@@ -174,7 +174,7 @@ document.getElementById('btn_dev_get').onclick = async function() {
     let dat = await cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
     document.getElementById('dev_status').innerHTML = `
-        ${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: ${dat[0].net} mac: ${dat[0].mac})
+        ${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})
     `;
     
     let list = document.getElementById('dev_list');

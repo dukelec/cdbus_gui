@@ -1,0 +1,4 @@
+[submodule "pycdnet"]
+	path = pycdnet
+	url = ../pycdnet
+

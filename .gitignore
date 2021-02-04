@@ -29,6 +29,7 @@
 !.gitignore
 !.gitkeep
 !.mailmap
+!.gitmodules
 
 # stgit generated dirs
 patches-*

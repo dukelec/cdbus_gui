@@ -65,7 +65,7 @@ The following is the debug window for a specific device, starting with the data 
  - You can turn on and off a certain curve at will, so it is not easy to mess up when there are many curves. (tc_speed is off in the figure, but the value is still displayed.)
  - The mouse wheel can be used with shift or ctrl to scale the x and y axes respectively, and the default is to scale both axes together.
  - Touch screen zooming is supported, as well as different scaling of x and y axes.
- - Double-click to restore the default diagram (zoom to fit). The middle mouse button is drag and drop (touchpad is also possible).
+ - Double-click to restore the default diagram (zoom to fit). Hold down left (or middle) mouse button to pan (touchpad is also possible).
  - Data depth can be set and old data is automatically deleted to facilitate dynamic data display (oscilloscope effect).
  - The number of waveform windows is not limited.
 

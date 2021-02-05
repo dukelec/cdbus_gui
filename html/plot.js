@@ -22,7 +22,7 @@ function make_chart(eid, name, series) {
             touchZoomPlugin()
         ],
         cursor: {
-            drag: { x: true, y: true }
+            drag: { x: false, y: false, setScale: false }
         },
         scales: {
             x: {

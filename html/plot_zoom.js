@@ -59,7 +59,7 @@ function wheelZoomPlugin(opts) {
 
                 // wheel drag pan
                 plot.addEventListener("mousedown", e => {
-                    if (e.button == 1) {
+                    if (e.button == 0 || e.button == 1) {
                     //    plot.style.cursor = "move";
                         e.preventDefault();
 

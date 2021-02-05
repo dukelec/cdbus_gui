@@ -48,6 +48,9 @@ function dv_fmt_read(dv, ofs, fmt) {
 }
 
 async function dbg_raw_service() {
+    let t_last = new Date().getTime();
+    let timer = null;
+    
     while (true) {
         let msg = await csa.dbg_raw_sock.recvfrom();
         let dat = msg[0].dat;
@@ -103,8 +106,15 @@ async function dbg_raw_service() {
             }
         }
         
-        csa.plots[idx].setData(csa.dat.plots[idx]);
-        //console.log(csa.dat.plots[idx]);
+        let t_cur = new Date().getTime();
+        if (t_cur - t_last >= 100) {
+            if (timer)
+                clearTimeout(timer);
+            csa.plots[idx].setData(csa.dat.plots[idx]); // setData(data, resetScales=true)
+        } else {
+            timer = setTimeout(() => { csa.plots[idx].setData(csa.dat.plots[idx]); }, 100);
+        }
+        t_last = t_cur;
     }
 }
 

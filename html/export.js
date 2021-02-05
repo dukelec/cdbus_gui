@@ -14,9 +14,12 @@ import { csa } from './ctrl.js';
 function export_data() {
     let exp_dat = {
         version: 'cdgui v0',
-        reg_str: {}
+        reg_str: {},
+        logs: document.getElementById('dev_log').innerHTML,
     };
-
+    if (csa.dat.plots)
+        exp_dat.plots = csa.dat.plots;
+    
     for (let i = 0; i < csa.cfg.reg.length; i++) {
         let r = csa.cfg.reg[i];
         
@@ -39,9 +42,9 @@ function export_data() {
 
 function import_data() {
     //let input = document.createElement('input');
-    //cpy(input, {type: 'file', accept: '*.mbp'}, ['type', 'accept']);
+    //cpy(input, {type: 'file', accept: '*.cdg'}, ['type', 'accept']);
     let input = document.getElementById('input_file');
-    input.accept = '.mbp';
+    input.accept = '.cdg';
     input.onchange = async function () {
         var files = this.files;
         if (files && files.length) {
@@ -53,6 +56,7 @@ function import_data() {
                 alert(L('Format error'));
                 return;
             }
+            console.log('import dat:', prj);
             
             for (let i = 0; i < csa.cfg.reg.length; i++) {
                 let r = csa.cfg.reg[i];
@@ -70,6 +74,14 @@ function import_data() {
                         document.getElementById(`reg.${r[R_ID]}`).value = prj.reg_str[`${r[R_ID]}`];
                 }
                 
+            }
+            
+            document.getElementById('dev_log').innerHTML = prj.logs;
+            if (prj.plots) {
+                csa.dat.plots = prj.plots;
+                for (let i = 0; i < csa.plots.length; i++) {
+                    csa.plots[i].setData(csa.dat.plots[i]);
+                }
             }
             alert('Import succeeded');
         }

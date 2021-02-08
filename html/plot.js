@@ -87,13 +87,13 @@ async function plot_set_en() {
 
 
 function init_plots() {
+    if (!csa.cfg.plot)
+        return;
+    
     let list = document.getElementById('plot_list');
     list.insertAdjacentHTML('beforeend', `<h2 class="title is-size-4">Plots</h2>`);
     csa.plots = [];
     csa.dat.plots = [];
-    
-    if (!csa.cfg.plot)
-        return;
     
     for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         let f = csa.cfg.plot.fmt[i];

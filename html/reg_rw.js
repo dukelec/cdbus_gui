@@ -109,7 +109,7 @@ async function read_reg_val(r_idx, read_dft=false) {
 
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('read reg wait ret');
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('read reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         if (read_dft)
@@ -258,7 +258,7 @@ async function write_reg_val(w_idx) {
         
         await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('read-before-write wait ret');
-        let ret = await csa.proxy_sock.recvfrom(1000);
+        let ret = await csa.proxy_sock.recvfrom(500);
         console.log('read-before-write ret', ret);
         if (ret && ret[0].dat[0] == 0x80) {
             csa.dat.reg_rbw[w_idx] = ret[0].dat.slice(1);
@@ -317,7 +317,7 @@ async function write_reg_val(w_idx) {
     console.info('write reg:', dat2hex(dat, ' '));
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('write reg wait ret');
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('write reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('write reg succeeded');

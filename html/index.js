@@ -128,7 +128,7 @@ function init_ws() {
         ws_ns.connections['server'] = ws;
         
         await cmd_sock.sendto({'action': 'get_cfgs'}, ['server', 'file']);
-        let dat = await cmd_sock.recvfrom(1000);
+        let dat = await cmd_sock.recvfrom(500);
         console.log('get_cfgs ret', dat);
         cfgs = dat[0];
         await init_cfg_list();
@@ -163,7 +163,7 @@ document.getElementById('set_local').onclick = async function() {
         return;
     }
     await cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
-    let dat = await cmd_sock.recvfrom(1000);
+    let dat = await cmd_sock.recvfrom(500);
     console.log('set_local ret', dat);
     await document.getElementById('btn_dev_get').onclick();
 };
@@ -171,7 +171,7 @@ document.getElementById('set_local').onclick = async function() {
 document.getElementById('btn_dev_get').onclick = async function() {
     console.log('start get');
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
-    let dat = await cmd_sock.recvfrom(1000);
+    let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_get ret', dat);
     document.getElementById('dev_status').innerHTML = `
         ${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})
@@ -202,7 +202,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
         return;
     }
     await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
-    let dat = await cmd_sock.recvfrom(1000);
+    let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_open ret', dat);
     await document.getElementById('btn_dev_get').onclick();
 };
@@ -210,7 +210,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
 document.getElementById('btn_dev_close').onclick = async function() {
     console.log('start close');
     await cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
-    let dat = await cmd_sock.recvfrom(1000);
+    let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_close ret', dat);
     await document.getElementById('btn_dev_get').onclick();
 };

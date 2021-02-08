@@ -86,13 +86,19 @@
         <div class="container">
             <h2 class="title is-size-4">IAP</h2>
             <input type="text" size="100" placeholder="Full path of bin file on system" id="iap_path">
-            <select id="iap_check" value="read">
-                <option value="read">Read back check</option>
-                <option value="crc">Read CRC check</option>
-                <option value="none">No check</option>
+            <select id="iap_action" value="bl_full">
+                <option value="bl_full">Reboot -> BL -> Flash -> Reboot</option>
+                <option value="bl_flash">Reboot -> BL -> Flash</option>
+                <option value="bl">Reboot -> BL (Enter BootLoader)</option>
+                <option value="flash">Flash Only</option>
             </select>
-            <label class="checkbox"><input type="checkbox" id="iap_reboot" checked> Reboot</label>
-            <button class="button is-small" id="iap_btn">Write</button> <br>
+            <select id="iap_check" value="none">
+                <option value="none">No Check</option>
+                <option value="read">Read Back Check</option>
+                <option value="crc">Read CRC Check</option>
+            </select>
+            <button class="button is-small" id="iap_start">Start</button>
+            <button class="button is-small" id="iap_stop" disabled>Stop</button> <br>
             
             Progress: <span id="iap_progress">--</span>
         </div>

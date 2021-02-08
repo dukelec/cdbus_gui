@@ -20,7 +20,7 @@ async function flash_erase(addr, len) {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('flash_erase ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         return 0
@@ -39,7 +39,7 @@ async function flash_write_blk(addr, dat) {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('flash_write_blk ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         return 0
@@ -51,7 +51,7 @@ async function flash_write_blk(addr, dat) {
 
 async function flash_write(addr, dat, blk_size=128) {
     let cur = addr;
-    while (true) {
+    while (document.getElementById('iap_start').disabled) {
         let size = Math.min(blk_size, dat.length - (cur - addr));
         if (size == 0)
             return 0;
@@ -62,6 +62,7 @@ async function flash_write(addr, dat, blk_size=128) {
         cur += size;
         document.getElementById('iap_progress').innerHTML = `write ${Math.round((cur - addr) / dat.length * 100)}%`;
     }
+    return -2;
 }
 
 async function flash_read_blk(addr, len) {
@@ -73,7 +74,7 @@ async function flash_read_blk(addr, len) {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('flash_read_blk ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         return ret[0].dat.slice(1);
@@ -86,7 +87,7 @@ async function flash_read_blk(addr, len) {
 async function flash_read(addr, len, blk_size=128) {
     let cur = addr;
     let buf = new Uint8Array(0);
-    while (true) {
+    while (document.getElementById('iap_start').disabled) {
         let size = Math.min(blk_size, len - (cur - addr));
         if (size == 0)
             return buf;
@@ -97,6 +98,7 @@ async function flash_read(addr, len, blk_size=128) {
         cur += size;
         document.getElementById('iap_progress').innerHTML = `read ${Math.round((cur - addr) / len * 100)}%`;
     }
+    return null;
 }
 
 async function flash_read_crc(addr, len) {
@@ -108,7 +110,7 @@ async function flash_read_crc(addr, len) {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('flash_read_crc', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
@@ -145,7 +147,7 @@ async function keep_in_bl() {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
     console.log('keep_in_bl wait ret');
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(200);
     console.log('keep_in_bl ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('keep_in_bl succeeded');
@@ -168,16 +170,27 @@ async function do_reboot() {
 }
 
 
+async function stop_iap() {
+    document.getElementById('iap_start').disabled = false;
+    document.getElementById('iap_stop').disabled = true;
+}
+
 async function do_iap() {
+    document.getElementById('iap_start').disabled = true;
+    document.getElementById('iap_stop').disabled = false;
     document.getElementById('iap_progress').innerHTML = '--';
+    
     let path = document.getElementById('iap_path').value;
+    let check = document.getElementById('iap_check').value;
+    let action = document.getElementById('iap_action').value;
+    
     if (!path) {
         alert('path empty');
         return;
     }
     
     await csa.cmd_sock.sendto({'action': 'get_bin', 'path': path}, ['server', 'file']);
-    let dat = await csa.cmd_sock.recvfrom(1000);
+    let dat = await csa.cmd_sock.recvfrom(500);
     if (!dat || !dat[0].length) {
         alert('invalid bin file');
         return;
@@ -187,73 +200,118 @@ async function do_iap() {
     let addr = csa.cfg.iap.addr;
     console.log(`get_bin, bin len: ${len}, crc: 0x${val2hex(crc_ori, 2)}`);
     
-    if (await keep_in_bl()) {
-        alert(`keep_in_bl failed`);
-        return;
+    let retry_cnt = 0;
+    while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
+    
+        await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+        console.log('read info wait ret');
+        let ret = await csa.proxy_sock.recvfrom(200);
+        console.log('read info ret', ret);
+        if (ret) {
+            let s = dat2str(ret[0].dat.slice(1));
+            if (s.includes('(bl)')) {
+                console.log(`found (bl): ${s}`);
+                if (await keep_in_bl()) {
+                    document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
+                } else {
+                    console.log(`keep_in_bl succeeded`);
+                    document.getElementById('iap_progress').innerHTML = `keep_in_bl succeeded`;
+                    break;
+                }
+            } else {
+                console.log('not found (bl), reboot');
+                document.getElementById('iap_progress').innerHTML = `Not found string "(bl)", reboot...`;
+                await do_reboot();
+            }
+        } else {
+            console.log('read info time out');
+            document.getElementById('iap_progress').innerHTML = `Read info, retry cnt: ${retry_cnt}`;
+            continue;
+        }
+        retry_cnt++;
     }
     
-    if (await flash_erase(addr, len)) {
-        alert(`erase failed`);
-        return;
+    if (action == "flash" && document.getElementById('iap_start').disabled) {
+        if (await keep_in_bl()) {
+            document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
+            return;
+        } else {
+            console.log(`keep_in_bl succeeded`);
+            document.getElementById('iap_progress').innerHTML = `keep_in_bl succeeded`;
+        }
     }
     
-    if (await flash_write(addr, dat[0])) {
-        alert(`write failed`);
-        return;
-    }
-    
-    let check = document.getElementById('iap_check').value;
-    
-    if (check == "crc") {
-        let crc_back = await flash_read_crc(addr, len);
-        if (crc_back != crc_ori) {
-            alert(`read crc: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`);
+    if (action != "bl" && document.getElementById('iap_start').disabled) {
+        if (await flash_erase(addr, len)) {
+            document.getElementById('iap_progress').innerHTML = `Erase failed`;
+            stop_iap();
             return;
         }
-        document.getElementById('iap_progress').innerHTML = 'Succeeded with crc check.';
         
-    } else if (check == "read") {
-        let buf = await flash_read(addr, len);
-        if (!buf) {
-            alert(`write failed`);
+        if (await flash_write(addr, dat[0])) {
+            document.getElementById('iap_progress').innerHTML = `Write failed`;
+            stop_iap();
             return;
         }
-        let crc_back = crc16(buf);
-        if (crc_back != crc_ori) {
-            alert(`read back: crc: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`);
-            return;
+        
+        if (check == "crc") {
+            let crc_back = await flash_read_crc(addr, len);
+            if (crc_back != crc_ori) {
+                document.getElementById('iap_progress').innerHTML = `CRC Err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
+                stop_iap();
+                return;
+            }
+            document.getElementById('iap_progress').innerHTML = 'Succeeded with crc check.';
+            
+        } else if (check == "read") {
+            let buf = await flash_read(addr, len);
+            if (!buf) {
+                document.getElementById('iap_progress').innerHTML = 'Read back failed';
+                stop_iap();
+                return;
+            }
+            let crc_back = crc16(buf);
+            if (crc_back != crc_ori) {
+                document.getElementById('iap_progress').innerHTML = `CRC Err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
+                stop_iap();
+                return;
+            }
+            document.getElementById('iap_progress').innerHTML = 'Succeeded with read back check.';
+        } else {
+            document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
         }
-        document.getElementById('iap_progress').innerHTML = 'Succeeded with read back check.';
-    } else {
-        document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
     }
     
-    let reboot = document.getElementById('iap_reboot').checked;
-    if (reboot)
+    if (action == 'bl_full' && document.getElementById('iap_start').disabled)
         await do_reboot();
+    
+    stop_iap();
 };
 
 async function init_iap() {
     let iap_cfg = await csa.db.get('tmp', `iap_cfg.${csa.arg.name}`);
     let path = document.getElementById('iap_path');
     let check = document.getElementById('iap_check');
-    let reboot = document.getElementById('iap_reboot');
+    let action = document.getElementById('iap_action');
     
     if (iap_cfg) {
         path.value = iap_cfg.path;
         check.value = iap_cfg.check;
-        reboot.checked = iap_cfg.reboot;
+        action.value = iap_cfg.action;
     }
     
-    path.onchange = check.onchange = reboot.onchange = async () => {
+    path.onchange = check.onchange = action.onchange = async () => {
         await csa.db.set('tmp', `iap_cfg.${csa.arg.name}`, {
             path: path.value,
             check: check.value,
-            reboot: reboot.checked
+            action: action.value
         });
     };
 }
 
 
-export { do_iap, init_iap };
+document.getElementById('iap_start').onclick = do_iap;
+document.getElementById('iap_stop').onclick = stop_iap;
+
+export { init_iap };
 

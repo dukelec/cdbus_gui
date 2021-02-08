@@ -15,7 +15,7 @@ import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
 import { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
-import { init_iap, do_iap } from './iap.js';
+import { init_iap } from './iap.js';
 import { export_data, import_data } from './export.js';
 
 let csa = {
@@ -47,7 +47,7 @@ function init_ws() {
         csa.ws_ns.connections['server'] = ws;
         
         await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'file']);
-        let dat = await csa.cmd_sock.recvfrom(1000);
+        let dat = await csa.cmd_sock.recvfrom(500);
         console.log('get_cfg ret', dat);
         csa.cfg = dat[0];
         
@@ -94,7 +94,7 @@ document.getElementById('dev_read_info').onclick = async function() {
     
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
     console.log('read info wait ret');
-    let ret = await csa.proxy_sock.recvfrom(1000);
+    let ret = await csa.proxy_sock.recvfrom(500);
     console.log('read info ret', ret);
     if (ret)
         document.getElementById('dev_info').innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
@@ -112,7 +112,6 @@ document.getElementById('dev_write_all').onclick = async function() {
         await write_reg_val(i);
 };
 
-document.getElementById('iap_btn').onclick = do_iap;
 document.getElementById(`export_btn`).onclick = export_data;
 document.getElementById(`import_btn`).onclick = import_data;
 

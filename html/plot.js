@@ -71,6 +71,7 @@ async function plot_set_en() {
     dv.setUint16(1, mask_addr, true);
     
     for (let i = 0; i < 3; i++) {
+        csa.proxy_sock.flush();
         await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('plot_set_en wait ret');
         let ret = await csa.proxy_sock.recvfrom(500 * (i+1));

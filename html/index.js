@@ -127,6 +127,7 @@ function init_ws() {
         console.log("ws onopen");
         ws_ns.connections['server'] = ws;
         
+        cmd_sock.flush();
         await cmd_sock.sendto({'action': 'get_cfgs'}, ['server', 'file']);
         let dat = await cmd_sock.recvfrom(500);
         console.log('get_cfgs ret', dat);
@@ -162,6 +163,7 @@ document.getElementById('set_local').onclick = async function() {
         alert('Empty not allowed');
         return;
     }
+    cmd_sock.flush();
     await cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('set_local ret', dat);
@@ -170,6 +172,7 @@ document.getElementById('set_local').onclick = async function() {
     
 document.getElementById('btn_dev_get').onclick = async function() {
     console.log('start get');
+    cmd_sock.flush();
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_get ret', dat);
@@ -201,6 +204,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
         alert('Empty not allowed');
         return;
     }
+    cmd_sock.flush();
     await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_open ret', dat);
@@ -209,6 +213,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
 
 document.getElementById('btn_dev_close').onclick = async function() {
     console.log('start close');
+    cmd_sock.flush();
     await cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_close ret', dat);

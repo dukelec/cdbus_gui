@@ -4,6 +4,10 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function read_file(file) {
     return await new Promise((resolve, reject) => {
         let reader = new FileReader();
@@ -196,7 +200,7 @@ async function blob2dat(blob) {
 }
 
 export {
-    read_file, load_img, date2num,
+    sleep, read_file, load_img, date2num,
     sha256, aes256,
     dat2hex, hex2dat, dat2str, str2dat, val2hex,
     cpy, Queue,

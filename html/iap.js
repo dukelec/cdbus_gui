@@ -5,7 +5,7 @@
  */
 
 import { L } from './lang/lang.js';
-import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 import { Idb } from './utils/idb.js';
 import { csa } from './ctrl.js';
@@ -18,6 +18,7 @@ async function flash_erase(addr, len) {
     dv.setUint32(1, addr, true);
     dv.setUint32(5, len, true);
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
     let ret = await csa.proxy_sock.recvfrom(500);
@@ -37,6 +38,7 @@ async function flash_write_blk(addr, dat) {
     dv.setUint32(1, addr, true);
     d.set(dat, 5);
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
     let ret = await csa.proxy_sock.recvfrom(500);
@@ -72,6 +74,7 @@ async function flash_read_blk(addr, len) {
     dv.setUint32(1, addr, true);
     d[5] = len;
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
     let ret = await csa.proxy_sock.recvfrom(500);
@@ -108,6 +111,7 @@ async function flash_read_crc(addr, len) {
     dv.setUint32(1, addr, true);
     dv.setUint32(5, len, true);
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
     let ret = await csa.proxy_sock.recvfrom(500);
@@ -145,6 +149,7 @@ async function keep_in_bl() {
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.keep_bl, true);
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
     console.log('keep_in_bl wait ret');
     let ret = await csa.proxy_sock.recvfrom(200);
@@ -163,9 +168,10 @@ async function do_reboot() {
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.reboot, true);
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
     console.log('reboot wait ret');
-    let ret = await csa.proxy_sock.recvfrom(500);
+    let ret = await csa.proxy_sock.recvfrom(200);
     console.log('reboot ret', ret);
 }
 
@@ -189,6 +195,7 @@ async function do_iap() {
         return;
     }
     
+    csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get_bin', 'path': path}, ['server', 'file']);
     let dat = await csa.cmd_sock.recvfrom(500);
     if (!dat || !dat[0].length) {
@@ -203,6 +210,7 @@ async function do_iap() {
     let retry_cnt = 0;
     while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
     
+        csa.proxy_sock.flush();
         await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
         console.log('read info wait ret');
         let ret = await csa.proxy_sock.recvfrom(200);
@@ -229,6 +237,7 @@ async function do_iap() {
             continue;
         }
         retry_cnt++;
+        await sleep(100);
     }
     
     if (action == "flash" && document.getElementById('iap_start').disabled) {

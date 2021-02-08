@@ -46,6 +46,7 @@ function init_ws() {
         console.log("ws onopen");
         csa.ws_ns.connections['server'] = ws;
         
+        csa.cmd_sock.flush();
         await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'file']);
         let dat = await csa.cmd_sock.recvfrom(500);
         console.log('get_cfg ret', dat);
@@ -85,6 +86,7 @@ function init_ws() {
 document.getElementById('dev_read_info').onclick = async function() {
     document.getElementById('dev_info').innerHTML = 'reading ...';
     
+    csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(500);
     if (!dat || !dat[0].online) {
@@ -92,6 +94,7 @@ document.getElementById('dev_read_info').onclick = async function() {
         return;
     }
     
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
     console.log('read info wait ret');
     let ret = await csa.proxy_sock.recvfrom(500);

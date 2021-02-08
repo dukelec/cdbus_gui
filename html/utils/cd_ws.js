@@ -37,6 +37,10 @@ class CDWebSocket {
     async recvfrom(timeout=null) {
         return await this.recv_q.get(timeout=timeout);
     }
+    
+    flush() {
+        this.recv_q.flush();
+    }
 }
 
 

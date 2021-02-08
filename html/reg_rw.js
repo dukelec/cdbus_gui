@@ -107,6 +107,7 @@ async function read_reg_val(r_idx, read_dft=false) {
     let dv = new DataView(dat.buffer);
     dv.setUint16(1, addr, true);
 
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('read reg wait ret');
     let ret = await csa.proxy_sock.recvfrom(500);
@@ -256,6 +257,7 @@ async function write_reg_val(w_idx) {
         let dv = new DataView(dat.buffer);
         dv.setUint16(1, addr, true);
         
+        csa.proxy_sock.flush();
         await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('read-before-write wait ret');
         let ret = await csa.proxy_sock.recvfrom(500);
@@ -315,6 +317,7 @@ async function write_reg_val(w_idx) {
     }
     
     console.info('write reg:', dat2hex(dat, ' '));
+    csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('write reg wait ret');
     let ret = await csa.proxy_sock.recvfrom(500);

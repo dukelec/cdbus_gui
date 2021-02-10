@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+#
+# Software License Agreement (MIT License)
+#
+# Author: Duke Fong <d@d-l.io>
+
+"""CDBUS GUI Tool
+
+Args:
+  --help    | -h    # this help message
+  --verbose | -v    # debug level: verbose
+  --debug   | -d    # debug level: debug
+"""
 
 import os, sys
 import _thread
@@ -23,10 +35,20 @@ from cdnet.utils.serial_get_port import get_ports
 from cdnet.dispatch import *
 from cdnet.parser import *
 
-#logger_init(logging.VERBOSE)
-#logger_init(logging.DEBUG)
-logger_init(logging.INFO)
+args = CdArgs()
+if args.get("--help", "-h") != None:
+    print(__doc__)
+    exit()
+
+if args.get("--verbose", "-v") != None:
+    logger_init(logging.VERBOSE)
+elif args.get("--debug", "-d") != None:
+    logger_init(logging.DEBUG)
+else:
+    logger_init(logging.INFO)
+
 logging.getLogger('websockets').setLevel(logging.WARNING)
+logger = logging.getLogger(f'cdgui')
 
 csa = {
     'async_loop': None,
@@ -39,18 +61,18 @@ csa = {
 
 # only support dev address in format 80:NN:MM and a0:NN:MM
 # proxy to html: ('/80:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'seq': seq, 'dat': payloads }
-async def cdbus_rx_rpt(rx):
+async def proxy_rx_rpt(rx):
     src, dst, dat, seq = rx
     ret = await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/{src[0]}', dst[1]))
     if ret:
-        print(f'proxy -> html, {ret}: /{src[0]}:{dst[1]}, {dat}')
+        logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')
     
-    print(src, dst)
+    logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
     if src[1] == 0x9 or src[1] == 0x1: # dbg and dev_info msg also send to index.html
         await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/', 0x9))
 
-def cdbus_rx():
-    print('start cdbus_rx')
+def proxy_rx():
+    logger.info('start proxy_rx')
     while True:
         if not csa['dev']:
             sleep(0.5)
@@ -59,43 +81,41 @@ def cdbus_rx():
         if frame:
             try:
                 rx = cdnet_l1.from_frame(frame, csa['net'])
-                print('cdbus_rx', frame)
-                asyncio.run_coroutine_threadsafe(cdbus_rx_rpt(rx), csa['async_loop']).result()
-                print('cdbus_rx done')
+                logger.log(logging.VERBOSE, f'proxy_rx: {frame}')
+                asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
             except:
-                print('cdbus_rx fmt err', frame)
+                logger.warning('proxy_rx fmt err', frame)
     
-    print('exit cdbus_rx')
+    logger.info('exit proxy_rx')
 
-_thread.start_new_thread(cdbus_rx, ())
+_thread.start_new_thread(proxy_rx, ())
 
 # proxy to dev, ('/80:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'seq': seq, 'dat': payloads }
 async def cdbus_proxy_service():
     while True:
         frame = None
         wc_dat, wc_src = await csa['proxy'].recvfrom()
-        print('cdbus ser', wc_dat)
+        logger.debug(f'proxy_tx: {wc_dat}, src {wc_src}')
         if len(wc_src[0]) != 9:
-            print(f'proxy to dev: wc_src err: {wc_src}')
+            logger.warning(f'proxy_tx: wc_src err: {wc_src}')
             return
         try:
             seq = wc_dat['seq'] if 'seq' in wc_dat else None
             frame = cdnet_l1.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
                                        wc_dat['dst'], wc_dat['dat'], csa['mac'], seq)
-            print('cdbus_tx frame', frame)
+            logger.log(logging.VERBOSE, f'proxy_tx frame: {frame}')
         except:
-            print('cdbus_tx fmt err')
+            logger.warning('proxy_tx: fmt err')
         
         if frame and csa['dev']:
             csa['dev'].send(frame)
-            print('cdbus_tx done')
 
 
 async def dev_service(): # cdbus hw setup
     sock = CDWebSocket(ws_ns, 'dev')
     while True:
         dat, src = await sock.recvfrom()
-        print('dev ser', dat)
+        logger.debug(f'dev ser: {dat}')
         
         if dat['action'] == 'get':
             ports = get_ports()
@@ -112,18 +132,18 @@ async def dev_service(): # cdbus hw setup
                     csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
                 await sock.sendto('successed', src)
             except Exception as err:
-                print('open dev err:', err)
+                logger.warning(f'open dev err: {err}')
                 await sock.sendto(f'err: {err}', src)
         
         elif dat['action'] == 'close' and csa['dev']:
-            print('stop dev')
+            logger.info('stop dev')
             csa['dev'].stop()
-            print('stop finished')
+            logger.info('stop finished')
             csa['dev'] = None
             await sock.sendto('successed', src)
         
         elif dat['action'] == 'set_local':
-            print('set_local')
+            logger.info('set_local')
             csa['net'] = dat['net']
             csa['mac'] = dat['mac']
             await sock.sendto('successed', src)
@@ -140,7 +160,7 @@ async def file_service(): # config r/w
     sock = CDWebSocket(ws_ns, 'file')
     while True:
         dat, src = await sock.recvfrom()
-        print('file ser', dat)
+        logger.debug(f'file ser: {dat}')
         
         if dat['action'] == 'get_cfgs':
             await sock.sendto(csa['cfgs'], src)
@@ -163,7 +183,7 @@ async def open_brower():
     await proc.communicate()
     #proc = await asyncio.create_subprocess_shell('chromium --app=http://localhost:8910')
     #await proc.communicate()
-    print('open brower done.')
+    logger.info('open brower done.')
 
 
 if __name__ == "__main__":
@@ -174,6 +194,6 @@ if __name__ == "__main__":
     asyncio.get_event_loop().create_task(dev_service())
     asyncio.get_event_loop().create_task(cdbus_proxy_service())
     #asyncio.get_event_loop().create_task(open_brower())
-    print('Please open url: http://localhost:8910')
+    logger.info('Please open url: http://localhost:8910')
     asyncio.get_event_loop().run_forever()
 

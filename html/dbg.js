@@ -131,7 +131,7 @@ async function dbg_service() {
     let ansi_up = new AnsiUp;
     while (true) {
         let dat = await csa.dbg_sock.recvfrom();
-        console.log('dbg get', dat);
+        console.log('dbg get:', dat2str(dat[0].dat.slice(1)));
         let elem = document.getElementById('dev_log');
         let txt = `${new Date().getTime()}: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);

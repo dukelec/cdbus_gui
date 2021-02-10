@@ -21,7 +21,7 @@ async function flash_erase(addr, len) {
     csa.proxy_sock.flush();
     await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
-    let ret = await csa.proxy_sock.recvfrom(500);
+    let ret = await csa.proxy_sock.recvfrom(5000);
     console.log('flash_erase ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         return 0
@@ -251,6 +251,7 @@ async function do_iap() {
     }
     
     if (action != "bl" && document.getElementById('iap_start').disabled) {
+        document.getElementById('iap_progress').innerHTML = `Erasing...`;
         if (await flash_erase(addr, len)) {
             document.getElementById('iap_progress').innerHTML = `Erase failed`;
             stop_iap();

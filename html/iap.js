@@ -265,7 +265,11 @@ async function do_iap() {
         
         if (check == "crc") {
             let crc_back = await flash_read_crc(addr, len);
-            if (crc_back != crc_ori) {
+            if (crc_back == null) {
+                document.getElementById('iap_progress').innerHTML = 'Read crc failed.';
+                stop_iap();
+                return;
+            } else if (crc_back != crc_ori) {
                 document.getElementById('iap_progress').innerHTML = `CRC Err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
                 stop_iap();
                 return;
@@ -275,7 +279,7 @@ async function do_iap() {
         } else if (check == "read") {
             let buf = await flash_read(addr, len);
             if (!buf) {
-                document.getElementById('iap_progress').innerHTML = 'Read back failed';
+                document.getElementById('iap_progress').innerHTML = 'Read back failed.';
                 stop_iap();
                 return;
             }

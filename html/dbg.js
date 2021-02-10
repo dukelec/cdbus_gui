@@ -5,7 +5,7 @@
  */
 
 import { L } from './lang/lang.js';
-import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
@@ -133,7 +133,7 @@ async function dbg_service() {
         let dat = await csa.dbg_sock.recvfrom();
         console.log('dbg get:', dat2str(dat[0].dat.slice(1)));
         let elem = document.getElementById('dev_log');
-        let txt = `${new Date().getTime()}: ${dat2str(dat[0].dat.slice(1))}`;
+        let txt = `${timestamp()}: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);
         elem.innerHTML = [elem.innerHTML, html].filter(Boolean).join('<br>');
         if (document.getElementById('scroll_end').checked)

@@ -36,6 +36,12 @@ function date2num() {
     return `${s[2]}${s[1]}${s[0]}${s[4]}${s[5]}${s[6]}`;
 }
 
+function timestamp() {
+    let date = new Date();
+    let time = date.toLocaleString('en-GB');
+    return time.split(' ')[1] + '.' + String(date.getMilliseconds()).padStart(3, '0');
+}
+
 async function sha256(dat) {
     const hashBuffer = await crypto.subtle.digest('SHA-256', dat);
     return new Uint8Array(hashBuffer);
@@ -200,7 +206,7 @@ async function blob2dat(blob) {
 }
 
 export {
-    sleep, read_file, load_img, date2num,
+    sleep, read_file, load_img, date2num, timestamp,
     sha256, aes256,
     dat2hex, hex2dat, dat2str, str2dat, val2hex,
     cpy, Queue,

@@ -35,9 +35,14 @@ async function dbg_service() {
         let elem = document.getElementById('dev_log');
         let txt = `${timestamp()} [${dat[0].src[0]}]: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);
-        elem.innerHTML = [elem.innerHTML, html].filter(Boolean).join('<br>');
+        //elem.innerHTML += html + '<br>';
+        elem.insertAdjacentHTML('beforeend', html + '<br>');
         if (document.getElementById('scroll_end').checked)
             document.getElementById('dev_log').scrollBy(0, 1000);
+        if (elem.children.length > document.getElementById('dbg_len').value) {
+            elem.firstChild.remove();
+            elem.firstElementChild.remove();
+        }
     }
 }
 

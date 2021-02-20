@@ -101,52 +101,48 @@ function cpy(dst, src, list, map = {}) {
     }
 }
 
-// https://stackoverflow.com/questions/47157428/how-to-implement-a-pseudo-blocking-async-queue-in-js-ts
 class Queue {
     constructor() {
-        // invariant: at least one of the arrays is empty
-        this.resolvers = [];
-        this.promises = [];
+        this.fifo = [];
+        this.wakeup = null;
     }
-    _add() {
-        this.promises.push(new Promise(resolve => {
-            this.resolvers.push(resolve);
-        }));
-    }
+    
     put(t) {
-        // if (this.resolvers.length) this.resolvers.shift()(t);
-        // else this.promises.push(Promise.resolve(t));
-        if (!this.resolvers.length)
-            this._add();
-        this.resolvers.shift()(t);
+        this.fifo.push(t);
+        if (this.wakeup)
+            this.wakeup();
     }
+    
     async get(timeout=null) {
-        if (!this.promises.length)
-            this._add();
-        var p = this.promises.shift();
-        var t;
-        if (timeout) {
-            t = setTimeout(this.put.bind(this), timeout, null); // unit: ms
-        }
-        var ret_val = await p;
+        if (this.fifo.length)
+            return this.fifo.shift();
+        if (timeout == 0)
+            return null;
+        
+        let p = new Promise(resolve => { this.wakeup = resolve; });
+        let t;
+        if (timeout)
+            t = setTimeout(() => { this.wakeup(); }, timeout, null); // unit: ms
+        
+        await p;
+        
+        this.wakeup = null;
         if (timeout)
             clearTimeout(t);
-        return ret_val;
+        if (this.fifo.length)
+            return this.fifo.shift();
+        return null;
     }
     
     // now some utilities:
-    empty() { // there are no values available
-        return !this.promises.length; // this.length == 0
-    }
-    is_blocked() { // it's waiting for values
-        return !!this.resolvers.length; // this.length < 0
-    }
-    qsize() {
-        return this.promises.length - this.resolvers.length;
+    size() {
+        return this.fifo.length;
     }
     flush() {
-        this.resolvers = [];
-        this.promises = [];
+        this.fifo = [];
+        if (this.wakeup)
+            this.wakeup();
+        this.wakeup = null;
     }
 }
 

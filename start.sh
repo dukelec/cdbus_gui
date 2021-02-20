@@ -14,7 +14,7 @@ function anykey_exit()
   exit
 }
 
-./main.py
+./main.py -d
 
 anykey_exit
 

@@ -35,14 +35,14 @@ function init_reg_list() {
             count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
             for (let n = 0; n < count; n++) {
                 html_input += `
-                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --" id="reg_dft.${reg[R_ID]}.${n}">
+                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}.${n}">
                       <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
                     </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
                 `; 
             }
         } else {
             html_input = `
-                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --" id="reg_dft.${reg[R_ID]}">
+                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}">
                   <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
                 </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
             `; 

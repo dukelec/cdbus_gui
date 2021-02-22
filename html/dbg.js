@@ -106,15 +106,20 @@ async function dbg_raw_service() {
             }
         }
         
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
         let t_cur = new Date().getTime();
         if (t_cur - t_last >= 100) {
-            if (timer)
-                clearTimeout(timer);
             csa.plots[idx].setData(csa.dat.plots[idx]); // setData(data, resetScales=true)
+            t_last = t_cur;
         } else {
-            timer = setTimeout(() => { csa.plots[idx].setData(csa.dat.plots[idx]); }, 100);
+            timer = setTimeout(() => {
+                csa.plots[idx].setData(csa.dat.plots[idx]);
+                t_last = t_cur;
+            }, 100);
         }
-        t_last = t_cur;
     }
 }
 

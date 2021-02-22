@@ -40,6 +40,7 @@ function dv_fmt_read(dv, ofs, fmt) {
             ret.push(dv.getUint32(ofs, true));
             ofs += 4; break;
         case 'f':
+            //ret.push(+dv.getFloat32(ofs, true).toFixed(9));
             ret.push(dv.getFloat32(ofs, true));
             ofs += 4; break;
         }

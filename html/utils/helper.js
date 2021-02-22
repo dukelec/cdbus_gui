@@ -190,6 +190,18 @@ function readable_size(bytes, fixed=3, si=true) {
     return bytes.toFixed(fixed)+' '+units[u];
 }
 
+function readable_float(num, fixed=9, triple=true) {
+    let n = +num.toFixed(fixed);
+    let ret = Number.isInteger(n) ? n.toFixed(1) : n.toString();
+    if (!triple || Number.isInteger(n))
+        return ret;
+    let f_len = ret.split('.')[1].length;
+    let p_len = 3 - f_len % 3;
+    if (p_len == 3)
+        p_len = 0;
+    return ret + '0'.repeat(p_len);
+}
+
 async function blob2dat(blob) {
     let ret;
     await new Promise(resolve => {
@@ -207,6 +219,6 @@ export {
     dat2hex, hex2dat, dat2str, str2dat, val2hex,
     cpy, Queue,
     download,
-    escape_html, readable_size,
+    escape_html, readable_size, readable_float,
     blob2dat
 };

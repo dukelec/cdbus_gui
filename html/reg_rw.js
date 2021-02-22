@@ -5,7 +5,7 @@
  */
 
 import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from './utils/helper.js';
+         read_file, download, readable_size, readable_float, blob2dat } from './utils/helper.js';
 import { csa } from './ctrl.js';
 
 const R_ADDR = 0; const R_LEN = 1; const R_FMT = 2;
@@ -91,7 +91,7 @@ function reg2str(dat, ofs, fmt, show) {
             switch (show) {
             case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
-            default: ret = [ret, `${dv.getFloat32(ofs, true)}`].filter(Boolean).join(' ');
+            default: ret = [ret, `${readable_float(dv.getFloat32(ofs, true))}`].filter(Boolean).join(' ');
             }
             ofs += 4; break;
         }

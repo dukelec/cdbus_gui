@@ -190,16 +190,24 @@ function readable_size(bytes, fixed=3, si=true) {
     return bytes.toFixed(fixed)+' '+units[u];
 }
 
-function readable_float(num, fixed=9, triple=true) {
-    let n = +num.toFixed(fixed);
-    let ret = Number.isInteger(n) ? n.toFixed(1) : n.toString();
-    if (!triple || Number.isInteger(n))
-        return ret;
-    let f_len = ret.split('.')[1].length;
-    let p_len = 3 - f_len % 3;
-    if (p_len == 3)
-        p_len = 0;
-    return ret + '0'.repeat(p_len);
+function readable_float(num, double=false) {
+    if (!isFinite(num))
+        return num.toString();
+    let fixed = 12;
+    if (!double)
+        num = parseFloat(num.toPrecision(7)); // for 32-bit float
+    let n = num.toFixed(fixed);
+    if (n.indexOf('e') != -1)
+        return n;
+    for (let i = 0; i < fixed / 3; i++) {
+        if (n.endsWith('000'))
+            n = n.slice(0, n.length - 3);
+        else
+            break;
+    }
+    if (n.endsWith('.'))
+        n += '0';
+    return n;
 }
 
 async function blob2dat(blob) {

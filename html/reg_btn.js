@@ -204,7 +204,7 @@ async function button_edit() {
     }
 }
 
-function toggle_group() {
+function set_group(on) {
     for (let rw of ['r', 'w']) {
         let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
         let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
@@ -221,7 +221,7 @@ function toggle_group() {
             }
             
             if (btn.style.background && btn.style.color) {
-                if (btn.style['margin-bottom'] == '') { // has margin
+                if (on) { // has margin
                     if (btn_next && btn_next.style.background && btn_next.style.color) { // next selected
                         btn.style['margin-bottom'] = '0';
                         btn_next.style['margin-top'] = '0';
@@ -245,7 +245,7 @@ function toggle_group() {
     button_edit();
 }
 
-function toggle_enable() {
+function set_enable(on) {
     for (let rw of ['r', 'w']) {
         let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
         let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
@@ -273,11 +273,7 @@ function toggle_enable() {
                     btn_pre.style['margin-bottom'] = '';
                 if (btn_next)
                     btn_next.style['margin-top'] = '';
-                if (btn.style.background) {
-                    btn.style.background = '';
-                } else {
-                    btn.style.background = color;
-                }
+                btn.style.background = on ? color : '';
             }
         }
     }
@@ -310,6 +306,9 @@ async function button_def() {
     await csa.db.set('tmp', `reg_w.${csa.arg.name}`, null);
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
+    // re-install onclick callback:
+    document.getElementById('button_edit').style.background = '';
+    button_edit();
 }
 
 async function init_reg_rw() {
@@ -326,11 +325,13 @@ async function init_reg_rw() {
 
 
 document.getElementById(`button_edit`).onclick = button_edit;
-document.getElementById(`toggle_group`).onclick = toggle_group;
-document.getElementById(`toggle_enable`).onclick = toggle_enable;
+document.getElementById(`group_on`).onclick = () => { set_group(true); };
+document.getElementById(`group_off`).onclick = () => { set_group(false); };
+document.getElementById(`enable_on`).onclick = () => { set_enable(true); };
+document.getElementById(`enable_off`).onclick = () => { set_enable(false); };
 document.getElementById(`button_all`).onclick = button_all;
 document.getElementById(`button_def`).onclick = button_def;
 
 
-export { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw, button_edit, toggle_group, toggle_enable };
+export { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw };
 

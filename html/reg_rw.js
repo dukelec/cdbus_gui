@@ -100,6 +100,7 @@ function reg2str(dat, ofs, fmt, show) {
 }
 
 async function read_reg_val(r_idx, read_dft=false) {
+    set_input_bg('r', r_idx, '#D5F5E3');
     let addr = csa.dat.reg_r[r_idx][0];
     let len = csa.dat.reg_r[r_idx][1];
     
@@ -173,6 +174,7 @@ async function read_reg_val(r_idx, read_dft=false) {
         }
     } else {
         console.warn('read reg err');
+        set_input_bg('r', r_idx, '#F5B7B180');
         return -1;
     }
     
@@ -180,6 +182,7 @@ async function read_reg_val(r_idx, read_dft=false) {
         console.log('read default');
         return await read_reg_val(r_idx, true); 
     } else {
+        set_input_bg('r', r_idx, '');
         return 0;
     }
 }
@@ -256,6 +259,8 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
 }
 
 async function write_reg_val(w_idx) {
+    set_input_bg('w', w_idx, '#D6EAF8');
+    let has_empty = false;
     let addr = csa.dat.reg_w[w_idx][0];
     let len = csa.dat.reg_w[w_idx][1];
     
@@ -273,6 +278,7 @@ async function write_reg_val(w_idx) {
             csa.dat.reg_rbw[w_idx] = ret[0].dat.slice(1);
         } else {
             console.log('read-before-write err');
+            set_input_bg('w', w_idx, '#F5B7B180');
             return -1;
         }
     }
@@ -307,20 +313,32 @@ async function write_reg_val(w_idx) {
             let count = Math.trunc(r[R_LEN] / one_size);
             for (let n = 0; n < count; n++) {
                 let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                if (elem.value == '')
+                    has_empty = true;
                 str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, 0);
             }
         } else if (r[R_FMT][0] == '[') {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
             let elem = document.getElementById(`reg.${r[R_ID]}`);
+            if (elem.value == '' && r[R_FMT] != '[c]')
+                has_empty = true;
             for (let n = 0; n < count; n++)
                 str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, n);
             
         } else {
             let elem = document.getElementById(`reg.${r[R_ID]}`);
+            if (elem.value == '')
+                has_empty = true;
             str2reg(dat, r[R_ADDR]-start+3, r[R_FMT], r[R_SHOW], elem.value, 0);
         }
         
+    }
+    
+    if (has_empty) {
+        console.log('write reg: input empty');
+        set_input_bg('w', w_idx, '#F5B7B180');
+        return -1;
     }
     
     console.info('write reg:', dat2hex(dat, ' '));
@@ -331,9 +349,11 @@ async function write_reg_val(w_idx) {
     console.log('write reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('write reg succeeded');
+        set_input_bg('w', w_idx, '');
         return 0;
     } else {
         console.log('write reg err');
+        set_input_bg('w', w_idx, '#F5B7B180');
         return -1;
     }
 }
@@ -345,6 +365,38 @@ function reg_idx_by_name(name) {
             return i;
     }
     return null;
+}
+
+function set_input_bg(rw='r', idx, bg) {
+    let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
+    let addr = reg_rw[idx][0];
+    let len = reg_rw[idx][1];
+    
+    let start = addr;
+    let found_start = false;
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let r = csa.cfg.reg[i];
+        
+        if (!found_start) {
+            if (start == r[R_ADDR]) {
+                found_start = true;
+            } else {
+                continue;
+            }
+        }
+        let ofs = r[R_ADDR] - start;
+        if (ofs >= len)
+            break;
+        
+        if (r[R_FMT][0] == '{') {
+            let one_size = fmt_size(r[R_FMT]);
+            let count = Math.trunc(r[R_LEN] / one_size);
+            for (let n = 0; n < count; n++)
+                document.getElementById(`reg.${r[R_ID]}.${n}`).style.background = bg;
+        } else {
+            document.getElementById(`reg.${r[R_ID]}`).style.background = bg;
+        }
+    }
 }
 
 export {

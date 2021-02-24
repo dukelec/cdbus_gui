@@ -14,7 +14,7 @@ When a master board is controlling a slave, the PC can be hooked up to the same 
 
 #### Dependence:
 Python version >= 3.8  
-`pip3 install pythoncrc json5 websockets pyserial u-msgpack-python`
+`pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp`
 
 #### Usage:
 Run `main.py` or `start.sh`, then open url in your web browser: http://localhost:8910
@@ -68,6 +68,7 @@ The following is the debug window for a specific device, starting with the data 
  - Double-click to restore the default diagram (zoom to fit). Hold down left (or middle) mouse button to pan (touchpad is also possible).
  - Data depth can be set and old data is automatically deleted to facilitate dynamic data display (oscilloscope effect).
  - The number of waveform windows is not limited.
+ - You can start and stop multiple plots at the same time by directly setting the `dbg_raw_msk` register.
 
 <img src="doc/p5.png">  
 

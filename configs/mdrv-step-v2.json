@@ -51,7 +51,7 @@
     "reg_w": [[0,2],[5,1],[7,1],[12,1],[16,8],[24,9],[36,1],[38,6],[48,60],[108,8],[116,48],[164,4],[168,12],[180,1],[200,10]],
     "plot": {
         "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
-        "color_dft": [ "#00000080", "green", "blue", "yellow", "black", "red", "cyan", "purple" ],  // start from index 1
+        "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
         "fmt": [
             "I.iIBif - N, tc_pos, tc_speed, tc_state, cur_pos, tc_vc",
             "I1.fffHH - N, I, A, V, P", // number before . is cnt_inc (>= 1)

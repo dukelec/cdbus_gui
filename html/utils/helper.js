@@ -81,11 +81,20 @@ function str2dat(str) {
     return encoder.encode(str);
 }
 
-function val2hex(val, fixed=4, upper=false) {
+function val2hex(val, fixed=4, prefix=false, upper=false, float=false) {
+    let sign = Math.sign(val);
+    val = Math.abs(val);
     let str = upper ? val.toString(16).toUpperCase() : val.toString(16);
-    if (str.length < fixed)
-        str = '0'.repeat(fixed - str.length) + str;
-    return str;
+    let arr = str.split('.');
+    if (arr[0].length < fixed)
+        arr[0] = '0'.repeat(fixed - arr[0].length) + arr[0];
+    if (prefix)
+        arr[0] = '0x' + arr[0];
+    if (sign == -1)
+        arr[0] = '-' + arr[0];
+    if (float && arr.length == 1)
+        arr.push('0');
+    return arr.join('.');
 }
 
 // list: ['x', 'y']

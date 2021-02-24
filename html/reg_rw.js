@@ -37,7 +37,7 @@ function reg2str(dat, ofs, fmt, show) {
         switch (f) {
         case 'c':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default:
                 let d = dat.slice(ofs,ofs+1);
@@ -47,49 +47,49 @@ function reg2str(dat, ofs, fmt, show) {
             ofs += 1; break;
         case 'b':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt8(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 1; break;
         case 'B':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+1), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getUint8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint8(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 1; break;
         case 'h':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+2), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getInt16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt16(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 2; break;
         case 'H':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+2), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getUint16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint16(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 2; break;
         case 'i':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getInt32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt32(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 4; break;
         case 'I':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getUint32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint32(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += 4; break;
         case 'f':
             switch (show) {
-            case 1:  ret = [ret, `0x${dat2hex(dat.slice(ofs,ofs+4), '', true)}`].filter(Boolean).join(' '); break;
+            case 1:  ret = [ret, `${val2hex(dv.getFloat32(ofs, true), 8, true, false, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${readable_float(dv.getFloat32(ofs, true))}`].filter(Boolean).join(' ');
             }
@@ -173,12 +173,14 @@ async function read_reg_val(r_idx, read_dft=false) {
         }
     } else {
         console.warn('read reg err');
-        return;
+        return -1;
     }
     
     if (!read_dft && !csa.dat.reg_dft_r[r_idx]) {
         console.log('read default');
-        await read_reg_val(r_idx, true); 
+        return await read_reg_val(r_idx, true); 
+    } else {
+        return 0;
     }
 }
 
@@ -191,56 +193,59 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
         switch (f) {
         case 'c':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
+            case 1:  dv.setInt8(ofs, parseInt(str_a[s_idx]), true); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dat.set(str2dat(str[s_idx]), ofs);
             }
             ofs += 1; break;
         case 'b':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 1; break;
         case 'B':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,1), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dv.setUint8(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 1; break;
         case 'h':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,2), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
             default: dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 2; break;
         case 'H':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,2), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
             default: dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 2; break;
         case 'i':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 4; break;
         case 'I':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
             }
             ofs += 4; break;
         case 'f':
             switch (show) {
-            case 1:  dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs); break;
+            case 1:
+                let parts = str_a[s_idx].split(".");
+                let val;
+                if (parts.length > 1)
+                    val = parseInt(parts[0], 16) + parseInt(parts[1], 16) / Math.pow(16, parts[1].length);
+                else
+                    val = parseInt(parts[0], 16);
+                dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs);
+                dv.setFloat32(ofs, val, true);
+                break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setFloat32(ofs, parseFloat(str_a[s_idx]), true);
             }
@@ -268,7 +273,7 @@ async function write_reg_val(w_idx) {
             csa.dat.reg_rbw[w_idx] = ret[0].dat.slice(1);
         } else {
             console.log('read-before-write err');
-            return;
+            return -1;
         }
     }
     
@@ -326,8 +331,10 @@ async function write_reg_val(w_idx) {
     console.log('write reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('write reg succeeded');
+        return 0;
     } else {
         console.log('write reg err');
+        return -1;
     }
 }
 

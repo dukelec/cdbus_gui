@@ -106,13 +106,19 @@ document.getElementById('dev_read_info').onclick = async function() {
 };
 
 document.getElementById('dev_read_all').onclick = async function() {
-    for (let i = 0; i < csa.dat.reg_r.length; i++)
-        await read_reg_val(i);
+    for (let i = 0; i < csa.dat.reg_r.length; i++) {
+        let ret = await read_reg_val(i);
+        if (ret)
+            break;
+    }
 };
 
 document.getElementById('dev_write_all').onclick = async function() {
-    for (let i = 0; i < csa.dat.reg_w.length; i++)
-        await write_reg_val(i);
+    for (let i = 0; i < csa.dat.reg_w.length; i++) {
+        let ret = await write_reg_val(i);
+        if (ret)
+            break;
+    }
 };
 
 document.getElementById(`export_btn`).onclick = export_data;

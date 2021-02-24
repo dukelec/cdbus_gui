@@ -37,6 +37,8 @@ function make_chart(eid, name, series) {
                 range(u, dataMin, dataMax) {
                     if (dataMin == null)
                         return [0, 100];
+                    if (dataMin == dataMax)
+                        return [dataMin-50, dataMax+50];
                     return [dataMin, dataMax];
                     //return uPlot.rangeNum(dataMin, dataMax, 0.1, true);
                 },

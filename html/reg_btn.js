@@ -307,8 +307,12 @@ function button_all() {
 
 async function button_def() {
     let less = document.getElementById('less_reg').checked;
-    csa.dat.reg_r = (less && csa.cfg.less_r) ? csa.cfg.less_r : csa.cfg.reg_r;
-    csa.dat.reg_w = (less && csa.cfg.less_w) ? csa.cfg.less_w : csa.cfg.reg_w;
+    csa.dat.reg_r = less ? csa.cfg.less_r : csa.cfg.reg_r;
+    csa.dat.reg_w = less ? csa.cfg.less_w : csa.cfg.reg_w;
+    if (!csa.dat.reg_r)
+        csa.dat.reg_r = [];
+    if (!csa.dat.reg_w)
+        csa.dat.reg_w = [];
     await csa.db.set('tmp', `reg_r.${csa.arg.name}`, null);
     await csa.db.set('tmp', `reg_w.${csa.arg.name}`, null);
     await csa.db.set('tmp', `less_r.${csa.arg.name}`, null);
@@ -336,8 +340,12 @@ async function init_reg_rw() {
         csa.dat.reg_w = less_w;
     } else {
         console.log(less ? 'init reg from cfg.less_r/w' : 'init reg from cfg.reg_r/w');
-        csa.dat.reg_r = (less && csa.cfg.less_r) ? csa.cfg.less_r : csa.cfg.reg_r;
-        csa.dat.reg_w = (less && csa.cfg.less_w) ? csa.cfg.less_w : csa.cfg.reg_w;
+        csa.dat.reg_r = less ? csa.cfg.less_r : csa.cfg.reg_r;
+        csa.dat.reg_w = less ? csa.cfg.less_w : csa.cfg.reg_w;
+        if (!csa.dat.reg_r)
+            csa.dat.reg_r = [];
+        if (!csa.dat.reg_w)
+            csa.dat.reg_w = [];
     }
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');

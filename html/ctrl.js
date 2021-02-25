@@ -111,23 +111,40 @@ document.getElementById('dev_read_info').onclick = async function() {
 };
 
 document.getElementById('dev_read_all').onclick = async function() {
+    document.getElementById('dev_read_all').disabled = true;
     for (let i = 0; i < csa.dat.reg_r.length; i++) {
         let ret = await read_reg_val(i);
         if (ret)
             break;
     }
+    document.getElementById('dev_read_all').disabled = false;
 };
 
 document.getElementById('dev_write_all').onclick = async function() {
+    document.getElementById('dev_write_all').disabled = true;
     for (let i = 0; i < csa.dat.reg_w.length; i++) {
         let ret = await write_reg_val(i);
         if (ret)
             break;
     }
+    document.getElementById('dev_write_all').disabled = false;
 };
 
 document.getElementById(`export_btn`).onclick = export_data;
 document.getElementById(`import_btn`).onclick = import_data;
+
+let read_timer = null;
+async function period_read() {
+    if (!document.getElementById('keep_read').checked) {
+        if (read_timer)
+            clearTimeout(read_timer);
+        read_timer = null;
+        return;
+    }
+    await document.getElementById('dev_read_all').onclick();
+    read_timer = setTimeout(period_read, document.getElementById('read_period').value);
+}
+document.getElementById(`keep_read`).onclick = period_read;
 
 
 window.addEventListener('load', async function() {

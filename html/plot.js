@@ -129,6 +129,7 @@ function init_plots() {
                 <option value="1800x1000">1800x1000</option>
                 <option value="none">Hide</option>
             </select>
+            | Depth: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
             <button class="button is-small" id="plot${i}_clear">Clear</button>
             <br>
             <div id="plot${i}"></div>

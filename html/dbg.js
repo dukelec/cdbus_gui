@@ -65,7 +65,7 @@ async function dbg_raw_service() {
             continue;
         }
         let rm_oldest = false;
-        if (csa.cfg.plot.depth[idx] != 0 && csa.dat.plots[idx][0].length > csa.cfg.plot.depth[idx])
+        if (csa.dat.plots[idx][0].length > document.getElementById(`plot${idx}_len`).value)
             rm_oldest = true;
         
         let ofs = 1;

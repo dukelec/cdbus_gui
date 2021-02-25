@@ -60,7 +60,6 @@
         ],
         "color": [                      // use color_dft if not exist
         ],
-        "depth": [ 20000, 20000 ],      // limit depth, 0: no limit
         "cal": [
             [ "diff13: _D(1) - _D(3)" ] // data1 - data3
         ]

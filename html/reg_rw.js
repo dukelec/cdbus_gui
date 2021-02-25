@@ -290,7 +290,7 @@ async function write_reg_val(w_idx) {
     dat[0] = 0x20;
     dat.set(csa.dat.reg_rbw[w_idx], 3);
     
-    console.info('begore write reg:', dat2hex(dat, ' '));
+    console.info('before write reg:', dat2hex(dat, ' '));
 
     let start = addr;
     let found_start = false;

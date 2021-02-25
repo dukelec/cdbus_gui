@@ -78,6 +78,7 @@ function in_reg_rw(reg_rw, addr) { // test if in range
 
 function update_reg_rw_btn(rw='r') {
     let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
+    csa.dat.reg_rbw = []; // clean read-before-write buffer
     
     for (let i = 0; i < csa.cfg.reg.length; i++) {
         let reg_pre = null;

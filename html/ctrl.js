@@ -24,7 +24,7 @@ let csa = {
     
     ws_ns: null,
     cmd_sock: null,
-    proxy_sock: null,
+    //proxy_sock_xxx: null,
     dbg_sock: null,     // port 9 debug
     dbg_raw_sock: null, // port 0xa debug
     
@@ -95,10 +95,10 @@ document.getElementById('dev_read_info').onclick = async function() {
         return;
     }
     
-    csa.proxy_sock.flush();
-    await csa.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+    csa.proxy_sock_info.flush();
+    await csa.proxy_sock_info.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
     console.log('read info wait ret');
-    let ret = await csa.proxy_sock.recvfrom(500);
+    let ret = await csa.proxy_sock_info.recvfrom(500);
     console.log('read info ret', ret);
     if (ret) {
         elem.innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
@@ -162,7 +162,11 @@ window.addEventListener('load', async function() {
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
-    csa.proxy_sock = new CDWebSocket(csa.ws_ns, 0xcdcd);
+    csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, 0x00f0);
+    csa.proxy_sock_regr = new CDWebSocket(csa.ws_ns, 0xcdcd); // default port
+    csa.proxy_sock_regw = new CDWebSocket(csa.ws_ns, 0x00f1);
+    csa.proxy_sock_plot = new CDWebSocket(csa.ws_ns, 0x00f2);
+    csa.proxy_sock_iap = new CDWebSocket(csa.ws_ns, 0x00f3);
     csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
     csa.dbg_raw_sock = new CDWebSocket(csa.ws_ns, 0xa);
     csa.db = await new Idb();

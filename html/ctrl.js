@@ -91,9 +91,13 @@ document.getElementById('dev_read_info').onclick = async function() {
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(500);
-    if (!dat || !dat[0].online) {
+    if (!dat) {
         elem.style.background = '#F5B7B180';
-        elem.innerHTML =  'Serial disconnected';
+        elem.innerHTML = 'WebSocket timeout';
+        return;
+    } else if (!dat[0].online) {
+        elem.style.background = '#F5B7B180';
+        elem.innerHTML = 'Serial disconnected';
         return;
     }
     
@@ -107,7 +111,7 @@ document.getElementById('dev_read_info').onclick = async function() {
         elem.style.background = '#D5F5E360';
         setTimeout(() => { elem.style.background = ''; }, 100);
     } else {
-        elem.innerHTML = 'Time out';
+        elem.innerHTML = 'Timeout';
         elem.style.background = '#F5B7B180';
     }
 };

@@ -84,13 +84,16 @@ function init_ws() {
 
 
 document.getElementById('dev_read_info').onclick = async function() {
-    document.getElementById('dev_info').innerHTML = 'reading ...';
+    let elem = document.getElementById('dev_info');
+    elem.style.background = '#D5F5E3';
+    elem.innerHTML = 'Reading ...';
     
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(500);
     if (!dat || !dat[0].online) {
-        alert('Serial disconnected');
+        elem.style.background = '#F5B7B180';
+        elem.innerHTML =  'Serial disconnected';
         return;
     }
     
@@ -99,10 +102,14 @@ document.getElementById('dev_read_info').onclick = async function() {
     console.log('read info wait ret');
     let ret = await csa.proxy_sock.recvfrom(500);
     console.log('read info ret', ret);
-    if (ret)
-        document.getElementById('dev_info').innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
-    else
-        document.getElementById('dev_info').innerHTML = 'time out';
+    if (ret) {
+        elem.innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
+        elem.style.background = '#D5F5E360';
+        setTimeout(() => { elem.style.background = ''; }, 100);
+    } else {
+        elem.innerHTML = 'Time out';
+        elem.style.background = '#F5B7B180';
+    }
 };
 
 document.getElementById('dev_read_all').onclick = async function() {

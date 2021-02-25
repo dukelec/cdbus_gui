@@ -180,9 +180,10 @@ async function read_reg_val(r_idx, read_dft=false) {
     
     if (!read_dft && !csa.dat.reg_dft_r[r_idx]) {
         console.log('read default');
-        return await read_reg_val(r_idx, true); 
+        return await read_reg_val(r_idx, true);
     } else {
-        set_input_bg('r', r_idx, '');
+        set_input_bg('r', r_idx, '#D5F5E360');
+        setTimeout(() => { set_input_bg('r', r_idx, ''); }, 100);
         return 0;
     }
 }
@@ -349,7 +350,8 @@ async function write_reg_val(w_idx) {
     console.log('write reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('write reg succeeded');
-        set_input_bg('w', w_idx, '');
+        set_input_bg('w', w_idx, '#D6EAF860');
+        setTimeout(() => { set_input_bg('w', w_idx, ''); }, 100);
         return 0;
     } else {
         console.log('write reg err');

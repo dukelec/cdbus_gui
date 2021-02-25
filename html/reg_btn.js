@@ -195,11 +195,17 @@ async function button_edit() {
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
         // save to idb
-        await csa.db.set('tmp', `reg_r.${csa.arg.name}`, csa.dat.reg_r);
-        await csa.db.set('tmp', `reg_w.${csa.arg.name}`, csa.dat.reg_w);
-        console.log('new reg_r values:');
+        let less = document.getElementById('less_reg').checked;
+        if (less) {
+            await csa.db.set('tmp', `less_r.${csa.arg.name}`, csa.dat.reg_r);
+            await csa.db.set('tmp', `less_w.${csa.arg.name}`, csa.dat.reg_w);
+        } else {
+            await csa.db.set('tmp', `reg_r.${csa.arg.name}`, csa.dat.reg_r);
+            await csa.db.set('tmp', `reg_w.${csa.arg.name}`, csa.dat.reg_w);
+        }
+        console.log(less ? 'new less_r values:' : 'new reg_r values:');
         console.log(JSON.stringify(csa.dat.reg_r));
-        console.log('new reg_w values:');
+        console.log(less ? 'new less_w values:' : 'new reg_w values:');
         console.log(JSON.stringify(csa.dat.reg_w));
     }
 }
@@ -300,10 +306,13 @@ function button_all() {
 }
 
 async function button_def() {
-    csa.dat.reg_r = csa.cfg.reg_r;
-    csa.dat.reg_w = csa.cfg.reg_w;
+    let less = document.getElementById('less_reg').checked;
+    csa.dat.reg_r = (less && csa.cfg.less_r) ? csa.cfg.less_r : csa.cfg.reg_r;
+    csa.dat.reg_w = (less && csa.cfg.less_w) ? csa.cfg.less_w : csa.cfg.reg_w;
     await csa.db.set('tmp', `reg_r.${csa.arg.name}`, null);
     await csa.db.set('tmp', `reg_w.${csa.arg.name}`, null);
+    await csa.db.set('tmp', `less_r.${csa.arg.name}`, null);
+    await csa.db.set('tmp', `less_w.${csa.arg.name}`, null);
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     // re-install onclick callback:
@@ -312,15 +321,26 @@ async function button_def() {
 }
 
 async function init_reg_rw() {
+    let less = document.getElementById('less_reg').checked;
     let reg_r = await csa.db.get('tmp', `reg_r.${csa.arg.name}`);
     let reg_w = await csa.db.get('tmp', `reg_w.${csa.arg.name}`);
-    if (reg_r && reg_w) {
+    let less_r = await csa.db.get('tmp', `less_r.${csa.arg.name}`);
+    let less_w = await csa.db.get('tmp', `less_w.${csa.arg.name}`);
+    if (!less && reg_r && reg_w) {
+        console.log('init reg from db reg_r/w');
         csa.dat.reg_r = reg_r;
         csa.dat.reg_w = reg_w;
+    } else if (less && less_r && less_w) {
+        console.log('init reg from db less_r/w');
+        csa.dat.reg_r = less_r;
+        csa.dat.reg_w = less_w;
     } else {
-        csa.dat.reg_r = csa.cfg.reg_r;
-        csa.dat.reg_w = csa.cfg.reg_w;
+        console.log(less ? 'init reg from cfg.less_r/w' : 'init reg from cfg.reg_r/w');
+        csa.dat.reg_r = (less && csa.cfg.less_r) ? csa.cfg.less_r : csa.cfg.reg_r;
+        csa.dat.reg_w = (less && csa.cfg.less_w) ? csa.cfg.less_w : csa.cfg.reg_w;
     }
+    update_reg_rw_btn('r');
+    update_reg_rw_btn('w');
 }
 
 
@@ -331,7 +351,8 @@ document.getElementById(`enable_on`).onclick = () => { set_enable(true); };
 document.getElementById(`enable_off`).onclick = () => { set_enable(false); };
 document.getElementById(`button_all`).onclick = button_all;
 document.getElementById(`button_def`).onclick = button_def;
+document.getElementById('less_reg').onchange = init_reg_rw;
 
 
-export { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw };
+export { init_reg_list, init_reg_rw, cal_reg_rw };
 

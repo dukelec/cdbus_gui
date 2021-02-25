@@ -12,7 +12,7 @@ import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { init_reg_list, init_reg_rw, update_reg_rw_btn, cal_reg_rw } from './reg_btn.js';
+import { init_reg_list, init_reg_rw, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
 import { init_iap } from './iap.js';
@@ -54,8 +54,6 @@ function init_ws() {
         
         init_reg_list();
         await init_reg_rw();
-        update_reg_rw_btn('r');
-        update_reg_rw_btn('w');
         //cal_reg_rw('r');
         init_plots();
         init_iap();

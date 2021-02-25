@@ -52,10 +52,12 @@ function init_ws() {
         console.log('get_cfg ret', dat);
         csa.cfg = dat[0];
         
+        dbg_service();
         init_reg_list();
         await init_reg_rw();
         //cal_reg_rw('r');
         init_plots();
+        dbg_raw_service();
         init_iap();
     }
     ws.onmessage = async function(evt) {
@@ -170,9 +172,6 @@ window.addEventListener('load', async function() {
     csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
     csa.dbg_raw_sock = new CDWebSocket(csa.ws_ns, 0xa);
     csa.db = await new Idb();
-    
-    dbg_service();
-    dbg_raw_service();
     init_ws();
 });
 

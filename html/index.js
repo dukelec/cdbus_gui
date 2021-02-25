@@ -137,6 +137,7 @@ function init_ws() {
         let dat = await cmd_sock.recvfrom(500);
         console.log('get_cfgs ret', dat);
         cfgs = dat[0];
+        dbg_service();
         await init_cfg_list();
         await init_serial_cfg();
         await document.getElementById('btn_dev_get').onclick();
@@ -168,26 +169,28 @@ document.getElementById('set_local').onclick = async function() {
         alert('Empty not allowed');
         return;
     }
+    document.getElementById('set_local').disabled = true;
     cmd_sock.flush();
     await cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('set_local ret', dat);
     await document.getElementById('btn_dev_get').onclick();
+    document.getElementById('set_local').disabled = false;
 };
     
 document.getElementById('btn_dev_get').onclick = async function() {
     console.log('start get');
+    let status = document.getElementById('dev_status');
+    let list = document.getElementById('dev_list');
+    document.getElementById('btn_dev_get').disabled = true;
+    status.style.background = list.style.background = '#D5F5E3';
+    
     cmd_sock.flush();
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_get ret', dat);
-    document.getElementById('dev_status').innerHTML = `
-        ${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})
-    `;
-    
-    let list = document.getElementById('dev_list');
+    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
     list.innerHTML = '';
-    
     let ports = dat[0].ports;
 
     if (ports) {
@@ -198,6 +201,9 @@ document.getElementById('btn_dev_get').onclick = async function() {
             //list.lastElementChild.getElementsByTagName("button")[0].onclick = async function() { };
         }
     }
+    status.style.background = list.style.background = '#D5F5E360';
+    setTimeout(() => { status.style.background = list.style.background = ''; }, 100);
+    document.getElementById('btn_dev_get').disabled = false;
 };
 
 document.getElementById('btn_dev_open').onclick = async function() {
@@ -209,26 +215,30 @@ document.getElementById('btn_dev_open').onclick = async function() {
         alert('Empty not allowed');
         return;
     }
+    document.getElementById('btn_dev_open').disabled = true;
     cmd_sock.flush();
     await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_open ret', dat);
     await document.getElementById('btn_dev_get').onclick();
+    document.getElementById('btn_dev_open').disabled = false;
+    document.getElementById('set_local').click();
 };
 
 document.getElementById('btn_dev_close').onclick = async function() {
     console.log('start close');
+    document.getElementById('btn_dev_close').disabled = true;
     cmd_sock.flush();
     await cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_close ret', dat);
     await document.getElementById('btn_dev_get').onclick();
+    document.getElementById('btn_dev_close').disabled = false;
 };
 
 window.addEventListener('load', async function() {
     console.log("load app");
     db = await new Idb();
-    dbg_service();
     init_ws();
 });
 

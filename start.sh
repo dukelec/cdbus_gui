@@ -4,7 +4,7 @@ which gnome-terminal 2> /dev/null && XTERM=gnome-terminal
 which xfce4-terminal 2> /dev/null && XTERM=xfce4-terminal
 [ "$TERM" == "" ] && exit -1
 
-tty -s; if [ $? -ne 0 ]; then $XTERM -e "\"$0\""; exit; fi
+tty -s; if [ $? -ne 0 ]; then $XTERM -e "\"$0\"" --title="CDBUS GUI Tool"; exit; fi
 
 cd "$(dirname "$(realpath "$0")")"
 

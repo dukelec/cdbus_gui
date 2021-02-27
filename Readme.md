@@ -72,15 +72,13 @@ The following is the debug window for a specific device, starting with the data 
 
 <img src="doc/p5.png">  
 
-#### The following are IAP and data export and import:
+#### The last are IAP and data export and import:
  - IAP supports overall readback validation, device side calculation of crc for validation, and no validation.
  - IAP supports intel hex file with multiple segments.
  - When the register format is changed, it can be migrated by exporting and importing.
  - Waveform data and log printing will be exported at the same time.
 
 For example, if you are doing motor control, you can ask your customer to send you the waveform he collected for analysis, so as to remotely assist the customer in adjusting PID and other parameters.
-
-<img src="doc/p6.png">  
 
 
 ### JSON Format
@@ -90,14 +88,16 @@ Finally, there is the json configuration:
  - The "fmt" string with "[]" is an array, which displays all data in one edit box.
  - The ones with "{}" are also arrays, each group occupies one edit box, and each box supports multiple data, which is convenient for struct arrays.
 
-<img src="doc/p7.png">  
+<img src="doc/p6.png">  
 
  - "reg_r" and "reg_w" are the default register group config, you can left them empty and edit on the UI.
  - The "fmt" of the "plot" data corresponds to two packet formats: "x1 a1 b1 a2 b2 ..." and "x1 a1 b1 x2 a2 b2 ...".
  - The former is an x-axis data shared between multiple groups of data in each packet. The first character "I" of fmt is the format of x, which represents uint32_t, generally a count variable in mcu, with 1 added to each loop and a fixed loop period. The number after "I" represents the delta between x1 and x2, thus recovering x2 x3 ...
  - The latter is the one without a number after "I", where each set of data inside a package has an x value, suitable for scenarios where the loop period changes.
 
-<img src="doc/p8.png">  
+(Notes: The "reg_r", "reg_w", "less_r" and "less_w" will be printed in the console when the editing is finished.)
+
+<img src="doc/p7.png">  
 
 
 ### More Info

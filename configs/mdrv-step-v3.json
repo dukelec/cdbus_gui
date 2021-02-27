@@ -21,6 +21,7 @@
         [ 0x0026, 3, "[B]", 2, "dbg_dst_addr", "Send debug message to this address" ],
         [ 0x002a, 2, "H", 1, "dbg_dst_port", "Send debug message to this port" ],
 
+        [ 0x002c, 4, "H,H", 1, "qxchg_mcast", "Quick-exchange multicast data slice" ],
         [ 0x0030, 20, "{H,H}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
         [ 0x0044, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
         [ 0x0058, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
@@ -32,25 +33,27 @@
         [ 0x0074, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
         [ 0x008c, 24, "{H,H}", 1, "dbg_raw[1]", "Config raw debug for plot1" ],
 
-        [ 0x00a4, 4, "i", 0, "tc_pos", "Set target position" ],
-        [ 0x00a8, 4, "I", 0, "tc_speed", "Set target speed" ],
-        [ 0x00ac, 4, "I", 0, "tc_accel", "Set target accel" ],
-        [ 0x00b0, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
+        [ 0x00a4, 2, "H", 0, "ref_volt", "Motor reference voltage, unit: mV" ],
+        [ 0x00a8, 4, "i", 0, "tc_pos", "Set target position" ],
+        [ 0x00ac, 4, "I", 0, "tc_speed", "Set target speed" ],
+        [ 0x00b0, 4, "I", 0, "tc_accel", "Set target accel" ],
+        [ 0x00b4, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
 
-        [ 0x00b4, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
+        [ 0x00b8, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
 
         // --------------- Follows are not writable: -------------------
-        [ 0x00b5, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
-        [ 0x00b8, 4, "i", 0, "cur_pos", "Motor current position" ],
-        [ 0x00bc, 4, "f", 0, "tc_vc", "Motor current speed" ],
-        [ 0x00c0, 4, "f", 0, "tc_ac", "Motor current accel" ],
+        [ 0x00b9, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
+        [ 0x00bc, 4, "i", 0, "cur_pos", "Motor current position" ],
+        [ 0x00c0, 4, "f", 0, "tc_vc", "Motor current speed" ],
+        [ 0x00c4, 4, "f", 0, "tc_ac", "Motor current accel" ],
 
-        [ 0x00c8, 10, "[c]", 0, "string_test", "String test" ],
+        [ 0x00c8, 4, "I", 0, "time_cnt", "Count for plot" ],
+        [ 0x00cc, 10, "[c]", 0, "string_test", "String test" ]
     ],
-    "reg_r": [[0,8],[12,21],[36,8],[48,60],[108,8],[116,48],[164,17],[181,15],[200,10]],            // [addr,len]...
-    "reg_w": [[0,2],[5,1],[7,1],[12,1],[16,8],[24,9],[36,1],[38,6],[48,60],[108,8],[116,48],[164,4],[168,12],[180,1],[200,10]],
-    "less_r": [[181,7],[188,8]],
-    "less_w": [[164,4],[168,8],[180,1]],
+    "reg_r": [[0,8],[12,21],[36,8],[44,64],[108,8],[116,48],[164,2],[168,12],[180,4],[184,1],[185,7],[192,8],[200,4],[204,10]], // [addr,len]...
+    "reg_w": [[0,2],[5,1],[7,1],[12,1],[16,8],[24,9],[36,1],[38,6],[44,64],[108,8],[116,48],[164,2],[168,4],[172,8],[180,4],[184,1],[204,10]],
+    "less_r": [[168,4],[172,8],[184,1],[185,7],[192,8]],
+    "less_w": [[168,4],[172,8],[184,1]],
     "plot": {
         "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1

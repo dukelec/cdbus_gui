@@ -20,6 +20,7 @@ import json5
 import asyncio
 import aiohttp
 import websockets
+from intelhex import IntelHex
 from time import sleep
 from serial.tools import list_ports
 from cd_ws import CDWebSocket, CDWebSocketNS
@@ -170,9 +171,19 @@ async def file_service(): # config r/w
                 c = json5.load(c_file)
                 await sock.sendto(c, src)
         
-        elif dat['action'] == 'get_bin':
-            with open(dat['path'], 'rb') as b_file:
-                await sock.sendto(b_file.read(), src)
+        elif dat['action'] == 'get_ihex':
+            ret = []
+            ih = IntelHex()
+            try:
+                ih.loadhex(dat['path'])
+                segs = ih.segments()
+                logger.info(f'parse ihex file, segments: {[list(map(hex, l)) for l in segs]} (end addr inclusive)')
+                for seg in segs:
+                    s = [seg[0], ih.tobinstr(seg[0], size=seg[1]-seg[0])]
+                    ret.append(s)
+            except Exception as err:
+                logger.error(f'parse ihex file error: {err}')
+            await sock.sendto(ret, src)
         
         else:
             await sock.sendto('err: file: unknown cmd', src)

@@ -62,7 +62,7 @@ async function flash_write(addr, dat, blk_size=128) {
         if (ret)
             return -1;
         cur += size;
-        document.getElementById('iap_progress').innerHTML = `write ${Math.round((cur - addr) / dat.length * 100)}%`;
+        document.getElementById('iap_progress').innerHTML = `Write ${Math.round((cur - addr) / dat.length * 100)}%`;
     }
     return -2;
 }
@@ -99,7 +99,7 @@ async function flash_read(addr, len, blk_size=128) {
             return null;
         buf = Uint8Array.from([...buf, ...ret]);
         cur += size;
-        document.getElementById('iap_progress').innerHTML = `read ${Math.round((cur - addr) / len * 100)}%`;
+        document.getElementById('iap_progress').innerHTML = `Read ${Math.round((cur - addr) / len * 100)}%`;
     }
     return null;
 }
@@ -184,6 +184,7 @@ async function stop_iap() {
 async function do_iap() {
     document.getElementById('iap_start').disabled = true;
     document.getElementById('iap_stop').disabled = false;
+    document.getElementById('iap_epoch').innerHTML = '';
     document.getElementById('iap_progress').innerHTML = '--';
     
     let path = document.getElementById('iap_path').value;
@@ -192,20 +193,19 @@ async function do_iap() {
     
     if (!path) {
         alert('path empty');
+        stop_iap();
         return;
     }
     
     csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'get_bin', 'path': path}, ['server', 'file']);
-    let dat = await csa.cmd_sock.recvfrom(500);
-    if (!dat || !dat[0].length) {
-        alert('invalid bin file');
+    await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'file']);
+    let msg = await csa.cmd_sock.recvfrom(500);
+    if (!msg || !msg[0].length) {
+        alert('invalid ihex file');
+        stop_iap();
         return;
     }
-    let len = dat[0].length;
-    let crc_ori = crc16(dat[0]);
-    let addr = csa.cfg.iap.addr;
-    console.log(`get_bin, bin len: ${len}, crc: 0x${val2hex(crc_ori, 2)}`);
+    console.log(`get_ihex:`, msg[0]);
     
     let retry_cnt = 0;
     while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
@@ -242,6 +242,7 @@ async function do_iap() {
     if (action == "flash" && document.getElementById('iap_start').disabled) {
         if (await keep_in_bl()) {
             document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
+            stop_iap();
             return;
         } else {
             console.log(`keep_in_bl succeeded`);
@@ -249,7 +250,16 @@ async function do_iap() {
         }
     }
     
-    if (action != "bl" && document.getElementById('iap_start').disabled) {
+    for (let idx = 0; idx < msg[0].length; idx++) {
+        if (action == "bl" || !document.getElementById('iap_start').disabled)
+            break;
+        let seg = msg[0][idx];
+        let addr = seg[0];
+        let dat = seg[1];
+        let len = dat.length;
+        let crc_ori = crc16(dat);
+        document.getElementById('iap_epoch').innerHTML = `[${idx+1}/${msg[0].length}]`;
+        
         document.getElementById('iap_progress').innerHTML = `Erasing...`;
         if (await flash_erase(addr, len)) {
             document.getElementById('iap_progress').innerHTML = `Erase failed`;
@@ -257,7 +267,7 @@ async function do_iap() {
             return;
         }
         
-        if (await flash_write(addr, dat[0])) {
+        if (await flash_write(addr, dat)) {
             document.getElementById('iap_progress').innerHTML = `Write failed`;
             stop_iap();
             return;

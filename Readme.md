@@ -14,7 +14,7 @@ When a master board is controlling a slave, the PC can be hooked up to the same 
 
 #### Dependence:
 Python version >= 3.8  
-`pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp`
+`pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp IntelHex`
 
 #### Usage:
 Run `main.py` or `start.sh`, then open url in your web browser: http://localhost:8910
@@ -74,6 +74,7 @@ The following is the debug window for a specific device, starting with the data 
 
 #### The following are IAP and data export and import:
  - IAP supports overall readback validation, device side calculation of crc for validation, and no validation.
+ - IAP supports intel hex file with multiple segments.
  - When the register format is changed, it can be migrated by exporting and importing.
  - Waveform data and log printing will be exported at the same time.
 

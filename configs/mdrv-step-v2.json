@@ -49,8 +49,8 @@
     ],
     "reg_r": [[0,8],[12,21],[36,8],[48,60],[108,8],[116,48],[164,17],[181,15],[200,10]],            // [addr,len]...
     "reg_w": [[0,2],[5,1],[7,1],[12,1],[16,8],[24,9],[36,1],[38,6],[48,60],[108,8],[116,48],[164,4],[168,12],[180,1],[200,10]],
-    "less_r": [[181,1],[184,4],[188,8]],
-    "less_w": [[164,4],[168,4],[172,4],[180,1]],
+    "less_r": [[181,7],[188,8]],
+    "less_w": [[164,4],[168,8],[180,1]],
     "plot": {
         "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
@@ -64,10 +64,6 @@
             [ "diff13: _D(1) - _D(3)" ] // data1 - data3
         ]
     },
-    "iap": {
-        "reboot": 0x0005,               // uint8_t reboot
-        "keep_bl": 0x0006,              // uint8_t keep in bootloader
-        "addr": 0x08006800
-    }
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
 }
 

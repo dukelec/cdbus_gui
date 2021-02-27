@@ -27,10 +27,6 @@
     ],
     "reg_r": [[0,4],[4,4],[8,12],[20,3],[24,5],[32,8],[40,12]],
     "reg_w": [[0,2],[5,1],[7,1],[8,1],[12,8],[20,2],[22,1],[24,5],[32,1],[34,6],[40,12]],
-    "iap": {
-        "reboot": 0x0005,               // uint8_t reboot
-        "keep_bl": 0x0006,              // uint8_t keep in bootloader
-        "addr": 0x0800c000
-    }
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
 }
 

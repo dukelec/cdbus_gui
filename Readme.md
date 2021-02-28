@@ -5,7 +5,7 @@ CDBUS GUI Tool
 When a master board is controlling a slave, the PC can be hooked up to the same RS-485 bus (CDBUS) and the PC can read and write to the slave, view slave print messages, and view data waveforms without interfering with the control of the slave by the existing master board.
 
 
-#### Download this project:
+#### Download this tool:
 `git clone --recurse-submodules https://github.com/dukelec/cdbus_gui.git`
 
 #### Update:

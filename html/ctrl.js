@@ -59,6 +59,7 @@ function init_ws() {
         init_plots();
         dbg_raw_service();
         init_iap();
+        document.getElementById('dev_read_info').click();
     }
     ws.onmessage = async function(evt) {
         let dat = await blob2dat(evt.data);

@@ -208,6 +208,7 @@ async function do_iap() {
     console.log(`get_ihex:`, msg[0]);
     
     let retry_cnt = 0;
+    let reboot_cnt = 0;
     while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
     
         csa.proxy_sock_iap.flush();
@@ -215,7 +216,7 @@ async function do_iap() {
         console.log('read info wait ret');
         let ret = await csa.proxy_sock_iap.recvfrom(200);
         console.log('read info ret', ret);
-        if (ret) {
+        if (ret && ret[0].src[1] == 0x0001) {
             let s = dat2str(ret[0].dat.slice(1));
             if (s.includes('(bl)')) {
                 console.log(`found (bl): ${s}`);
@@ -229,14 +230,23 @@ async function do_iap() {
                 console.log('not found (bl), reboot');
                 document.getElementById('iap_progress').innerHTML = `Not found string "(bl)", reboot...`;
                 await do_reboot();
+                reboot_cnt++;
             }
         } else {
+            let retry_str;
+            switch (retry_cnt) {
+            case 0: retry_str = '-'; break;
+            case 1: retry_str = '\\'; break;
+            case 2: retry_str = '|'; break;
+            case 3: retry_str = '/'; break;
+            }
             console.log('read info time out');
-            document.getElementById('iap_progress').innerHTML = `Read info, retry cnt: ${retry_cnt}`;
-            continue;
+            document.getElementById('iap_progress').innerHTML =
+                `Try read info <span style="font-family: monospace;">(${retry_str})</span> | try reboot: ${reboot_cnt}`;
         }
-        retry_cnt++;
-        await sleep(100);
+        if (++retry_cnt >= 4)
+            retry_cnt = 0;
+        await sleep(50);
     }
     
     if (action == "flash" && document.getElementById('iap_start').disabled) {
@@ -257,7 +267,6 @@ async function do_iap() {
         let addr = seg[0];
         let dat = seg[1];
         let len = dat.length;
-        let crc_ori = crc16(dat);
         document.getElementById('iap_epoch').innerHTML = `[${idx+1}/${msg[0].length}]`;
         
         document.getElementById('iap_progress').innerHTML = `Erasing...`;
@@ -266,6 +275,17 @@ async function do_iap() {
             stop_iap();
             return;
         }
+    }
+    
+    for (let idx = 0; idx < msg[0].length; idx++) {
+        if (action == "bl" || !document.getElementById('iap_start').disabled)
+            break;
+        let seg = msg[0][idx];
+        let addr = seg[0];
+        let dat = seg[1];
+        let len = dat.length;
+        let crc_ori = crc16(dat);
+        document.getElementById('iap_epoch').innerHTML = `[${idx+1}/${msg[0].length}]`;
         
         if (await flash_write(addr, dat)) {
             document.getElementById('iap_progress').innerHTML = `Write failed`;
@@ -285,7 +305,7 @@ async function do_iap() {
                 return;
             }
             document.getElementById('iap_progress').innerHTML = 'Succeeded with crc check.';
-            
+        
         } else if (check == "read") {
             let buf = await flash_read(addr, len);
             if (!buf) {

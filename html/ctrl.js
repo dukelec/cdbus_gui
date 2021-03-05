@@ -15,6 +15,7 @@ import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
 import { init_reg_list, init_reg_rw, cal_reg_rw } from './reg_btn.js';
 import { init_plots } from './plot.js';
 import { dbg_raw_service, dbg_service } from './dbg.js';
+import { init_pic, pic_service } from './pic.js';
 import { init_iap } from './iap.js';
 import { export_data, import_data } from './export.js';
 
@@ -59,6 +60,12 @@ function init_ws() {
         init_plots();
         dbg_raw_service();
         init_iap();
+        if (csa.cfg.pic && csa.cfg.pic.port) {
+            console.info(`bind pic sock: ${csa.cfg.pic.port}`);
+            csa.pic_sock = new CDWebSocket(csa.ws_ns, csa.cfg.pic.port);
+            init_pic();
+            pic_service();
+        }
         document.getElementById('dev_read_info').click();
     }
     ws.onmessage = async function(evt) {

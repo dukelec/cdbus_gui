@@ -72,6 +72,15 @@ The following is the debug window for a specific device, starting with the data 
 
 <img src="doc/p5.png">  
 
+
+#### Picture preview:
+ - Preview jpeg images sent from device, e.g: MCU. (Visit: https://github.com/dukelec/cdcam)
+
+(Notes: You can string multiple cameras on a single RS-485 bus, as well as multiple servo motors, etc., simplifying costs and wiring.)
+
+<img src="doc/p8.png">  
+
+
 #### The last are IAP and data export and import:
  - IAP supports overall readback validation, device side calculation of crc for validation, and no validation.
  - IAP supports intel hex file with multiple segments.

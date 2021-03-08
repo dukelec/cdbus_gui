@@ -173,6 +173,67 @@ function cal_reg_rw(rw='r') {
 }
 
 
+// reg_rw <--> reg_cfg
+
+function reg_idx_by_name(name) {
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let r = csa.cfg.reg[i];
+        if (r[R_ID] == name)
+            return i;
+    }
+    return null;
+}
+
+function get_reg_idx_range(addr, len) {
+    let start_idx = null;
+    for (let i = 0; i < csa.cfg.reg.length; i++) {
+        let r = csa.cfg.reg[i];
+        if (start_idx == null && r[R_ADDR] == addr)
+                start_idx = i;
+        if (start_idx != null && addr + len == r[R_ADDR] + r[R_LEN])
+                return [start_idx, i];
+    }
+    return null;
+}
+
+function reg_cfg2reg_rw(list) {
+    let reg_rw = [];
+    if (!list)
+        return reg_rw;
+    for (let i = 0; i < list.length; i++) {
+        let idx0 = reg_idx_by_name(list[i][0]);
+        let idx1 = reg_idx_by_name(list[i][1]);
+        if (idx0 == null || idx1 == null)
+            continue;
+        let r0 = csa.cfg.reg[idx0];
+        let r1 = csa.cfg.reg[idx1];
+        if (idx0 == idx1) {
+            reg_rw.push([r0[R_ADDR], r0[R_LEN]]);
+        } else {
+            reg_rw.push([r0[R_ADDR], r1[R_ADDR] - r0[R_ADDR] + r1[R_LEN]]);
+        }
+    }
+    return reg_rw;
+}
+
+function reg_rw2reg_cfg(list) {
+    let reg_str = [];
+    let start = null;
+    
+    for (let i = 0; i < list.length; i++) {
+        let idx_range = get_reg_idx_range(list[i][0], list[i][1]);
+        if (idx_range == null)
+            continue;
+        let r0 = csa.cfg.reg[idx_range[0]];
+        let r1 = csa.cfg.reg[idx_range[1]];
+        reg_str.push([r0[R_ID], r1[R_ID]]);
+    }
+    return reg_str;
+}
+
+
+// edit
+
 async function button_edit() {
     if (document.getElementById('button_edit').style.background == '') {
         document.getElementById('button_edit').style.background = 'yellow';
@@ -198,16 +259,18 @@ async function button_edit() {
         // save to idb
         let less = document.getElementById('less_reg').checked;
         if (less) {
-            await csa.db.set('tmp', `less_r.${csa.arg.name}`, csa.dat.reg_r);
-            await csa.db.set('tmp', `less_w.${csa.arg.name}`, csa.dat.reg_w);
+            await csa.db.set('tmp', `less_r.${csa.arg.name}`, reg_rw2reg_cfg(csa.dat.reg_r));
+            await csa.db.set('tmp', `less_w.${csa.arg.name}`, reg_rw2reg_cfg(csa.dat.reg_w));
         } else {
-            await csa.db.set('tmp', `reg_r.${csa.arg.name}`, csa.dat.reg_r);
-            await csa.db.set('tmp', `reg_w.${csa.arg.name}`, csa.dat.reg_w);
+            await csa.db.set('tmp', `reg_r.${csa.arg.name}`, reg_rw2reg_cfg(csa.dat.reg_r));
+            await csa.db.set('tmp', `reg_w.${csa.arg.name}`, reg_rw2reg_cfg(csa.dat.reg_w));
         }
         console.log(less ? 'new less_r values:' : 'new reg_r values:');
         console.log(JSON.stringify(csa.dat.reg_r));
+        console.log(JSON.stringify(reg_rw2reg_cfg(csa.dat.reg_r)));
         console.log(less ? 'new less_w values:' : 'new reg_w values:');
         console.log(JSON.stringify(csa.dat.reg_w));
+        console.log(JSON.stringify(reg_rw2reg_cfg(csa.dat.reg_w)));
     }
 }
 
@@ -308,12 +371,8 @@ function button_all() {
 
 async function button_def() {
     let less = document.getElementById('less_reg').checked;
-    csa.dat.reg_r = less ? csa.cfg.less_r : csa.cfg.reg_r;
-    csa.dat.reg_w = less ? csa.cfg.less_w : csa.cfg.reg_w;
-    if (!csa.dat.reg_r)
-        csa.dat.reg_r = [];
-    if (!csa.dat.reg_w)
-        csa.dat.reg_w = [];
+    csa.dat.reg_r = reg_cfg2reg_rw(less ? csa.cfg.less_r : csa.cfg.reg_r);
+    csa.dat.reg_w = reg_cfg2reg_rw(less ? csa.cfg.less_w : csa.cfg.reg_w);
     await csa.db.set('tmp', `reg_r.${csa.arg.name}`, null);
     await csa.db.set('tmp', `reg_w.${csa.arg.name}`, null);
     await csa.db.set('tmp', `less_r.${csa.arg.name}`, null);
@@ -323,6 +382,7 @@ async function button_def() {
     // re-install onclick callback:
     document.getElementById('button_edit').style.background = '';
     button_edit();
+    alert('Load default succeeded.');
 }
 
 async function init_reg_rw() {
@@ -333,20 +393,16 @@ async function init_reg_rw() {
     let less_w = await csa.db.get('tmp', `less_w.${csa.arg.name}`);
     if (!less && reg_r && reg_w) {
         console.log('init reg from db reg_r/w');
-        csa.dat.reg_r = reg_r;
-        csa.dat.reg_w = reg_w;
+        csa.dat.reg_r = reg_cfg2reg_rw(reg_r);
+        csa.dat.reg_w = reg_cfg2reg_rw(reg_w);
     } else if (less && less_r && less_w) {
         console.log('init reg from db less_r/w');
-        csa.dat.reg_r = less_r;
-        csa.dat.reg_w = less_w;
+        csa.dat.reg_r = reg_cfg2reg_rw(less_r);
+        csa.dat.reg_w = reg_cfg2reg_rw(less_w);
     } else {
         console.log(less ? 'init reg from cfg.less_r/w' : 'init reg from cfg.reg_r/w');
-        csa.dat.reg_r = less ? csa.cfg.less_r : csa.cfg.reg_r;
-        csa.dat.reg_w = less ? csa.cfg.less_w : csa.cfg.reg_w;
-        if (!csa.dat.reg_r)
-            csa.dat.reg_r = [];
-        if (!csa.dat.reg_w)
-            csa.dat.reg_w = [];
+        csa.dat.reg_r = reg_cfg2reg_rw(less ? csa.cfg.less_r : csa.cfg.reg_r);
+        csa.dat.reg_w = reg_cfg2reg_rw(less ? csa.cfg.less_w : csa.cfg.reg_w);
     }
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
@@ -363,5 +419,5 @@ document.getElementById(`button_def`).onclick = button_def;
 document.getElementById('less_reg').onchange = init_reg_rw;
 
 
-export { init_reg_list, init_reg_rw, cal_reg_rw };
+export { init_reg_list, init_reg_rw, cal_reg_rw, reg_idx_by_name };
 

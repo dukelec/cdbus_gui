@@ -6,8 +6,9 @@
 
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
-import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val, reg_idx_by_name,
+import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
+import { reg_idx_by_name } from './reg_btn.js';
 import { csa } from './ctrl.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
 

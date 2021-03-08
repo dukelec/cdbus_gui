@@ -203,8 +203,10 @@ function reg_cfg2reg_rw(list) {
     for (let i = 0; i < list.length; i++) {
         let idx0 = reg_idx_by_name(list[i][0]);
         let idx1 = reg_idx_by_name(list[i][1]);
-        if (idx0 == null || idx1 == null)
+        if (idx0 == null)
             continue;
+        if (idx1 == null)
+            idx1 = idx0;
         let r0 = csa.cfg.reg[idx0];
         let r1 = csa.cfg.reg[idx1];
         if (idx0 == idx1) {
@@ -226,7 +228,10 @@ function reg_rw2reg_cfg(list) {
             continue;
         let r0 = csa.cfg.reg[idx_range[0]];
         let r1 = csa.cfg.reg[idx_range[1]];
-        reg_str.push([r0[R_ID], r1[R_ID]]);
+        if (r0[R_ID] != r1[R_ID])
+            reg_str.push([r0[R_ID], r1[R_ID]]);
+        else
+            reg_str.push([r0[R_ID]]);
     }
     return reg_str;
 }

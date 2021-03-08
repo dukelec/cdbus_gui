@@ -76,7 +76,7 @@ The following is the debug window for a specific device, starting with the data 
 #### Picture preview:
  - Preview jpeg images sent from device, e.g: MCU. (Visit: https://github.com/dukelec/cdcam)
 
-(Notes: You can string multiple cameras on a single RS-485 bus, as well as multiple servo motors, etc., simplifying costs and wiring.)
+(Tips: You can string multiple cameras, multiple servo motors and other devices on a single RS-485 bus, simplifying costs and wiring.)
 
 <img src="doc/p8.png">  
 

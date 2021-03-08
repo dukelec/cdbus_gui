@@ -29,10 +29,14 @@
         [ 0x0037, 1, "B", 0, "capture", "Write 1 capture single image, write 255 keep capture" ],
 
     ],
-    "reg_r": [[0,8],[12,21],[36,8],[44,10],[55,1]], // [addr,len]...
-    "reg_w": [[0,2],[5,1],[7,1],[12,1],[16,8],[24,8],[32,1],[36,1],[38,6],[44,6],[50,4],[55,1]],
-    "less_r": [[55,1]],
-    "less_w": [[55,1]],
+    
+    "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["cam_dst_addr","height"],["capture"]],
+    "reg_w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+              ["bus_cfg_filter","bus_cfg_max_idle_len"],["bus_cfg_tx_pre_len"],
+              ["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["cam_dst_addr","cam_dst_port"],["width","height"],["capture"]],
+    "less_r": [["capture"]],
+    "less_w": [["capture"]],
+    
     "pic": { "fmt": "jpeg", "port": 0x10 },
     "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
 }

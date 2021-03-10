@@ -46,6 +46,21 @@ function make_chart(eid, name, series) {
                 //auto: false,
             }
         },
+        axes: [
+            {
+                space(self, axisIdx, min, max, fullDim) {
+                    return Math.max(min.toFixed(3).length * 8, max.toFixed(3).length * 8);
+                },
+            }, {
+                size(self, values, axisIdx, cycleNum) {
+                    if (cycleNum > 2) // bail out, force convergence
+                        return self.axes[axisIdx]._size;
+                    if (!values)
+                        return 40;
+                    return Math.max(values[0].length * 8, values[values.length-1].length * 8) + 8;
+                },
+            }
+        ],
         series: series
     };
 

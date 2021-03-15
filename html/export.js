@@ -54,6 +54,7 @@ function import_data() {
             let prj = msgpack.deserialize(data);
             if (!prj || !prj.version || !prj.version.startsWith('cdgui')) {
                 alert(L('Format error'));
+                this.value = '';
                 return;
             }
             console.log('import dat:', prj);
@@ -68,12 +69,10 @@ function import_data() {
                         if (`${r[R_ID]}.${n}` in prj.reg_str)
                             document.getElementById(`reg.${r[R_ID]}.${n}`).value = prj.reg_str[`${r[R_ID]}.${n}`];
                     }
-                
                 } else {
                     if (`${r[R_ID]}` in prj.reg_str)
                         document.getElementById(`reg.${r[R_ID]}`).value = prj.reg_str[`${r[R_ID]}`];
                 }
-                
             }
             
             document.getElementById('dev_log').innerHTML = prj.logs;
@@ -85,6 +84,7 @@ function import_data() {
             }
             alert('Import succeeded');
         }
+        this.value = '';
     };
     input.click();
 }

@@ -26,7 +26,7 @@
         
         [ 0x0032, 2, "H", 0, "width", "Picture width" ],
         [ 0x0034, 2, "H", 0, "height", "Picture height" ],
-        [ 0x0037, 1, "B", 0, "capture", "Write 1 capture single image, write 255 keep capture" ],
+        [ 0x0036, 1, "B", 0, "capture", "Write 1 capture single image, write 255 keep capture" ],
 
     ],
     

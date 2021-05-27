@@ -36,14 +36,17 @@
         [ 0x00ae, 2, "H", 0, "ref_volt", "Motor driver reference voltage, unit: mV" ],
         [ 0x00b0, 1, "B", 0, "md_val", "Motor driver md[2:0] pin value" ],
         [ 0x00b1, 1, "b", 0, "set_home", "Write 1 set home position" ],
+        [ 0x00b2, 2, "H", 1, "lim_micro", "Microstep value for limit switch" ],
+        [ 0x00b4, 1, "b", 0, "lim_cali", "Whether lim_micro is valid" ],
+
         [ 0x00bc, 4, "i", 0, "tc_pos", "Set target position" ],
         [ 0x00c0, 4, "I", 0, "tc_speed", "Set target speed" ],
         [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
         [ 0x00c8, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
 
+        // --------------- Follows are not writable: -------------------
         [ 0x00d6, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
 
-        // --------------- Follows are not save to flash -------------------
         [ 0x00d7, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
         [ 0x00d8, 4, "i", 0, "cur_pos", "Motor current position" ],
         [ 0x00dc, 4, "f", 0, "tc_vc", "Motor current speed" ],
@@ -55,11 +58,12 @@
     
     // button groups
     "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
-              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","set_home"],["tc_pos","tc_accel"],["tc_speed_min"],
-              ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["time_cnt"],["string_test"]],
-    "reg_w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter","bus_cfg_tx_pre_len"],
-              ["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],
-              ["ref_volt"],["md_val"],["set_home"],["tc_pos"],["tc_speed","tc_accel"],["tc_speed_min"],["state"],["string_test"]],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","set_home"],["lim_micro","lim_cali"],["tc_pos","tc_accel"],
+              ["tc_speed_min"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["time_cnt"],["string_test"]],
+    "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+              ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt"],["md_val"],["set_home"],["lim_micro","lim_cali"],
+              ["tc_pos"],["tc_speed","tc_accel"],["tc_speed_min"],["state"],["string_test"]],
     "less_r": [["tc_pos","tc_accel"],["state","time_cnt"]],
     "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],
     

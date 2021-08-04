@@ -44,9 +44,9 @@
         [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
         [ 0x00c8, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
 
-        // --------------- Follows are not writable: -------------------
         [ 0x00d6, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
 
+        // --------------- Follows are not writable: -------------------
         [ 0x00d7, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
         [ 0x00d8, 4, "i", 0, "cur_pos", "Motor current position" ],
         [ 0x00dc, 4, "f", 0, "tc_vc", "Motor current speed" ],

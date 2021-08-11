@@ -1,0 +1,97 @@
+{
+    // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
+    // show: 0: normal, 1: hex, 2: bytes
+    "reg": [
+        [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
+        [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
+        [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
+        [ 0x0005, 1, "b", 0, "do_reboot", "Write 1 to reboot" ],
+        [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+
+        [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
+        [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
+        [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
+        [ 0x0018, 2, "[B]", 1, "bus_cfg_filter", "Multicast address" ],
+        [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Arbitration, 1: Break Sync" ],
+        [ 0x001c, 2, "H", 0, "bus_cfg_tx_permit_len", "Allow send wait time" ],
+        [ 0x001e, 2, "H", 0, "bus_cfg_max_idle_len", "Max idle wait time for BS mode" ],
+        [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", " Active TX_EN before TX" ],
+
+        [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
+        [ 0x0026, 3, "[B]", 2, "dbg_dst_addr", "Send debug message to this address" ],
+        [ 0x002a, 2, "H", 1, "dbg_dst_port", "Send debug message to this port" ],
+
+        [ 0x002c, 4, "H,H", 1, "qxchg_mcast", "Quick-exchange multicast data slice" ],
+        [ 0x0030, 20, "{H,H}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
+        [ 0x0044, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
+        [ 0x0058, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
+
+        //[ 0x006c, 1, "b", 0, "force_trigger_en / rpt_en", "Force trigger enable" ],
+        //[ 0x006e, 3, "[B]", 2, "force_rpt_dst_addr (r)", "Send force data to this address" ],
+        //[ 0x0072, 2, "H", 1, "force_rpt_dst_port (r)", "Send force data to this port" ],
+        //[ 0x0074, 2, "H", 0, "force_threshold (z)", "Set force threshold" ],
+        
+        [ 0x0076, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
+        [ 0x007a, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
+        [ 0x007c, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
+        [ 0x007d, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
+        [ 0x007e, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
+        [ 0x0096, 24, "{H,H}", 1, "dbg_raw[1]", "Config raw debug for plot1" ],
+
+        [ 0x00ae, 2, "H", 0, "ref_volt", "Motor driver reference voltage, unit: mV" ],
+        [ 0x00b0, 1, "B", 0, "md_val", "Motor driver md[2:0] pin value" ],
+        [ 0x00b1, 1, "b", 0, "set_home", "Write 1 set home position" ],
+        [ 0x00b2, 2, "H", 1, "lim_micro", "Microstep value for limit switch" ],
+        [ 0x00b4, 1, "b", 0, "lim_cali", "Whether lim_micro is valid" ],
+
+        [ 0x00bc, 4, "i", 0, "tc_pos", "Set target position" ],
+        [ 0x00c0, 4, "I", 0, "tc_speed", "Set target speed" ],
+        [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
+
+        [ 0x00d4, 4, "f", 0, "pid_pos_kp", "" ],
+        [ 0x00d8, 4, "f", 0, "pid_pos_ki", "" ],
+        [ 0x00dc, 4, "f", 0, "pid_pos_kd", "" ],
+        [ 0x0100, 4, "i", 0, "cal_pos", "PID input position" ],
+        [ 0x0104, 4, "f", 0, "cal_speed", "PID output speed" ],
+
+        [ 0x0108, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
+
+        // --------------- Follows are not writable: -------------------
+        [ 0x0109, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
+        [ 0x010c, 4, "i", 0, "cur_pos", "Motor current position" ],
+        [ 0x0110, 4, "f", 0, "tc_vc", "Motor current speed" ],
+        [ 0x0114, 4, "f", 0, "tc_ac", "Motor current accel" ],
+
+        [ 0x0124, 4, "I", 0, "loop_cnt", "Count for plot" ],
+        [ 0x0128, 10, "[c]", 0, "string_test", "String test" ]
+    ],
+    
+    // button groups
+    "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","set_home"],["lim_micro","lim_cali"],
+              ["tc_pos","tc_accel"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],
+              ["loop_cnt"],["string_test"]],
+    "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+              ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt"],["md_val"],["set_home"],["lim_micro","lim_cali"],
+              ["tc_pos"],["tc_speed","tc_accel"],["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
+    "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
+    "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],
+    
+    "plot": {
+        "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
+        "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
+        "fmt": [
+            // number before . is cnt_inc (>= 1)
+            "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
+            "I1.ifif - N, pid target, i_term, last_in, cal_speed",
+        ],
+        "color": [],                    // use color_dft if empty
+        "cal": [
+            [ "diff13: _D(1) - _D(3)" ] // data1 - data3 (support in the future)
+        ]
+    },
+    
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
+}
+

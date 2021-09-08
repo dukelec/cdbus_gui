@@ -113,10 +113,16 @@ function update_reg_rw_btn(rw='r') {
         if (rw_idx != null) {
             btn.style['background'] = color;
 
-            if (rw == 'w')
+            if (rw == 'w') {
+                let reg_input = document.getElementById(`reg.${reg[R_ID]}`);
+                reg_input.onkeydown = async (event) => {
+                    if (event.keyCode == 13) // enter key
+                        await write_reg_val(rw_idx);
+                };
                 btn.onclick = async () => { await write_reg_val(rw_idx); };
-            else
+            } else {
                 btn.onclick = async () => { await read_reg_val(rw_idx); };
+            }
 
             let disconn_pre = true;
             let disconn_next = true;

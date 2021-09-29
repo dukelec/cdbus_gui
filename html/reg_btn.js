@@ -114,11 +114,19 @@ function update_reg_rw_btn(rw='r') {
             btn.style['background'] = color;
 
             if (rw == 'w') {
-                let reg_input = document.getElementById(`reg.${reg[R_ID]}`);
-                reg_input.onkeydown = async (event) => {
-                    if (event.keyCode == 13) // enter key
-                        await write_reg_val(rw_idx);
-                };
+                if (reg[R_FMT][0] == '{') {
+                    for (let n = 0; n < Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])); n++) {
+                        document.getElementById(`reg.${reg[R_ID]}.${n}`).onkeydown = async (event) => {
+                            if (event.keyCode == 13) // enter key
+                                await write_reg_val(rw_idx);
+                        };
+                    }
+                } else {
+                    document.getElementById(`reg.${reg[R_ID]}`).onkeydown = async (event) => {
+                        if (event.keyCode == 13)
+                            await write_reg_val(rw_idx);
+                    };
+                }
                 btn.onclick = async () => { await write_reg_val(rw_idx); };
             } else {
                 btn.onclick = async () => { await read_reg_val(rw_idx); };

@@ -198,13 +198,13 @@ async def open_brower():
 
 
 if __name__ == "__main__":
-    start_web(None)
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
-    csa['async_loop'] = asyncio.get_event_loop();
-    asyncio.get_event_loop().create_task(file_service())
-    asyncio.get_event_loop().create_task(dev_service())
-    asyncio.get_event_loop().create_task(cdbus_proxy_service())
-    #asyncio.get_event_loop().create_task(open_brower())
+    csa['async_loop'] = asyncio.new_event_loop();
+    csa['async_loop'].create_task(start_web())
+    csa['async_loop'].create_task(file_service())
+    csa['async_loop'].create_task(dev_service())
+    csa['async_loop'].create_task(cdbus_proxy_service())
+    #csa['async_loop'].create_task(open_brower())
     logger.info('Please open url: http://localhost:8910')
-    asyncio.get_event_loop().run_forever()
+    csa['async_loop'].run_forever()
 

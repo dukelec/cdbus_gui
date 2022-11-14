@@ -41,12 +41,13 @@
         [ 0x00ae, 2, "H", 0, "ref_volt", "Motor driver reference voltage, unit: mV" ],
         [ 0x00b0, 1, "B", 0, "md_val", "Motor driver md[2:0] pin value" ],
         [ 0x00b1, 1, "b", 0, "set_home", "Write 1 set home position" ],
-        [ 0x00b2, 2, "H", 1, "lim_micro", "Microstep value for limit switch" ],
-        [ 0x00b4, 1, "b", 0, "lim_cali", "Whether lim_micro is valid" ],
+        [ 0x00b2, 1, "b", 0, "drv_mo", "Read drv_mo pin" ],
+        [ 0x00b5, 1, "b", 0, "lim_en", "Enable limit switch" ],
 
         [ 0x00bc, 4, "i", 0, "tc_pos", "Set target position" ],
         [ 0x00c0, 4, "I", 0, "tc_speed", "Set target speed" ],
         [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
+        [ 0x00c8, 4, "I", 0, "tc_accel_emg", "Set emergency accel" ],
 
         [ 0x00d4, 4, "f", 0, "pid_pos_kp", "" ],
         [ 0x00d8, 4, "f", 0, "pid_pos_ki", "" ],
@@ -68,12 +69,12 @@
     
     // button groups
     "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
-              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","set_home"],["lim_micro","lim_cali"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","drv_mo"],
               ["tc_pos","tc_accel"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],
               ["loop_cnt"],["string_test"]],
     "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
               ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
-              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt"],["md_val"],["set_home"],["lim_micro","lim_cali"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt"],["md_val"],["set_home"],
               ["tc_pos"],["tc_speed","tc_accel"],["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
     "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
     "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],

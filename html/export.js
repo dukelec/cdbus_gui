@@ -37,14 +37,14 @@ function export_data() {
     
     console.info('export_data:', exp_dat);
     const file_dat = msgpack.serialize(exp_dat);
-    download(file_dat, csa.arg.name ? `${csa.arg.name}.cdg` : `${csa.arg.tgt}.cdg`);
+    download(file_dat, csa.arg.name ? `${csa.arg.name}.mpk` : `${csa.arg.tgt}.mpk`);
 }
 
 function import_data() {
     //let input = document.createElement('input');
-    //cpy(input, {type: 'file', accept: '*.cdg'}, ['type', 'accept']);
+    //cpy(input, {type: 'file', accept: '*.mpk'}, ['type', 'accept']);
     let input = document.getElementById('input_file');
-    input.accept = '.cdg';
+    input.accept = '.mpk';
     input.onchange = async function () {
         var files = this.files;
         if (files && files.length) {

@@ -191,21 +191,24 @@ async function do_iap() {
     let check = document.getElementById('iap_check').value;
     let action = document.getElementById('iap_action').value;
     
-    if (!path) {
+    if (!path && action != 'bl') {
         alert('path empty');
         stop_iap();
         return;
     }
     
-    csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'file']);
-    let msg = await csa.cmd_sock.recvfrom(500);
-    if (!msg || !msg[0].length) {
-        alert('invalid ihex file');
-        stop_iap();
-        return;
+    let msg = null;
+    if (action != "bl") {
+        csa.cmd_sock.flush();
+        await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'file']);
+        msg = await csa.cmd_sock.recvfrom(500);
+        if (!msg || !msg[0].length) {
+            alert('invalid ihex file');
+            stop_iap();
+            return;
+        }
+        console.log(`get_ihex:`, msg[0]);
     }
-    console.log(`get_ihex:`, msg[0]);
     
     let retry_cnt = 0;
     let reboot_cnt = 0;
@@ -260,8 +263,8 @@ async function do_iap() {
         }
     }
     
-    for (let idx = 0; idx < msg[0].length; idx++) {
-        if (action == "bl" || !document.getElementById('iap_start').disabled)
+    for (let idx = 0; action != "bl" && idx < msg[0].length; idx++) {
+        if (!document.getElementById('iap_start').disabled)
             break;
         let seg = msg[0][idx];
         let addr = seg[0];
@@ -277,8 +280,8 @@ async function do_iap() {
         }
     }
     
-    for (let idx = 0; idx < msg[0].length; idx++) {
-        if (action == "bl" || !document.getElementById('iap_start').disabled)
+    for (let idx = 0; action != "bl" && idx < msg[0].length; idx++) {
+        if (!document.getElementById('iap_start').disabled)
             break;
         let seg = msg[0][idx];
         let addr = seg[0];

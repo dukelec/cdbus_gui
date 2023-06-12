@@ -26,10 +26,10 @@
         [ 0x0044, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
         [ 0x0058, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
 
-        //[ 0x006c, 1, "b", 0, "force_trigger_en / rpt_en", "Force trigger enable" ],
-        //[ 0x006e, 3, "[B]", 2, "force_rpt_dst_addr (r)", "Send force data to this address" ],
-        //[ 0x0072, 2, "H", 1, "force_rpt_dst_port (r)", "Send force data to this port" ],
-        //[ 0x0074, 2, "H", 0, "force_threshold (z)", "Set force threshold" ],
+        [ 0x006c, 1, "b", 0, "force_trigger_en / rpt_en", "Force trigger enable" ],
+        [ 0x006e, 3, "[B]", 2, "force_rpt_dst_addr (r)", "Send force data to this address" ],
+        [ 0x0072, 2, "H", 0, "force_rpt_dst_port (r) / max", "Send force data to this port" ],
+        [ 0x0074, 2, "H", 0, "force_threshold (z)", "Set force threshold" ],
         
         [ 0x0076, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
         [ 0x007a, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],

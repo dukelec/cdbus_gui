@@ -4,7 +4,7 @@
     "reg": [
         [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
         [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
-        [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: load from flash" ],
+        [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
         [ 0x0005, 1, "b", 0, "do_reboot", "Write 1 to reboot" ],
         [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
 
@@ -26,6 +26,11 @@
         [ 0x0044, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
         [ 0x0058, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
 
+        [ 0x006c, 1, "b", 0, "force_trigger_en / rpt_en", "Force trigger enable" ],
+        [ 0x006e, 3, "[B]", 2, "force_rpt_dst_addr (r)", "Send force data to this address" ],
+        [ 0x0072, 2, "H", 0, "force_rpt_dst_port (r) / max", "Send force data to this port" ],
+        [ 0x0074, 2, "H", 0, "force_threshold (z)", "Set force threshold" ],
+        
         [ 0x0076, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
         [ 0x007a, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
         [ 0x007c, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
@@ -36,49 +41,51 @@
         [ 0x00ae, 2, "H", 0, "ref_volt", "Motor driver reference voltage, unit: mV" ],
         [ 0x00b0, 1, "B", 0, "md_val", "Motor driver md[2:0] pin value" ],
         [ 0x00b1, 1, "b", 0, "set_home", "Write 1 set home position" ],
-        [ 0x00b2, 2, "H", 1, "lim_micro", "Microstep value for limit switch" ],
-        [ 0x00b4, 1, "b", 0, "lim_cali", "Whether lim_micro is valid" ],
+        [ 0x00b2, 1, "b", 0, "drv_mo", "Read drv_mo pin" ],
+        [ 0x00b5, 1, "b", 0, "lim_en", "Enable limit switch" ],
 
         [ 0x00bc, 4, "i", 0, "tc_pos", "Set target position" ],
         [ 0x00c0, 4, "I", 0, "tc_speed", "Set target speed" ],
         [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
-        [ 0x00c8, 4, "I", 0, "tc_speed_min", "Set the minimum speed" ],
-        
-        [ 0x00cc, 1, "b", 0, "force_rpt_en", "1: Report force data to target, 0: do not report" ],
-        [ 0x00ce, 3, "[B]", 2, "force_rpt_dst_addr", "Send force data to this address" ],
-        [ 0x00d2, 2, "H", 1, "force_rpt_dst_port", "Send force data to this port" ],
-        
-        [ 0x00d4, 2, "H", 0, "force_threshold", "Set force threshold" ],
+        [ 0x00c8, 4, "I", 0, "tc_accel_emg", "Set emergency accel" ],
 
-        [ 0x00d6, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
+        [ 0x00d4, 4, "f", 0, "pid_pos_kp", "" ],
+        [ 0x00d8, 4, "f", 0, "pid_pos_ki", "" ],
+        [ 0x00dc, 4, "f", 0, "pid_pos_kd", "" ],
+        [ 0x0100, 4, "i", 0, "cal_pos", "PID input position" ],
+        [ 0x0104, 4, "f", 0, "cal_speed", "PID output speed" ],
+
+        [ 0x0108, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
 
         // --------------- Follows are not writable: -------------------
-        [ 0x00d7, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
-        [ 0x00d8, 4, "i", 0, "cur_pos", "Motor current position" ],
-        [ 0x00dc, 4, "f", 0, "tc_vc", "Motor current speed" ],
-        [ 0x00e0, 4, "f", 0, "tc_ac", "Motor current accel" ],
+        [ 0x0109, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
+        [ 0x010c, 4, "i", 0, "cur_pos", "Motor current position" ],
+        [ 0x0110, 4, "f", 0, "tc_vc", "Motor current speed" ],
+        [ 0x0114, 4, "f", 0, "tc_ac", "Motor current accel" ],
 
-        [ 0x00f0, 4, "I", 0, "time_cnt", "Count for plot" ],
-        [ 0x00f4, 10, "[c]", 0, "string_test", "String test" ],
+        [ 0x0124, 4, "I", 0, "loop_cnt", "Count for plot" ],
+        [ 0x0128, 10, "[c]", 0, "string_test", "String test" ]
     ],
     
     // button groups
     "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
-              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","set_home"],["lim_micro","lim_cali"],["tc_pos","tc_accel"],
-              ["tc_speed_min"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["time_cnt"],["string_test"]],
-    "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-              ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],
-              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt"],["md_val"],["set_home"],["lim_micro","lim_cali"],
-              ["tc_pos"],["tc_speed","tc_accel"],["tc_speed_min"],["state"],["string_test"]],
-    "less_r": [["tc_pos","tc_accel"],["state","time_cnt"]],
+              ["force_trigger_en / rpt_en","force_threshold (z)"],["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
+              ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
+              ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
+    "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter","bus_cfg_tx_pre_len"],
+              ["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["qxchg_mcast","qxchg_ro"],["force_trigger_en / rpt_en","force_threshold (z)"],
+              ["dbg_raw_dst_addr","dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","md_val"],["set_home"],["lim_en"],
+              ["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
+    "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
     "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],
     
     "plot": {
         "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
         "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
         "fmt": [
-            "I.iIBiff - N, tc_pos, tc_speed, tc_state, cur_pos, tc_vc, tc_va",
-            "I1.fffHH - N, I, A, V, P", // number before . is cnt_inc (>= 1)
+            // number before . is cnt_inc (>= 1)
+            "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
+            "I1.ifif - N, pid target, i_term, last_in, cal_speed",
         ],
         "color": [],                    // use color_dft if empty
         "cal": [

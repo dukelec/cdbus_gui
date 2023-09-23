@@ -199,7 +199,7 @@ async def open_brower():
 
 if __name__ == "__main__":
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
-    csa['async_loop'] = asyncio.new_event_loop();
+    csa['async_loop'] = asyncio.get_event_loop();
     csa['async_loop'].create_task(start_web())
     csa['async_loop'].create_task(file_service())
     csa['async_loop'].create_task(dev_service())

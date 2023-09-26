@@ -50,23 +50,20 @@ async function init_serial_cfg() {
     let ser_cfg = await db.get('tmp', 'ser_cfg');
     let port = document.getElementById('dev_port');
     let baud = document.getElementById('dev_baud');
-    let bridge = document.getElementById('dev_bridge');
     let local_net = document.getElementById('local_net');
     let local_mac = document.getElementById('local_mac');
     
     if (ser_cfg) {
         port.value = ser_cfg.port;
         baud.value = ser_cfg.baud;
-        bridge.checked = ser_cfg.bridge;
         local_net.value = ser_cfg.local_net;
         local_mac.value = ser_cfg.local_mac;
     }
     
-    port.onchange = baud.onchange = bridge.onchange = local_net.onchange = local_mac.onchange = async () => {
+    port.onchange = baud.onchange = local_net.onchange = local_mac.onchange = async () => {
         await db.set('tmp', 'ser_cfg', {
             port: port.value,
             baud: baud.value,
-            bridge: bridge.checked,
             local_net: local_net.value,
             local_mac: local_mac.value
         });
@@ -210,14 +207,13 @@ document.getElementById('btn_dev_open').onclick = async function() {
     console.log('start open');
     let port = document.getElementById('dev_port').value;
     let baud = parseInt(document.getElementById('dev_baud').value);
-    let bridge = document.getElementById('dev_bridge').checked;
     if (!port || !baud) {
         alert('Empty not allowed');
         return;
     }
     document.getElementById('btn_dev_open').disabled = true;
     cmd_sock.flush();
-    await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud, 'bridge': bridge}, ['server', 'dev']);
+    await cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_open ret', dat);
     await document.getElementById('btn_dev_get').onclick();

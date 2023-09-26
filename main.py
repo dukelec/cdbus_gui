@@ -31,7 +31,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 from cdnet.utils.log import *
 from cdnet.utils.cd_args import CdArgs
 from cdnet.dev.cdbus_serial import CDBusSerial
-from cdnet.dev.cdbus_bridge import CDBusBridge
 from cdnet.utils.serial_get_port import get_ports
 from cdnet.dispatch import *
 from cdnet.parser import *
@@ -127,10 +126,7 @@ async def dev_service(): # cdbus hw setup
         
         elif dat['action'] == 'open' and not csa['dev']:
             try:
-                if dat['bridge']:
-                    csa['dev'] = CDBusBridge(dat['port'])
-                else:
-                    csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
+                csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
                 await sock.sendto('successed', src)
             except Exception as err:
                 logger.warning(f'open dev err: {err}')

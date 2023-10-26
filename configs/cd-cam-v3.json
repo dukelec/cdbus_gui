@@ -26,18 +26,19 @@
         
         [ 0x0032, 2, "H", 0, "width", "Picture width" ],
         [ 0x0034, 2, "H", 0, "height", "Picture height" ],
-        [ 0x0036, 1, "B", 0, "capture", "Write 1 capture single image, write 255 keep capture" ],
-        [ 0x0037, 1, "B", 0, "read", "Write 1 read 1 pkt, write 255 read all" ],
-        [ 0x0038, 4, "I", 0, "image_size", "Image size" ],
-        [ 0x0040, 1, "b", 0, "led_en", "LED enable / disable" ],
+        
+        [ 0x0042, 2, "H", 0, "manual", "0: auto mode; 1: manual mode" ],
+        [ 0x0044, 2, "H", 0, "exposure", "Exposure (AEC)" ],
+        [ 0x0046, 1, "B", 0, "agc", "AGC" ],
+        
+        [ 0x005f, 1, "B", 0, "capture", "Write 1 capture single image, write 255 keep capture" ],
+        [ 0x0069, 1, "b", 0, "led_en", "LED enable / disable" ],
 
     ],
     
-    "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["cam_dst_addr","height"],
-              ["capture","image_size"]],
-    "reg_w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-              ["bus_cfg_filter","bus_cfg_max_idle_len"],["bus_cfg_tx_pre_len"],
-              ["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["cam_dst_addr","cam_dst_port"],["width","height"],["capture"],["read"],["image_size"]],
+    "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["cam_dst_addr","agc"],["capture"],["led_en"]],
+    "reg_w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter","bus_cfg_max_idle_len"],
+              ["bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["cam_dst_addr","cam_dst_port"],["width","agc"],["capture"],["led_en"]],
     "less_r": [["capture"]],
     "less_w": [["capture"]],
     

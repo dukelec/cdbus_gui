@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './lang/lang.js'
+import { L } from './utils/lang.js'
 import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
@@ -78,14 +78,14 @@ async function init_cfg_list() {
     
     let devs = await db.get('tmp', 'dev_list');
     for (let i = 0; i < 10; i++) {
-        let tgt = (devs && devs[i]) ? devs[i].tgt : `80:00:${val2hex(i+1,2)}`;
+        let tgt = (devs && devs[i]) ? devs[i].tgt : `80:00:fe`;
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';
         let name = (devs && devs[i]) ? devs[i].name : '';
         let html = `
             <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
             <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
             <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
-            <button class="button is-small" id="cfg${i}.btn">Open Window</button> <br>
+            <button class="button is-small" id="cfg${i}.btn">${L('Open Window')}</button> <br>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -186,7 +186,8 @@ document.getElementById('btn_dev_get').onclick = async function() {
     await cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await cmd_sock.recvfrom(500);
     console.log('btn_dev_get ret', dat);
-    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? 'Online' : 'Offline'} (local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
+    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? L('Online') : L('Offline')} ` +
+                       `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
     list.innerHTML = '';
     let ports = dat[0].ports;
 
@@ -234,6 +235,17 @@ document.getElementById('btn_dev_close').onclick = async function() {
 
 window.addEventListener('load', async function() {
     console.log("load app");
+    
+    // apply translation
+    for (let tag of ['button', 'span', 'option', 'td']) {
+        let elems = document.getElementsByTagName(tag);
+        for (let e of elems) {
+            e.innerHTML = eval("`" + e.innerHTML + "`");
+            if (e.title)
+                e.title = eval("`" + e.title + "`");
+        }
+    }
+    
     db = await new Idb();
     init_ws();
 });

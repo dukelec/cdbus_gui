@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './lang/lang.js';
+import { L } from './utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
@@ -105,7 +105,7 @@ document.getElementById('dev_read_info').onclick = async function() {
         return;
     } else if (!dat[0].online) {
         elem.style.background = '#F5B7B180';
-        elem.innerHTML = 'Serial disconnected';
+        elem.innerHTML = L('Serial disconnected');
         return;
     }
     
@@ -163,6 +163,17 @@ document.getElementById(`keep_read`).onclick = period_read;
 
 window.addEventListener('load', async function() {
     console.log("load ctrl");
+    
+    // apply translation
+    for (let tag of ['button', 'span', 'option', 'td']) {
+        let elems = document.getElementsByTagName(tag);
+        for (let e of elems) {
+            e.innerHTML = eval("`" + e.innerHTML + "`");
+            if (e.title)
+                e.title = eval("`" + e.title + "`");
+        }
+    }
+    
     let url_arg = new URLSearchParams(location.search);
 
     csa.arg.tgt = url_arg.get('tgt')

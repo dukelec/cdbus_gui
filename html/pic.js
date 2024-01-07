@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './lang/lang.js';
+import { L } from './utils/lang.js'
 import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 //import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
@@ -26,6 +26,7 @@ async function pic_service() {
         if (hdr == 0x50) { // first
             img_dat = dat;
             dat_cnt = 0;
+            console.log(`img: header ${dat[0]} ${dat[1]}`);
         
         } else if ((hdr & 0xf0) == 0x60) { // more
             if (dat_cnt == (hdr & 0xf)) {

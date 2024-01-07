@@ -12,25 +12,25 @@
 
 <section class="section">
     <div class="container">
-        <h1 class="title is-size-4">Serial</h1>
+        <h1 class="title is-size-4"><span>${L('Serial')}</span></h1>
         <div class="columns">
         
             <div class="column">
                 <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0">
                 <input type="text" placeholder="Rate (May be ignored for USB)" id="dev_baud" value="115200">
-                <button class="button is-small" id="btn_dev_get">Refresh</button>
-                <button class="button is-small" id="btn_dev_open">Open</button>
-                <button class="button is-small" id="btn_dev_close">Close</button>
+                <button class="button is-small" id="btn_dev_get">${L('Refresh')}</button>
+                <button class="button is-small" id="btn_dev_open">${L('Open')}</button>
+                <button class="button is-small" id="btn_dev_close">${L('Close')}</button>
             </div>
         </div>
         <div class="container">
-            Current: <span id="dev_status"></span>
+            <span>${L('Current')}</span>: <span id="dev_status"></span>
         </div>
     </div>
 
     <br>
     <div class="container">
-        <h1 class="title is-size-4">Available</h1>
+        <h1 class="title is-size-4"><span>${L('Available')}</span></h1>
         <div class="content">
             <ul class="content" id="dev_list">
               <!--li>item1</li-->
@@ -41,10 +41,10 @@
 
     <br>
     <div class="container">
-        <h3 class="title is-size-4">Devices</h3>
+        <h3 class="title is-size-4"><span>${L('Devices')}</span></h3>
         <input type="text" placeholder="Local NET" id="local_net" value="0x00">
         <input type="text" placeholder="Local MAC" id="local_mac" value="0x00">
-        <button class="button is-small" id="set_local">Set local NET & MAC</button><br><br>
+        <button class="button is-small" id="set_local">${L('Set')} local NET & MAC</button><br><br>
         <div id="cfg_list">
         </div>
     </div>
@@ -52,10 +52,10 @@
     <br>
     <div class="container">
         <h2 class="title is-size-4">Logs</h2>
-        <label class="checkbox"><input type="checkbox" id="scroll_end" checked> Scroll end</label>
-        | Len: <input type="text" size="8" placeholder="500" id="dbg_len" value="500">
-        <button class="button is-small" id="log_clear">Clear</button>
-        <button class="button is-small" id="log_blank">Add blank</button> <br><br>
+        <label class="checkbox"><input type="checkbox" id="scroll_end" checked> <span>${L('Scroll end')}</span></label>
+        | <span>${L('Len')}</span>: <input type="text" size="8" placeholder="500" id="dbg_len" value="500">
+        <button class="button is-small" id="log_clear">${L('Clear')}</button>
+        <button class="button is-small" id="log_blank">${L('Add blank')}</button> <br><br>
         <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black; resize: both;" id="dev_log"></div>
     </div>
 </section>

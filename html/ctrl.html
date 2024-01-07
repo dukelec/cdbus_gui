@@ -42,31 +42,31 @@
 <section class="section">
 
     <div class="container">
-        <h2 class="title is-size-4">Regs <span class="is-size-6" id="tgt_name"></span></h2>
+        <h2 class="title is-size-4"><span>${L('Regs')}</span> <span class="is-size-6" id="tgt_name"></span></h2>
         
         <div class="columns">
             <div class="column">
-                <button class="button is-small" id="dev_read_info">Read Info</button>
-                <button class="button is-small" id="dev_read_all">Read All</button>
-                <button class="button is-small" id="dev_write_all">Write All</button>
+                <button class="button is-small" id="dev_read_info">${L('Read Info')}</button>
+                <button class="button is-small" id="dev_read_all">${L('Read All')}</button>
+                <button class="button is-small" id="dev_write_all">${L('Write All')}</button>
                 |
-                <label class="checkbox"><input type="checkbox" id="less_reg"> Less</label>,
-                <label class="checkbox"><input type="checkbox" id="keep_read"> Read per</label>
+                <label class="checkbox"><input type="checkbox" id="less_reg"> <span>${L('Less')}</span></label>,
+                <label class="checkbox"><input type="checkbox" id="keep_read"> <span>${L('Read per')}</span></label>
                 <input type="text" size="5" placeholder="1000" id="read_period" value="1000"> ms
                 |
-                <button class="button is-small" id="button_edit">Button Edit</button>
+                <button class="button is-small" id="button_edit">${L('Button Edit')}</button>
                 <span id="button_subs" style="display: none;">
-                <button class="button is-small" id="group_on">Group</button>
-                <button class="button is-small" id="group_off">Ungroup</button>
-                <button class="button is-small" id="enable_on">Enable</button>
-                <button class="button is-small" id="enable_off">Disable</button>
-                <button class="button is-small" id="button_all">Select All</button>
-                <button class="button is-small" id="button_def">Load Default</button>
+                <button class="button is-small" id="group_on">${L('Group')}</button>
+                <button class="button is-small" id="group_off">${L('Ungroup')}</button>
+                <button class="button is-small" id="enable_on">${L('Enable')}</button>
+                <button class="button is-small" id="enable_off">${L('Disable')}</button>
+                <button class="button is-small" id="button_all">${L('Select All')}</button>
+                <button class="button is-small" id="button_def">${L('Load Default')}</button>
                 </span>
             </div>
         </div>
         <div class="container">
-            Device Info: <span id="dev_info">--</span>
+            <span>${L('Device Info')}</span>: <span id="dev_info">--</span>
         </div>
         <br>
         
@@ -79,10 +79,10 @@
         
         <div class="container">
             <h2 class="title is-size-4">Logs</h2>
-            <label class="checkbox"><input type="checkbox" id="scroll_end" checked> Scroll end</label>
-            | Len: <input type="text" size="8" placeholder="1000" id="dbg_len" value="1000">
-            <button class="button is-small" id="log_clear">Clear</button>
-            <button class="button is-small" id="log_blank">Add blank</button> <br><br>
+            <label class="checkbox"><input type="checkbox" id="scroll_end" checked> <span>${L('Scroll end')}</span></label>
+            | <span>${L('Len')}</span>: <input type="text" size="8" placeholder="1000" id="dbg_len" value="1000">
+            <button class="button is-small" id="log_clear">${L('Clear')}</button>
+            <button class="button is-small" id="log_blank">${L('Add blank')}</button> <br><br>
             <div style="font-family: monospace; font-size: 12px; overflow: scroll; height: 260px; color: white; background: black; resize: both;" id="dev_log"></div>
         </div>
         <br>
@@ -96,27 +96,27 @@
             <h2 class="title is-size-4">IAP</h2>
             <input type="text" size="85" placeholder="Full path of intel hex file on system" id="iap_path">
             <select id="iap_action" value="bl_full">
-                <option value="bl_full">Reboot -> BL -> Flash -> Reboot</option>
-                <option value="bl_flash">Reboot -> BL -> Flash</option>
-                <option value="bl">Reboot -> BL (Enter BootLoader)</option>
-                <option value="flash">Flash Only</option>
+                <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
+                <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
+                <option value="bl">${L('Reboot')} -> BL (${L('Enter')} BootLoader)</option>
+                <option value="flash">${L('Flash Only')}</option>
             </select>
             <select id="iap_check" value="none">
-                <option value="none">No Check</option>
-                <option value="read">Read Back Check</option>
-                <option value="crc">Read CRC Check</option>
+                <option value="none">${L('No Check')}</option>
+                <option value="read">${L('Read Back Check')}</option>
+                <option value="crc">${L('Read CRC Check')}</option>
             </select>
-            <button class="button is-small" id="iap_start">Start</button>
-            <button class="button is-small" id="iap_stop" disabled>Stop</button> <br>
+            <button class="button is-small" id="iap_start">${L('Start')}</button>
+            <button class="button is-small" id="iap_stop" disabled>${L('Stop')}</button> <br>
             
-            Progress: <span id="iap_epoch"></span> <span id="iap_progress">--</span>
+            <span>${L('Progress')}</span>: <span id="iap_epoch"></span> <span id="iap_progress">--</span>
         </div>
         <br>
         
         <div class="container">
-            <h2 class="title is-size-4">Export & Import</h2>
-            <button class="button is-small" id="export_btn">Export Data</button>
-            <button class="button is-small" id="import_btn">Import Data</button>
+            <h2 class="title is-size-4"><span>${L('Export')} & ${L('Import')}</span></h2>
+            <button class="button is-small" id="export_btn">${L('Export Data')}</button>
+            <button class="button is-small" id="import_btn">${L('Import Data')}</button>
             <input id="input_file" type="file" style="display:none;">
         </div>
         

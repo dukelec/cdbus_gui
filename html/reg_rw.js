@@ -4,6 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
+import { L } from './utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat,
          read_file, download, readable_size, readable_float, blob2dat } from './utils/helper.js';
 import { csa } from './ctrl.js';

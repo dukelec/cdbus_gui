@@ -244,11 +244,12 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             case 1:
                 let parts = str_a[s_idx].split(".");
                 let val;
-                if (parts.length > 1)
-                    val = parseInt(parts[0], 16) + parseInt(parts[1], 16) / Math.pow(16, parts[1].length);
-                else
+                if (parts.length > 1) {
+                    let sign = Math.sign(parseInt(parts[0], 16));
+                    val = parseInt(parts[0], 16) + parseInt(parts[1], 16) / Math.pow(16, parts[1].length) * sign;
+                } else {
                     val = parseInt(parts[0], 16);
-                dat.set(hex2dat(str_a[s_idx], true).slice(0,4), ofs);
+                }
                 dv.setFloat32(ofs, val, true);
                 break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;

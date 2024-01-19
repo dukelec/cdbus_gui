@@ -39,36 +39,49 @@ from cdnet.utils.cd_args import CdArgs
 from cdnet.dev.cdbus_serial import CDBusSerial
 from cdnet.dispatch import *
 
-# reg_name(.n) : {
-#   fmt:
-#   show:
-#   addr:
-#   len:
-#   desc: '...'
-# }
-regs = {}
+
+csa = {
+    'args': None,
+    
+    'dev_addr': None,
+    'quiet': False,
+
+    'logger': None,
+    'sock': None,
+    
+    'cfg': None,
+
+    # reg_name(.n) : {
+    #   fmt:
+    #   show:
+    #   addr:
+    #   len:
+    #   desc: '...'
+    # }
+    'regs': {}
+}
 
 
-def cdg_cmd_init():
-    global args, dev_addr, quiet, reg_name, reg_val, export_file, import_file, logger, sock, sock_dbg, cfg
+def cdg_cmd_init(doc=None):
+    global reg_name, reg_val, export_file, import_file, sock_dbg
 
     args = CdArgs()
+    csa['args'] = args
     tty_str = args.get("--tty", dft="ttyACM0")
     baud = int(args.get("--baud", dft="115200"), 0)
     local_mac = int(args.get("--local", dft="0x00"), 0)
-    dev_addr = args.get("--dev", dft="80:00:fe")
+    csa['dev_addr'] = args.get("--dev", dft="80:00:fe")
     cfg_file = args.get("--cfg")
 
-    quiet = args.get("--quiet", "-q") != None
+    csa['quiet'] = args.get("--quiet", "-q") != None
 
     reg_name = args.get("--reg")
     reg_val = args.get("--val")         # string value
     export_file = args.get("--export")  # mpk file
     import_file = args.get("--import")
 
-
     if args.get("--help", "-h") != None or cfg_file == None:
-        print(__doc__)
+        print(f'{doc}\n{__doc__}' if doc else __doc__)
         exit()
 
     if args.get("--verbose", "-v") != None:
@@ -78,27 +91,27 @@ def cdg_cmd_init():
     else:
         logger_init(logging.INFO)
 
-    logger = logging.getLogger(f'cdgui_cmd')
+    csa['logger'] = logging.getLogger(f'cdgui_cmd')
 
     dev = CDBusSerial(tty_str, baud=baud)
 
     CDNetIntf(dev, mac=local_mac)
-    sock = CDNetSocket(('', 0xcdcd))
+    csa['sock'] = CDNetSocket(('', 0xcdcd))
     sock_dbg = CDNetSocket(('', 9))
 
     with open(cfg_file) as f:
-        cfg = json5.load(f)
+        csa['cfg'] = json5.load(f)
     _thread.start_new_thread(dbg_echo, ())
     list_all_reg()
 
-    if not quiet:
-        print(cd_read_info(dev_addr))
+    if not csa['quiet']:
+        print(cd_read_info(csa['dev_addr']))
 
 
 def dbg_echo():
     while True:
         rx = sock_dbg.recvfrom()
-        logger.info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][1:-1].decode() + '\x1b[0m')
+        csa['logger'].info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][1:-1].decode() + '\x1b[0m')
 
 
 # for unicast only
@@ -108,23 +121,23 @@ def cd_reg_rw(dev_addr, reg_addr, write=None, read=0, timeout=0.8, retry=3):
     else:
         tx_dat = b'\x00'+struct.pack("<H", reg_addr) + struct.pack("<B", read)
     for cnt in range(retry):
-        sock.clear()
-        sock.sendto(tx_dat, (dev_addr, 0x5))
-        dat, src = sock.recvfrom(timeout=timeout)
+        csa['sock'].clear()
+        csa['sock'].sendto(tx_dat, (dev_addr, 0x5))
+        dat, src = csa['sock'].recvfrom(timeout=timeout)
         if src:
             if src[0] == dev_addr and src[1] == 0x5:
                 return dat
-            logger.warning(f'cd_reg_rw recv wrong src')
+            csa['logger'].warning(f'cd_reg_rw recv wrong src')
         else:
-            logger.warning(f'cd_reg_rw timeout, dev: {dev_addr}')
+            csa['logger'].warning(f'cd_reg_rw timeout, dev: {dev_addr}')
     raise Exception('reg_rw retry error')
     #return None
 
 
 def cd_read_info(dev_addr, timeout=0.8):
-    sock.clear()
-    sock.sendto(b'\x00', (dev_addr, 0x1))
-    dat, src = sock.recvfrom(timeout=timeout)
+    csa['sock'].clear()
+    csa['sock'].sendto(b'\x00', (dev_addr, 0x1))
+    dat, src = csa['sock'].recvfrom(timeout=timeout)
     if src:
         return dat[1:]
     raise Exception('read info error')
@@ -132,8 +145,8 @@ def cd_read_info(dev_addr, timeout=0.8):
 
 
 def list_all_reg():
-    for i in range(len(cfg['reg'])):
-        r = cfg['reg'][i]
+    for i in range(len(csa['cfg']['reg'])):
+        r = csa['cfg']['reg'][i]
         #print(r)
         fmt = r[2]
         show = r[3]
@@ -144,7 +157,7 @@ def list_all_reg():
         fmt_len = fmt_size(fmt)
         if top_len == fmt_len or fmt.startswith('['):
             #print(top_name)
-            regs[top_name] = {
+            csa['regs'][top_name] = {
                 'fmt': fmt,
                 'show': show,
                 'addr': top_addr,
@@ -155,7 +168,7 @@ def list_all_reg():
             num = int(top_len / fmt_len)
             for n in range(num):
                 #print(top_name, n)
-                regs[f'{top_name}.{n}'] = {
+                csa['regs'][f'{top_name}.{n}'] = {
                     'fmt': fmt,
                     'show': show,
                     'addr': top_addr + fmt_len * n,
@@ -168,17 +181,17 @@ def list_all_reg():
 
 
 def get_reg_info(name):
-    for i in range(len(cfg['reg'])):
-        r = cfg['reg'][i]
+    for i in range(len(csa['cfg']['reg'])):
+        r = csa['cfg']['reg'][i]
         if r[4] == name:
             return r
     return None
 
 
 def get_rw_grp(name, rw='r'):
-    if name not in regs:
+    if name not in csa['regs']:
         return None
-    grps = cfg[f'reg_{rw}']
+    grps = csa['cfg'][f'reg_{rw}']
     addr_len_list = []
     for i in range(len(grps)):
         g = grps[i]
@@ -191,19 +204,19 @@ def get_rw_grp(name, rw='r'):
             r0 = get_reg_info(g[0])
             addr_len_list.append([r0[0], r0[1]])
     for i in range(len(addr_len_list)):
-        if regs[name]['addr'] >= addr_len_list[i][0] and \
-           regs[name]['addr'] < addr_len_list[i][0] + addr_len_list[i][1]:
+        if csa['regs'][name]['addr'] >= addr_len_list[i][0] and \
+           csa['regs'][name]['addr'] < addr_len_list[i][0] + addr_len_list[i][1]:
             return addr_len_list[i]
     return None
 
 
 def read_reg(name):
-    reg = regs[name]
+    reg = csa['regs'][name]
     grp = get_rw_grp(name, 'r')
     if not grp or not reg:
         print(f'reg: {name} read disabled')
         return None
-    dat = cd_reg_rw(dev_addr, grp[0], read=grp[1])
+    dat = cd_reg_rw(csa['dev_addr'], grp[0], read=grp[1])
     if reg['fmt'].startswith('['):
         ret = []
         join = '' if reg['fmt'][1] == 'c' and reg['show'] == 0 else ' '
@@ -214,13 +227,13 @@ def read_reg(name):
     return reg2str(dat[1:], reg['addr'] - grp[0], reg['fmt'], reg['show'])
 
 
-def write_reg(name, str_):
-    reg = regs[name]
+def write_reg(name, str_, timeout=0.8, retry=3):
+    reg = csa['regs'][name]
     grp = get_rw_grp(name, 'w')
     if not grp or not reg:
         print(f'reg: {name} write disabled')
         return None
-    dat = cd_reg_rw(dev_addr, grp[0], read=grp[1])
+    dat = cd_reg_rw(csa['dev_addr'], grp[0], read=grp[1])
     dat = dat[1:]
     if reg['fmt'].startswith('['):
         ret = []
@@ -229,7 +242,7 @@ def write_reg(name, str_):
             dat = str2reg(dat, reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show'], str_, i)
     else:
         dat = str2reg(dat, reg['addr'] - grp[0], reg['fmt'], reg['show'], str_, 0)
-    cd_reg_rw(dev_addr, grp[0], write=dat)
+    cd_reg_rw(csa['dev_addr'], grp[0], write=dat, timeout=timeout, retry=retry)
 
 
 
@@ -244,7 +257,7 @@ if __name__ == "__main__":
 
     elif export_file != None:
         reg_str = {}
-        for name in regs:
+        for name in csa['regs']:
             if get_rw_grp(name, 'r') != None:
                 reg_str[name] = read_reg(name)
         pprint.pp(reg_str)

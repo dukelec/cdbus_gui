@@ -152,7 +152,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 let val = '';
-                let join = r[R_FMT][1] == 'c' ? '' : ' ';
+                let join = r[R_FMT][1] == 'c' && r[R_SHOW] == 0 ? '' : ' ';
                 for (let n = 0; n < count; n++)
                     val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(join);
                 

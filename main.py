@@ -22,7 +22,6 @@ import aiohttp
 import websockets
 from intelhex import IntelHex
 from time import sleep
-from serial.tools import list_ports
 from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web
 

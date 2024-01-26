@@ -145,8 +145,9 @@ def cd_read_info(dev_addr, timeout=0.8):
     csa['sock'].sendto(b'\x00', (dev_addr, 0x1))
     dat, src = csa['sock'].recvfrom(timeout=timeout)
     if src:
-        return dat[1:]
-    raise Exception('read info error')
+        return dat[1:].decode()
+    csa['logger'].warning('read info error')
+    return 'error'
 
 
 

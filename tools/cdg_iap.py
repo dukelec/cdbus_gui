@@ -12,6 +12,7 @@ Args:
   --addr       ADDR # mcu ram address (only for .bin file)
   --size       SIZE # only needed when read from mcu
   --flash-only      # do not reboot
+  --enter-bl        # enter bootloader only
 
 Examples:
 
@@ -36,16 +37,17 @@ sub_size = 128
 
 
 def cdg_iap_init():
-    global addr, size, in_file, out_file, flash_only
+    global addr, size, in_file, out_file, flash_only, enter_bl
     addr = int(csa['args'].get("--addr", dft="0x0800c000"), 0)
     size = int(csa['args'].get("--size", dft="0"), 0)
     in_file = csa['args'].get("--in-file")
     out_file = csa['args'].get("--out-file")
     flash_only = csa['args'].get("--flash-only") != None
+    enter_bl = csa['args'].get("--enter-bl") != None
 
-    if not in_file and not out_file:
+    if not in_file and not out_file and not enter_bl:
         print(__doc__)
-        exit()
+        exit(-1)
 
 
 def _read_flash(addr, _len):
@@ -102,13 +104,32 @@ def write_flash(addr, dat):
             exit(-1)
         cur += size
 
+def _enter_bl():
+    while True:
+        info_str = cd_read_info(csa['dev_addr'], timeout=0.2)
+        print('waiting (bl) in info string ...')
+        print(f'info: {info_str}')
+        if '(bl)' in info_str:
+            cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['keep_bl'], write=b'\x01')
+            print('keeped in bl mode')
+            break
+        elif info_str != 'error':
+            print('do reboot before flash ...')
+            try:
+                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.3, retry=1)
+            except Exception as err:
+                pass
+        sleep(0.2)
 
 
 if __name__ == "__main__":
     cdg_cmd_init(__doc__)
     cdg_iap_init()
 
-    if out_file:
+    if enter_bl:
+        _enter_bl()
+
+    elif out_file:
         print('read %d bytes @%08x to file' % (size, addr), out_file)
         ret = read_flash(addr, size)
         with open(out_file, 'wb') as f:
@@ -116,21 +137,7 @@ if __name__ == "__main__":
 
     elif in_file:
         if not flash_only:
-            while True:
-                info_str = cd_read_info(csa['dev_addr'])
-                print('waiting (bl) in info string ...')
-                print(f'info: {info_str}')
-                if b'(bl)' in info_str:
-                    cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['keep_bl'], write=b'\x01')
-                    print('keeped in bl mode')
-                    break
-                elif info_str:
-                    print('do reboot before flash ...')
-                    try:
-                        cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.3, retry=1)
-                    except Exception as err:
-                        pass
-                sleep(0.5)
+            _enter_bl()
 
         if in_file.lower().endswith('.bin'):
             with open(in_file, 'rb') as f:

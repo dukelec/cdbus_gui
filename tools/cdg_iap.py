@@ -6,16 +6,23 @@
 
 """CDBUS IAP Tool
 
-examples:
+Args:
+  --in-file    FILE # write FILE to mcu (.hex or .bin format)
+  --out-file   FILE # read FILE from mcu (.bin only)
+  --addr       ADDR # mcu ram address (only for .bin file)
+  --size       SIZE # only needed when read from mcu
+  --flash-only      # do not reboot
 
-read fw:
-  ./cdbus_iap.py --out-file fw.bin --addr=0x0800c000 --size=xxx
+Examples:
 
 write fw:
-  ./cdbus_iap.py --in-file fw.bin --addr=0x0800c000
+  ./cdg_iap.py --cfg CFG_FILE --in-file fw.hex
+  ./cdg_iap.py --cfg CFG_FILE --in-file fw.bin --addr=0x0800c000
 
-or:
-  ./cdbus_iap.py --in-file fw.hex
+read fw:
+  ./cdg_iap.py --cfg CFG_FILE --out-file fw.bin --addr=0x0800c000 --size=xxx
+
+More args refers to:
 """
 
 import sys, os
@@ -120,7 +127,7 @@ if __name__ == "__main__":
                 elif info_str:
                     print('do reboot before flash ...')
                     try:
-                        write_reg('do_reboot', '1', timeout=0.3, retry=1)
+                        cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.3, retry=1)
                     except Exception as err:
                         pass
                 sleep(0.5)
@@ -143,6 +150,7 @@ if __name__ == "__main__":
                     dat.append(s)
             except Exception as err:
                 csa['logger'].error(f'parse ihex file error: {err}')
+                exit(-1)
 
             for i in range(len(dat)):
                 print(f'write {len(dat[i][1])} bytes @{dat[i][0]:08x} from file', in_file)
@@ -154,7 +162,8 @@ if __name__ == "__main__":
         if not flash_only:
             print('do reboot after flash ...')
             try:
-                write_reg('do_reboot', '1', timeout=0.3, retry=1)
+                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.3, retry=1)
             except Exception as err:
                 pass
+        print('flash succeed.')
 

@@ -11,13 +11,15 @@ Args:
   --verbose | -v    # debug level: verbose
   --debug   | -d    # debug level: debug
 
+  --cfg   CFG_FILE  # always required
+
   --tty   PORT      # default: ttyACM0
   --baud  BAUD      # default: 115200
   --local LOCAL_MAC # default: 0
   --dev   TARGET    # default: 80:00:fe
-  --cfg   CFG_FILE
 
   --quiet   | -q
+  --pretend | -p
 
   --reg REG_NAME    # read reg if not specify val
   --val REG_VAL
@@ -45,6 +47,7 @@ csa = {
     
     'dev_addr': None,
     'quiet': False,
+    'pretend': False,
 
     'logger': None,
     'sock': None,
@@ -74,6 +77,7 @@ def cdg_cmd_init(doc=None):
     cfg_file = args.get("--cfg")
 
     csa['quiet'] = args.get("--quiet", "-q") != None
+    csa['pretend'] = args.get("--pretend", "-p") != None
 
     reg_name = args.get("--reg")
     reg_val = args.get("--val")         # string value
@@ -82,7 +86,7 @@ def cdg_cmd_init(doc=None):
 
     if args.get("--help", "-h") != None or cfg_file == None:
         print(f'{doc}\n{__doc__}' if doc else __doc__)
-        exit()
+        exit(-1 if cfg_file == None else 0)
 
     if args.get("--verbose", "-v") != None:
         logger_init(logging.VERBOSE)
@@ -105,13 +109,14 @@ def cdg_cmd_init(doc=None):
     list_all_reg()
 
     if not csa['quiet']:
-        print(cd_read_info(csa['dev_addr']))
+        print('Device Info:', cd_read_info(csa['dev_addr']))
 
 
 def dbg_echo():
     while True:
         rx = sock_dbg.recvfrom()
-        csa['logger'].info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][1:-1].decode() + '\x1b[0m')
+        if not csa['quiet']:
+            csa['logger'].info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][1:-1].decode() + '\x1b[0m')
 
 
 # for unicast only
@@ -127,8 +132,9 @@ def cd_reg_rw(dev_addr, reg_addr, write=None, read=0, timeout=0.8, retry=3):
         if src:
             if src[0] == dev_addr and src[1] == 0x5:
                 return dat
-            csa['logger'].warning(f'cd_reg_rw recv wrong src')
-        else:
+            if not csa['quiet']:
+                csa['logger'].warning(f'cd_reg_rw recv wrong src')
+        elif not csa['quiet']:
             csa['logger'].warning(f'cd_reg_rw timeout, dev: {dev_addr}')
     raise Exception('reg_rw retry error')
     #return None
@@ -214,8 +220,9 @@ def read_reg(name):
     reg = csa['regs'][name]
     grp = get_rw_grp(name, 'r')
     if not grp or not reg:
-        print(f'reg: {name} read disabled')
-        return None
+        if not csa['quiet']:
+            print(f'reg: {name} read disabled')
+        exit(-1)
     dat = cd_reg_rw(csa['dev_addr'], grp[0], read=grp[1])
     if reg['fmt'].startswith('['):
         ret = []
@@ -227,12 +234,13 @@ def read_reg(name):
     return reg2str(dat[1:], reg['addr'] - grp[0], reg['fmt'], reg['show'])
 
 
-def write_reg(name, str_, timeout=0.8, retry=3):
+def write_reg(name, str_):
     reg = csa['regs'][name]
     grp = get_rw_grp(name, 'w')
     if not grp or not reg:
-        print(f'reg: {name} write disabled')
-        return None
+        if not csa['quiet']:
+            print(f'reg: {name} write disabled')
+        exit(-1)
     dat = cd_reg_rw(csa['dev_addr'], grp[0], read=grp[1])
     dat = dat[1:]
     if reg['fmt'].startswith('['):
@@ -242,7 +250,7 @@ def write_reg(name, str_, timeout=0.8, retry=3):
             dat = str2reg(dat, reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show'], str_, i)
     else:
         dat = str2reg(dat, reg['addr'] - grp[0], reg['fmt'], reg['show'], str_, 0)
-    cd_reg_rw(csa['dev_addr'], grp[0], write=dat, timeout=timeout, retry=retry)
+    cd_reg_rw(csa['dev_addr'], grp[0], write=dat)
 
 
 
@@ -252,7 +260,7 @@ if __name__ == "__main__":
     if reg_name != None:
         if reg_val == None:
             print(read_reg(reg_name))
-        else:
+        elif not csa['pretend']:
             write_reg(reg_name, reg_val)
 
     elif export_file != None:
@@ -260,7 +268,8 @@ if __name__ == "__main__":
         for name in csa['regs']:
             if get_rw_grp(name, 'r') != None:
                 reg_str[name] = read_reg(name)
-        pprint.pp(reg_str)
+        if not csa['quiet']:
+            pprint.pp(reg_str)
         out_data = umsgpack.packb({'version': 'cdgui v0', 'reg_str': reg_str})
         if export_file:
             with open(export_file, 'wb') as f:
@@ -272,21 +281,26 @@ if __name__ == "__main__":
         in_data = umsgpack.unpackb(in_file)
         for name in in_data['reg_str']:
             val = in_data['reg_str'][name]
-            print(f'  {name}: {val}')
+            if not csa['quiet']:
+                print(f'  {name}: {val}')
             if get_rw_grp(name, 'w') != None:
                 if get_rw_grp(name, 'r') != None:
                     ori = read_reg(name)
                     if ori != val:
-                        print(f'    + write: {ori} -> {val}')
-                        write_reg(name, val)
+                        if not csa['quiet']:
+                            print(f'    + write: {ori} -> {val}')
+                        if not csa['pretend']:
+                            write_reg(name, val)
                 else:
-                    print(f'    + write only: {val}')
-                    write_reg(name, val)
+                    if not csa['quiet']:
+                        print(f'    + write only: {val}')
+                    if not csa['pretend']:
+                        write_reg(name, val)
             else:
                 if get_rw_grp(name, 'r') != None:
                     ori = read_reg(name)
-                    if ori != val:
+                    if ori != val and not csa['quiet']:
                         print(f'    - write disabled: current: {ori}')
-                else:
+                elif not csa['quiet']:
                     print(f'    - write & read disabled')
 

@@ -59,16 +59,16 @@ csa = {
 }
 
 # only support dev address in format 80:NN:MM and a0:NN:MM
-# proxy to html: ('/80:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'seq': seq, 'dat': payloads }
+# proxy to html: ('/80:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
 async def proxy_rx_rpt(rx):
-    src, dst, dat, seq = rx
-    ret = await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/{src[0]}', dst[1]))
+    src, dst, dat = rx
+    ret = await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/{src[0]}', dst[1]))
     if ret:
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')
     
     logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
     if src[1] == 0x9 or src[1] == 0x1: # dbg and dev_info msg also send to index.html
-        await csa['proxy'].sendto({'src': src, 'seq': seq, 'dat': dat}, (f'/', 0x9))
+        await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/', 0x9))
 
 def proxy_rx():
     logger.info('start proxy_rx')
@@ -89,7 +89,7 @@ def proxy_rx():
 
 _thread.start_new_thread(proxy_rx, ())
 
-# proxy to dev, ('/80:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'seq': seq, 'dat': payloads }
+# proxy to dev, ('/80:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
 async def cdbus_proxy_service():
     while True:
         frame = None
@@ -99,9 +99,9 @@ async def cdbus_proxy_service():
             logger.warning(f'proxy_tx: wc_src err: {wc_src}')
             return
         try:
-            seq = wc_dat['seq'] if 'seq' in wc_dat else None
+            dst_mac = int(wc_dat['dst'][0].split(':')[2], 16)
             frame = cdnet_l1.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
-                                       wc_dat['dst'], wc_dat['dat'], csa['mac'], seq)
+                                       wc_dat['dst'], wc_dat['dat'], csa['mac'], dst_mac)
             logger.log(logging.VERBOSE, f'proxy_tx frame: {frame}')
         except:
             logger.warning('proxy_tx: fmt err')

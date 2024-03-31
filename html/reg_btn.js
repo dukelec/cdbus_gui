@@ -256,7 +256,7 @@ function reg_rw2reg_cfg(list) {
 async function button_edit() {
     if (document.getElementById('button_edit').style.background == '') {
         document.getElementById('button_edit').style.background = 'yellow';
-        document.getElementById('button_subs').style.display = 'inline-block';
+        document.getElementById('button_subs').style.display = 'inline';
         
         for (let i = 0; i < csa.cfg.reg.length; i++) {
             let reg = csa.cfg.reg[i];
@@ -435,7 +435,7 @@ document.getElementById(`enable_on`).onclick = () => { set_enable(true); };
 document.getElementById(`enable_off`).onclick = () => { set_enable(false); };
 document.getElementById(`button_all`).onclick = button_all;
 document.getElementById(`button_def`).onclick = button_def;
-document.getElementById('less_reg').onchange = init_reg_rw;
+document.getElementById(`less_reg`).onchange = init_reg_rw;
 
 
 export { init_reg_list, init_reg_rw, cal_reg_rw, reg_idx_by_name };

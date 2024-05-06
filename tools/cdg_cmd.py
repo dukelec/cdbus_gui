@@ -152,8 +152,8 @@ def cd_read_info(dev_addr, timeout=0.8):
 
 
 def list_all_reg():
-    for i in range(len(csa['cfg']['reg'])):
-        r = csa['cfg']['reg'][i]
+    for i in range(len(csa['cfg']['reg']['list'])):
+        r = csa['cfg']['reg']['list'][i]
         #print(r)
         fmt = r[2]
         show = r[3]
@@ -174,7 +174,7 @@ def list_all_reg():
         elif fmt.startswith('{'):
             num = int(top_len / fmt_len)
             for n in range(num):
-                #print(top_name, n)
+                #print(f'{top_name}.{n}')
                 csa['regs'][f'{top_name}.{n}'] = {
                     'fmt': fmt,
                     'show': show,
@@ -188,8 +188,8 @@ def list_all_reg():
 
 
 def get_reg_info(name):
-    for i in range(len(csa['cfg']['reg'])):
-        r = csa['cfg']['reg'][i]
+    for i in range(len(csa['cfg']['reg']['list'])):
+        r = csa['cfg']['reg']['list'][i]
         if r[4] == name:
             return r
     return None
@@ -198,7 +198,7 @@ def get_reg_info(name):
 def get_rw_grp(name, rw='r'):
     if name not in csa['regs']:
         return None
-    grps = csa['cfg'][f'reg_{rw}']
+    grps = csa['cfg']['reg'][f'reg_{rw}']
     addr_len_list = []
     for i in range(len(grps)):
         g = grps[i]
@@ -271,7 +271,7 @@ if __name__ == "__main__":
                 reg_str[name] = read_reg(name)
         if not csa['quiet']:
             pprint.pp(reg_str)
-        out_data = umsgpack.packb({'version': 'cdgui v0', 'reg_str': reg_str})
+        out_data = umsgpack.packb({'version': 'cdgui v1', 'reg': reg_str})
         if export_file:
             with open(export_file, 'wb') as f:
                 f.write(out_data)
@@ -280,8 +280,8 @@ if __name__ == "__main__":
         with open(import_file, 'rb') as f:
             in_file = f.read()
         in_data = umsgpack.unpackb(in_file)
-        for name in in_data['reg_str']:
-            val = in_data['reg_str'][name]
+        for name in in_data['reg']:
+            val = in_data['reg'][name]
             if not csa['quiet']:
                 print(f'  {name}: {val}')
             if get_rw_grp(name, 'w') != None:

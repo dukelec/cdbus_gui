@@ -4,13 +4,13 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
+import { L } from '../utils/lang.js'
 import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from './utils/helper.js';
-//import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
-import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
-import { Idb } from './utils/idb.js';
-import { csa } from './ctrl.js';
+         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
+//import { konva_zoom, konva_responsive } from '../utils/konva_helper.js';
+import { CDWebSocket, CDWebSocketNS } from '../utils/cd_ws.js';
+import { Idb } from '../utils/idb.js';
+import { csa, alloc_port } from '../common.js';
 
 
 async function pic_service() {
@@ -19,7 +19,7 @@ async function pic_service() {
     let dat_cnt = 0;
     
     while (true) {
-        let msg = await csa.pic_sock.recvfrom();
+        let msg = await csa.pic.sock.recvfrom();
         let hdr = msg[0].dat[0]; // [5:4] FRAGMENT: 00: error, 01: first, 10: more, 11: last, [3:0]: cnt
         let dat = msg[0].dat.slice(1);
         
@@ -56,40 +56,29 @@ async function pic_service() {
     }
 }
 
-async function dbg_service() {
-    document.getElementById('log_clear').onclick = () => {
-        document.getElementById('dev_log').innerHTML = '';
-    };
-    document.getElementById('log_blank').onclick = () => {
-        document.getElementById('dev_log').innerHTML += '<br>';
-        if (document.getElementById('scroll_end').checked)
-            document.getElementById('dev_log').scrollBy(0, 1000);
-    };
 
-    let ansi_up = new AnsiUp;
-    while (true) {
-        let dat = await csa.dbg_sock.recvfrom();
-        console.log('dbg get:', dat2str(dat[0].dat.slice(1)));
-        let elem = document.getElementById('dev_log');
-        let txt = `${timestamp()}: ${dat2str(dat[0].dat.slice(1))}`;
-        let html = ansi_up.ansi_to_html(txt);
-        //elem.innerHTML += html + '<br>';
-        elem.insertAdjacentHTML('beforeend', html + '<br>');
-        if (document.getElementById('scroll_end').checked)
-            elem.scrollBy(0, 1000);
-        if (elem.children.length > document.getElementById('dbg_len').value) {
-            elem.firstChild.remove();
-            elem.firstElementChild.remove();
-        }
+async function init_pic() {
+    if (!csa.cfg.pic || !csa.cfg.pic.port) {
+        console.info(`skip init_pic`);
+        return;
     }
+    csa.pic = {};
+    csa.plugins.push('pic');
+
+    let port = await alloc_port(csa.cfg.pic.port);
+    console.log(`init_pic, alloc port: ${port}`);
+    csa.pic.sock = new CDWebSocket(csa.ws_ns, port);
+
+    let html = `
+        <div class="container" id="pic_show">
+            <h2 class="title is-size-4">Picture <span class="is-size-6" id="pic_cnt">- #--</span></h2>
+            <img id="pic_id" style="min-width: 320px; min-height: 240px; max-width: 100%;"></img>
+            <br><br>
+        </div>`;
+    document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
+
+    pic_service();
 }
 
-function init_pic() {
-    document.getElementById('pic_show').innerHTML = `
-        <h2 class="title is-size-4">Picture <span class="is-size-6" id="pic_cnt">- #--</span></h2>
-        <img id="pic_id" style="min-width: 320px; min-height: 240px; max-width: 100%;"></img>
-        <br><br>`;
-}
-
-export { pic_service, init_pic };
+export { init_pic };
 

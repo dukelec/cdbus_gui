@@ -34,6 +34,7 @@ from cdnet.utils.serial_get_port import get_ports
 from cdnet.dispatch import *
 from cdnet.parser import *
 
+
 args = CdArgs()
 if args.get("--help", "-h") != None:
     print(__doc__)
@@ -55,7 +56,8 @@ csa = {
     'net': 0x00,    # local net
     'mac': 0x00,    # local mac
     'proxy': None,  # cdbus frame proxy socket
-    'cfgs': []      # config list
+    'cfgs': [],     # config list
+    'palloc': {}    # ports alloc, url_path: []
 }
 
 # only support dev address in format 80:NN:MM and a0:NN:MM
@@ -110,7 +112,7 @@ async def cdbus_proxy_service():
             csa['dev'].send(frame)
 
 
-async def dev_service(): # cdbus hw setup
+async def dev_service(): # cdbus tty setup
     sock = CDWebSocket(ws_ns, 'dev')
     while True:
         dat, src = await sock.recvfrom()
@@ -148,15 +150,15 @@ async def dev_service(): # cdbus hw setup
             await sock.sendto('err: dev: unknown cmd', src)
             
 
-async def file_service(): # config r/w
+async def cfgs_service(): # read configs
     for cfg in os.listdir('configs'):
         if cfg.endswith('.json'):
             csa['cfgs'].append(cfg)
     
-    sock = CDWebSocket(ws_ns, 'file')
+    sock = CDWebSocket(ws_ns, 'cfgs')
     while True:
         dat, src = await sock.recvfrom()
-        logger.debug(f'file ser: {dat}')
+        logger.debug(f'cfgs ser: {dat}')
         
         if dat['action'] == 'get_cfgs':
             await sock.sendto(csa['cfgs'], src)
@@ -166,22 +168,46 @@ async def file_service(): # config r/w
                 c = json5.load(c_file)
                 await sock.sendto(c, src)
         
-        elif dat['action'] == 'get_ihex':
-            ret = []
-            ih = IntelHex()
-            try:
-                ih.loadhex(dat['path'])
-                segs = ih.segments()
-                logger.info(f'parse ihex file, segments: {[list(map(hex, l)) for l in segs]} (end addr inclusive)')
-                for seg in segs:
-                    s = [seg[0], ih.tobinstr(seg[0], size=seg[1]-seg[0])]
-                    ret.append(s)
-            except Exception as err:
-                logger.error(f'parse ihex file error: {err}')
-            await sock.sendto(ret, src)
+        else:
+            await sock.sendto('err: cfgs: unknown cmd', src)
+
+
+async def port_service(): # alloc ports
+    sock = CDWebSocket(ws_ns, 'port')
+    while True:
+        dat, src = await sock.recvfrom()
+        path = src[0]
+        logger.debug(f'port ser: {dat}, path: {path}')
+        
+        if path not in csa['palloc']:
+            csa['palloc'][path] = []
+        
+        if dat['action'] == 'clr_all':
+            logger.debug(f'port clr_all')
+            csa['palloc'][path] = []
+            await sock.sendto('successed', src)
+        
+        elif dat['action'] == 'get_port':
+            if dat['port']:
+                if dat['port'] not in csa['palloc'][path]:
+                    csa['palloc'][path].append(dat['port'])
+                    logger.debug(f'port alloc {dat["port"]}')
+                    await sock.sendto(dat['port'], src)
+                else:
+                    logger.error(f'port alloc error')
+                    await sock.sendto(-1, src)
+            else:
+                p = -1
+                for i in range(0x80, 0x100):
+                    if i not in csa['palloc'][path]:
+                        p = i
+                        csa['palloc'][path].append(p)
+                        break
+                logger.debug(f'port alloc: {p}')
+                await sock.sendto(p, src)
         
         else:
-            await sock.sendto('err: file: unknown cmd', src)
+            await sock.sendto('err: port: unknown cmd', src)
 
 
 async def open_brower():
@@ -196,9 +222,14 @@ if __name__ == "__main__":
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
     csa['async_loop'] = asyncio.get_event_loop();
     csa['async_loop'].create_task(start_web())
-    csa['async_loop'].create_task(file_service())
+    csa['async_loop'].create_task(cfgs_service())
     csa['async_loop'].create_task(dev_service())
+    csa['async_loop'].create_task(port_service())
     csa['async_loop'].create_task(cdbus_proxy_service())
+    
+    from plugins.iap import iap_init
+    iap_init(csa)
+    
     #csa['async_loop'].create_task(open_brower())
     logger.info('Please open url: http://localhost:8910')
     csa['async_loop'].run_forever()

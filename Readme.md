@@ -25,7 +25,7 @@ The web side is bare javascript (vanilla, es6), so you don't need to learn a spe
 The protocol between mcu and python is cdnet, currently only the minimal version of the level 1 format is used.  
 The protocol between python and the web is similar to cdnet, with arbitrary strings used instead of addresses and ports.  
 
-The firmware on the mcu side of the following demonstration, as well as the usage of cdnet, can be roughly referred to in this project: https://github.com/dukelec/stepper_motor_controller  
+The firmware on the mcu side of the following demonstration, as well as the usage of cdnet, can be roughly referred to in this project: https://github.com/dukelec/cdstep  
 
 
 ### Index Page
@@ -113,24 +113,20 @@ Finally, there is the json configuration:
 As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilitates the use of strings to represent different addresses (for efficiency, mcu uses a 3-byte uint8_t array) and is defined as follows.
 
 ```
-/* CDNET address format:
+/* CDNET address string formats:
 *
 *              local link     unique local    multicast
 * level0:       00:NN:MM
 * level1:       80:NN:MM        a0:NN:MM       f0:MH:ML
-*  `-with seq:  88:NN:MM        a8:NN:MM       f8:MH:ML
-* level2:       c0:NN:MM
-*  `-with seq:  c8:NN:MM
 *
 * Notes:
-*   NN: net_id, MM: mac_addr, MH+ML: multicast_id
+*   NN: net_id, MM: mac_addr, MH+ML: multicast_id (H: high byte, L: low byte)
 */
 ```
 
  - Broadcast and multicast can also use the "local link" format, there is no need to use the "multicast" format for simple occasions.
  - Generally speaking, it is good to use "80" for simple occasions. And the one starting with "00" is mainly to reduce one or two characters when knocking bare data for testing, which is not recommended for machines.
  - "unique local" is used only when cross-segment, for example, there are multiple network segments, each subnet has multiple devices.
- - level2 is used to transfer other arbitrary data, generally used to transfer the real tcp/ip protocol between multiple computers, group computer networks.
 
 The cdnet ip address can be directly mapped to a standard ipv6 address, so that the computer can interact with mcu through standard udp programming, and the code on the mcu side does not need to change, so the overhead is very small and there is no need to run the ipv6 protocol stack.
 

@@ -4,10 +4,10 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
+import { L } from '../utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat,
-         read_file, download, readable_size, readable_float, blob2dat } from './utils/helper.js';
-import { csa } from './ctrl.js';
+         read_file, download, readable_size, readable_float, blob2dat } from '../utils/helper.js';
+import { csa } from '../common.js';
 
 const R_ADDR = 0; const R_LEN = 1; const R_FMT = 2;
 const R_SHOW = 3; const R_ID = 4; const R_DESC = 5;
@@ -102,26 +102,26 @@ function reg2str(dat, ofs, fmt, show) {
 
 async function read_reg_val(r_idx, read_dft=false) {
     set_input_bg('r', r_idx, '#D5F5E3');
-    let addr = csa.dat.reg_r[r_idx][0];
-    let len = csa.dat.reg_r[r_idx][1];
+    let addr = csa.reg.reg_r[r_idx][0];
+    let len = csa.reg.reg_r[r_idx][1];
     
     let dat = new Uint8Array([read_dft ? 0x01 : 0x00, 0, 0, len]);
     let dv = new DataView(dat.buffer);
     dv.setUint16(1, addr, true);
 
-    csa.proxy_sock_regr.flush();
-    await csa.proxy_sock_regr.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+    csa.reg.proxy_sock_regr.flush();
+    await csa.reg.proxy_sock_regr.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('read reg wait ret');
-    let ret = await csa.proxy_sock_regr.recvfrom(500);
+    let ret = await csa.reg.proxy_sock_regr.recvfrom(500);
     console.log('read reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         if (read_dft)
-            csa.dat.reg_dft_r[r_idx] = true;
+            csa.reg.reg_dft_r[r_idx] = true;
         
         let start = addr;
         let found_start = false;
-        for (let i = 0; i < csa.cfg.reg.length; i++) {
-            let r = csa.cfg.reg[i];
+        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
+            let r = csa.cfg.reg.list[i];
             
             if (!found_start) {
                 if (start == r[R_ADDR]) {
@@ -179,7 +179,7 @@ async function read_reg_val(r_idx, read_dft=false) {
         return -1;
     }
     
-    if (!read_dft && !csa.dat.reg_dft_r[r_idx]) {
+    if (!read_dft && !csa.reg.reg_dft_r[r_idx]) {
         console.log('read default');
         return await read_reg_val(r_idx, true);
     } else {
@@ -264,21 +264,21 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
 async function write_reg_val(w_idx) {
     set_input_bg('w', w_idx, '#D6EAF8');
     let has_empty = false;
-    let addr = csa.dat.reg_w[w_idx][0];
-    let len = csa.dat.reg_w[w_idx][1];
+    let addr = csa.reg.reg_w[w_idx][0];
+    let len = csa.reg.reg_w[w_idx][1];
     
-    if (!csa.dat.reg_rbw[w_idx]) { // read-before-write
+    if (!csa.reg.reg_rbw[w_idx]) { // read-before-write
         let dat = new Uint8Array([0x00, 0, 0, len]);
         let dv = new DataView(dat.buffer);
         dv.setUint16(1, addr, true);
         
-        csa.proxy_sock_regw.flush();
-        await csa.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+        csa.reg.proxy_sock_regw.flush();
+        await csa.reg.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('read-before-write wait ret');
-        let ret = await csa.proxy_sock_regw.recvfrom(500);
+        let ret = await csa.reg.proxy_sock_regw.recvfrom(500);
         console.log('read-before-write ret', ret);
         if (ret && ret[0].dat[0] == 0x80) {
-            csa.dat.reg_rbw[w_idx] = ret[0].dat.slice(1);
+            csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1);
         } else {
             console.log('read-before-write err');
             set_input_bg('w', w_idx, '#F5B7B180');
@@ -290,14 +290,14 @@ async function write_reg_val(w_idx) {
     let dv = new DataView(dat.buffer);
     dv.setUint16(1, addr, true);
     dat[0] = 0x20;
-    dat.set(csa.dat.reg_rbw[w_idx], 3);
+    dat.set(csa.reg.reg_rbw[w_idx], 3);
     
     console.info('before write reg:', dat2hex(dat, ' '));
 
     let start = addr;
     let found_start = false;
-    for (let i = 0; i < csa.cfg.reg.length; i++) {
-        let r = csa.cfg.reg[i];
+    for (let i = 0; i < csa.cfg.reg.list.length; i++) {
+        let r = csa.cfg.reg.list[i];
         
         if (!found_start) {
             if (start == r[R_ADDR]) {
@@ -345,10 +345,10 @@ async function write_reg_val(w_idx) {
     }
     
     console.info('write reg:', dat2hex(dat, ' '));
-    csa.proxy_sock_regw.flush();
-    await csa.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+    csa.reg.proxy_sock_regw.flush();
+    await csa.reg.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('write reg wait ret');
-    let ret = await csa.proxy_sock_regw.recvfrom(500);
+    let ret = await csa.reg.proxy_sock_regw.recvfrom(500);
     console.log('write reg ret', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         console.log('write reg succeeded');
@@ -364,14 +364,14 @@ async function write_reg_val(w_idx) {
 
 
 function set_input_bg(rw='r', idx, bg) {
-    let reg_rw = rw == 'r' ? csa.dat.reg_r : csa.dat.reg_w;
+    let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
     let addr = reg_rw[idx][0];
     let len = reg_rw[idx][1];
     
     let start = addr;
     let found_start = false;
-    for (let i = 0; i < csa.cfg.reg.length; i++) {
-        let r = csa.cfg.reg[i];
+    for (let i = 0; i < csa.cfg.reg.list.length; i++) {
+        let r = csa.cfg.reg.list[i];
         
         if (!found_start) {
             if (start == r[R_ADDR]) {

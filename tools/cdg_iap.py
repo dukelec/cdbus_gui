@@ -91,7 +91,6 @@ def read_flash(addr, _len):
 def write_flash(addr, dat):
     cur = addr
     ret = b''
-    _erase_flash(addr, len(dat))
     while True:
         size = min(sub_size, len(dat)-(cur-addr))
         if size == 0:
@@ -158,6 +157,9 @@ if __name__ == "__main__":
             except Exception as err:
                 csa['logger'].error(f'parse ihex file error: {err}')
                 exit(-1)
+
+            for i in range(len(dat)):
+                _erase_flash(dat[i][0], len(dat[i][1]))
 
             for i in range(len(dat)):
                 print(f'write {len(dat[i][1])} bytes @{dat[i][0]:08x} from file', in_file)

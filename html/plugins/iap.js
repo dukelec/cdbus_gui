@@ -4,11 +4,35 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
+import { L } from '../utils/lang.js'
 import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from './utils/helper.js';
-import { Idb } from './utils/idb.js';
-import { csa } from './ctrl.js';
+         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
+import { CDWebSocket } from '../utils/cd_ws.js';
+import { Idb } from '../utils/idb.js';
+import { csa, alloc_port } from '../common.js';
+
+
+let html = `
+    <div class="container">
+        <h2 class="title is-size-4">IAP</h2>
+        <input type="text" size="85" placeholder="Full path of intel hex file on system" id="iap_path">
+        <select id="iap_action" value="bl_full">
+            <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
+            <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
+            <option value="bl">${L('Reboot')} -> BL (${L('Enter')} BootLoader)</option>
+            <option value="flash">${L('Flash Only')}</option>
+        </select>
+        <select id="iap_check" value="none">
+            <option value="none">${L('No Check')}</option>
+            <option value="read">${L('Read Back Check')}</option>
+            <option value="crc">${L('Read CRC Check')}</option>
+        </select>
+        <button class="button is-small" id="iap_start">${L('Start')}</button>
+        <button class="button is-small" id="iap_stop" disabled>${L('Stop')}</button> <br>
+        
+        <span>${L('Progress')}</span>: <span id="iap_epoch"></span> <span id="iap_progress">--</span>
+    </div>
+    <br>`;
 
 
 async function flash_erase(addr, len) {
@@ -18,10 +42,10 @@ async function flash_erase(addr, len) {
     dv.setUint32(1, addr, true);
     dv.setUint32(5, len, true);
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
-    let ret = await csa.proxy_sock_iap.recvfrom(5000);
+    let ret = await csa.iap.proxy_sock.recvfrom(5000);
     console.log('flash_erase ret', ret);
     if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
         return 0
@@ -38,10 +62,10 @@ async function flash_write_blk(addr, dat) {
     dv.setUint32(1, addr, true);
     d.set(dat, 5);
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
-    let ret = await csa.proxy_sock_iap.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_write_blk ret', ret);
     if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
         return 0
@@ -74,10 +98,10 @@ async function flash_read_blk(addr, len) {
     dv.setUint32(1, addr, true);
     d[5] = len;
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
-    let ret = await csa.proxy_sock_iap.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_blk ret', ret);
     if (ret && ret[0].dat[0] == 0x80 && ret[0].dat.length == len + 1) {
         return ret[0].dat.slice(1);
@@ -111,10 +135,10 @@ async function flash_read_crc(addr, len) {
     dv.setUint32(1, addr, true);
     dv.setUint32(5, len, true);
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
-    let ret = await csa.proxy_sock_iap.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_crc', ret);
     if (ret && ret[0].dat[0] == 0x80) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
@@ -149,10 +173,10 @@ async function keep_in_bl() {
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.keep_bl, true);
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
     console.log('keep_in_bl wait ret');
-    let ret = await csa.proxy_sock_iap.recvfrom(200);
+    let ret = await csa.iap.proxy_sock.recvfrom(200);
     console.log('keep_in_bl ret', ret);
     if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
         console.log('keep_in_bl succeeded');
@@ -168,10 +192,10 @@ async function do_reboot() {
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.reboot, true);
     
-    csa.proxy_sock_iap.flush();
-    await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
+    csa.iap.proxy_sock.flush();
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
     console.log('reboot wait ret');
-    let ret = await csa.proxy_sock_iap.recvfrom(200);
+    let ret = await csa.iap.proxy_sock.recvfrom(200);
     console.log('reboot ret', ret);
 }
 
@@ -200,7 +224,7 @@ async function do_iap() {
     let msg = null;
     if (action != "bl") {
         csa.cmd_sock.flush();
-        await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'file']);
+        await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'iap']);
         msg = await csa.cmd_sock.recvfrom(500);
         if (!msg || !msg[0].length) {
             alert('invalid ihex file');
@@ -214,10 +238,10 @@ async function do_iap() {
     let reboot_cnt = 0;
     while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
     
-        csa.proxy_sock_iap.flush();
-        await csa.proxy_sock_iap.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+        csa.iap.proxy_sock.flush();
+        await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
         console.log('read info wait ret');
-        let ret = await csa.proxy_sock_iap.recvfrom(200);
+        let ret = await csa.iap.proxy_sock.recvfrom(200);
         console.log('read info ret', ret);
         if (ret && ret[0].src[1] == 0x0001) {
             let s = dat2str(ret[0].dat.slice(1));
@@ -335,10 +359,19 @@ async function do_iap() {
 };
 
 async function init_iap() {
-    let iap_cfg = await csa.db.get('tmp', `iap_cfg.${csa.arg.name}`);
+    csa.iap = {};
+    csa.plugins.push('iap');
+    
+    document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
+    
+    let iap_cfg = await csa.db.get('tmp', `${csa.arg.name}/iap.cfg`);
     let path = document.getElementById('iap_path');
     let check = document.getElementById('iap_check');
     let action = document.getElementById('iap_action');
+    
+    let port = await alloc_port();
+    console.log(`init_iap, alloc port: ${port}`);
+    csa.iap.proxy_sock = new CDWebSocket(csa.ws_ns, port);
     
     if (iap_cfg) {
         path.value = iap_cfg.path;
@@ -347,17 +380,17 @@ async function init_iap() {
     }
     
     path.onchange = check.onchange = action.onchange = async () => {
-        await csa.db.set('tmp', `iap_cfg.${csa.arg.name}`, {
+        await csa.db.set('tmp', `${csa.arg.name}/iap.cfg`, {
             path: path.value,
             check: check.value,
             action: action.value
         });
     };
+    
+    document.getElementById('iap_start').onclick = do_iap;
+    document.getElementById('iap_stop').onclick = stop_iap;
 }
 
-
-document.getElementById('iap_start').onclick = do_iap;
-document.getElementById('iap_stop').onclick = stop_iap;
 
 export { init_iap };
 

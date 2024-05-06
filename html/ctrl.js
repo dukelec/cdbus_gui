@@ -7,36 +7,15 @@
 import { L } from './utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
-//import { konva_zoom, konva_responsive } from './utils/konva_helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
-import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
-         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { init_reg_list, init_reg_rw, cal_reg_rw } from './reg_btn.js';
-import { init_plots } from './plot.js';
-import { dbg_raw_service, dbg_service } from './dbg.js';
-import { init_pic, pic_service } from './pic.js';
-import { init_iap } from './iap.js';
-import { export_data, import_data } from './export.js';
-
-let csa = {
-    arg: {},            // url args
-    db: null,
-    
-    ws_ns: null,
-    cmd_sock: null,
-    //proxy_sock_xxx: null,
-    dbg_sock: null,     // port 9 debug
-    dbg_raw_sock: null, // port 0xa debug
-    
-    cfg: {},            // device config
-    dat: {
-        reg_r: null,
-        reg_w: null,
-        reg_dft_r: [],  // first read flag
-        reg_rbw: []     // read before write data
-    },                  // runtime data
-};
+import { csa, alloc_port } from './common.js';
+import { init_reg } from './plugins/reg.js';
+import { init_plot } from './plugins/plot.js';
+import { init_dbg } from './plugins/dbg.js';
+import { init_pic } from './plugins/pic.js';
+import { init_iap } from './plugins/iap.js';
+import { init_export } from './plugins/export.js';
 
 
 function init_ws() {
@@ -48,24 +27,18 @@ function init_ws() {
         csa.ws_ns.connections['server'] = ws;
         
         csa.cmd_sock.flush();
-        await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'file']);
+        await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'cfgs']);
         let dat = await csa.cmd_sock.recvfrom(500);
-        console.log('get_cfg ret', dat);
+        console.log('get_cfg ret', dat[0]);
         csa.cfg = dat[0];
         
-        dbg_service();
-        init_reg_list();
-        await init_reg_rw();
-        //cal_reg_rw('r');
-        init_plots();
-        dbg_raw_service();
-        init_iap();
-        if (csa.cfg.pic && csa.cfg.pic.port) {
-            console.info(`bind pic sock: ${csa.cfg.pic.port}`);
-            csa.pic_sock = new CDWebSocket(csa.ws_ns, csa.cfg.pic.port);
-            init_pic();
-            pic_service();
-        }
+        await alloc_port('clr_all');
+        await init_reg();
+        await init_dbg();
+        await init_plot();
+        await init_pic();
+        await init_iap();
+        await init_export();
         document.getElementById('dev_read_info').click();
     }
     ws.onmessage = async function(evt) {
@@ -124,42 +97,6 @@ document.getElementById('dev_read_info').onclick = async function() {
     }
 };
 
-document.getElementById('dev_read_all').onclick = async function() {
-    document.getElementById('dev_read_all').disabled = true;
-    for (let i = 0; i < csa.dat.reg_r.length; i++) {
-        let ret = await read_reg_val(i);
-        if (ret)
-            break;
-    }
-    document.getElementById('dev_read_all').disabled = false;
-};
-
-document.getElementById('dev_write_all').onclick = async function() {
-    document.getElementById('dev_write_all').disabled = true;
-    for (let i = 0; i < csa.dat.reg_w.length; i++) {
-        let ret = await write_reg_val(i);
-        if (ret)
-            break;
-    }
-    document.getElementById('dev_write_all').disabled = false;
-};
-
-document.getElementById(`export_btn`).onclick = export_data;
-document.getElementById(`import_btn`).onclick = import_data;
-
-let read_timer = null;
-async function period_read() {
-    if (!document.getElementById('keep_read').checked) {
-        if (read_timer)
-            clearTimeout(read_timer);
-        read_timer = null;
-        return;
-    }
-    await document.getElementById('dev_read_all').onclick();
-    read_timer = setTimeout(period_read, document.getElementById('read_period').value);
-}
-document.getElementById(`keep_read`).onclick = period_read;
-
 
 window.addEventListener('load', async function() {
     console.log("load ctrl");
@@ -188,12 +125,7 @@ window.addEventListener('load', async function() {
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
     csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, 0x00f0);
-    csa.proxy_sock_regr = new CDWebSocket(csa.ws_ns, 0xcdcd); // default port
-    csa.proxy_sock_regw = new CDWebSocket(csa.ws_ns, 0x00f1);
-    csa.proxy_sock_plot = new CDWebSocket(csa.ws_ns, 0x00f2);
-    csa.proxy_sock_iap = new CDWebSocket(csa.ws_ns, 0x00f3);
-    csa.dbg_sock = new CDWebSocket(csa.ws_ns, 9);
-    csa.dbg_raw_sock = new CDWebSocket(csa.ws_ns, 0xa);
+    
     csa.db = await new Idb();
     init_ws();
 });

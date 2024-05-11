@@ -538,11 +538,14 @@ async function init_reg() {
             if (r[R_FMT][0] == '{') {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
-                for (let n = 0; n < count; n++)
-                    reg_str[`${r[R_ID]}.${n}`] = document.getElementById(`reg.${r[R_ID]}.${n}`).value;
+                for (let n = 0; n < count; n++) {
+                    if (document.getElementById(`reg.${r[R_ID]}.${n}`).value != '')
+                        reg_str[`${r[R_ID]}.${n}`] = document.getElementById(`reg.${r[R_ID]}.${n}`).value;
+                }
             
             } else {
-                reg_str[`${r[R_ID]}`] = document.getElementById(`reg.${r[R_ID]}`).value;
+                if (document.getElementById(`reg.${r[R_ID]}`).value != '')
+                    reg_str[`${r[R_ID]}`] = document.getElementById(`reg.${r[R_ID]}`).value;
             }
             
         }

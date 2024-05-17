@@ -69,7 +69,7 @@ async def proxy_rx_rpt(rx):
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')
     
     logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
-    if src[1] == 0x9 or src[1] == 0x1: # dbg and dev_info msg also send to index.html
+    if (src[1] == 0x9 or dst[1] == 0x9) or src[1] == 0x1: # dbg and dev_info msg also send to index.html
         await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/', 0x9))
 
 def proxy_rx():

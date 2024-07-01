@@ -40,7 +40,7 @@ async function dbg_service() {
         let addition = is_index ? ` [${dat[0].src[0]}]` : '';
         let txt = `${timestamp()}${addition}: ${dat2str(dat[0].dat.slice(1))}`;
         let html = ansi_up.ansi_to_html(txt);
-        html = html.replaceAll(' ', '&nbsp;');
+        html = html.replaceAll('  ', ' &nbsp;');
         html = html.replaceAll('\t', '&nbsp;'.repeat(4));
         html = html.replace(/\n$/, ''); // remove end newline
         html = html.replaceAll('\n', '<br>' + '&nbsp;'.repeat(is_index ? 25 : 14));

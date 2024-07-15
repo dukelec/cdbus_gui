@@ -106,7 +106,6 @@ function update_reg_rw_btn(rw='r') {
         btn.style['border-radius'] = '';
         btn.style['border-width'] = '';
         btn.style['background'] = '';
-        btn.style['color'] = '';
         btn.style['margin-top'] = '';
         btn.style['margin-bottom'] = '';
         btn.onclick = null;
@@ -357,12 +356,14 @@ function set_enable(on) {
             }
             
             if (btn.style.color) {
-                btn.style['margin-top'] = '';
-                btn.style['margin-bottom'] = '';
-                if (btn_pre)
-                    btn_pre.style['margin-bottom'] = '';
-                if (btn_next)
-                    btn_next.style['margin-top'] = '';
+                if (!on) {
+                    btn.style['margin-top'] = '';
+                    btn.style['margin-bottom'] = '';
+                    if (btn_pre)
+                        btn_pre.style['margin-bottom'] = '';
+                    if (btn_next)
+                        btn_next.style['margin-top'] = '';
+                }
                 btn.style.background = on ? color : '';
             }
         }
@@ -385,6 +386,18 @@ function button_all() {
             let reg = csa.cfg.reg.list[i];
             let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
             btn.style.color = 'yellow';
+        }
+    }
+}
+
+function button_none() {
+    for (let rw of ['r', 'w']) {
+        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
+        
+        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
+            let reg = csa.cfg.reg.list[i];
+            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            btn.style.color = '';
         }
     }
 }
@@ -474,7 +487,7 @@ async function init_reg() {
                     |
                     <button class="button is-small" id="button_edit">${L('Button Edit')}</button>
                     <div id="button_subs" style="display: none;">
-                    <button class="button is-small" id="group_on">${L('Group')}</button>
+                    <button class="button is-small" id="group_on">${L('Enable')} & ${L('Group')}</button>
                     <button class="button is-small" id="group_off">${L('Ungroup')}</button>
                     <button class="button is-small" id="enable_on">${L('Enable')}</button>
                     <button class="button is-small" id="enable_off">${L('Disable')}</button>
@@ -498,13 +511,13 @@ async function init_reg() {
     init_reg_list();
     await init_reg_rw();
     
-    document.getElementById(`button_edit`).onclick = button_edit;
-    document.getElementById(`group_on`).onclick = () => { set_group(true); };
-    document.getElementById(`group_off`).onclick = () => { set_group(false); };
-    document.getElementById(`enable_on`).onclick = () => { set_enable(true); };
-    document.getElementById(`enable_off`).onclick = () => { set_enable(false); };
+    document.getElementById(`button_edit`).onclick = () => { button_edit(); button_none(); };
+    document.getElementById(`group_on`).onclick = () => { set_enable(true); set_group(true); button_none(); };
+    document.getElementById(`group_off`).onclick = () => { set_group(false); button_none(); };
+    document.getElementById(`enable_on`).onclick = () => { set_enable(true); button_none(); };
+    document.getElementById(`enable_off`).onclick = () => { set_enable(false); button_none(); };
     document.getElementById(`button_all`).onclick = button_all;
-    document.getElementById(`button_def`).onclick = button_def;
+    document.getElementById(`button_def`).onclick = () => { button_none(); button_def(); };
     document.getElementById(`less_reg`).onchange = init_reg_rw;
     
     document.getElementById('dev_read_all').onclick = async function() {

@@ -80,6 +80,7 @@
             [ 0x0219, 1, "b", 0, "cali_encoder_en", "" ],
             [ 0x021a, 1, "b", 0, "anticogging_en", "" ],
             [ 0x021c, 8, "[f]", 0, "anticogging_max_val", "" ],
+            [ 0x0224, 4, "f", 0, "nominal_voltage", "" ],
 
             [ 0x0240, 1, "B", 0, "state", "0: stop, 1: calibrate, 2: cur loop, 3: speed loop, 4: pos loop, 5: t_curve" ],
 
@@ -89,12 +90,12 @@
             [ 0x0250, 4, "f", 0, "cal_v_sq", "v_sq info" ],
             [ 0x0254, 4, "f", 0, "cal_v_sd", "v_sd info" ],
 
-            [ 0x0258, 2, "H", 1, "ori_encoder", "noc_encoder before add offset" ],
+            [ 0x0258, 2, "H", 1, "ori_encoder", "Origin encoder value" ],
             [ 0x025c, 4, "i", 1, "ori_pos", "sen_pos before add offset" ],
 
-            [ 0x0260, 4, "f", 1, "delta_encoder", "encoder value delta" ],
-            [ 0x0264, 2, "H", 1, "noc_encoder", "encoder value" ],
-            [ 0x0266, 2, "H", 1, "sen_encoder", "encoder value filtered" ],
+            [ 0x0260, 4, "f", 1, "delta_encoder", "Encoder value delta" ],
+            [ 0x0264, 2, "H", 1, "nob_encoder", "Encoder value before add bias" ],
+            [ 0x0266, 2, "H", 1, "sen_encoder", "Encoder value filtered" ],
             [ 0x0268, 4, "i", 1, "sen_pos", "multiturn + sen_encoder data" ],
             [ 0x026c, 4, "f", 1, "sen_speed", "delta_encoder filtered" ],
             [ 0x0270, 4, "f", 0, "sen_i_sq", "i_sq from adc" ],
@@ -118,10 +119,11 @@
             [ 0x02a0, 4, "f", 0, "cal_v_sq_avg", "" ],
             [ 0x02ac, 4, "f", 0, "sen_speed_avg", "" ],
             [ 0x02b0, 4, "f", 0, "sen_rpm_avg", "" ],
+            [ 0x02b4, 4, "f", 0, "bus_voltage", "" ],
         ],
         
-        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel","dbg_v"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"]],
-        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tc_pos"],["tc_speed","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec"],["cali_current"],["cali_angle_step"],["cali_run"],["cali_encoder_en","anticogging_max_val"],["state"],["cal_pos"],["cal_speed"],["cal_current"]],
+        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["nominal_voltage"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel","dbg_v"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"],["bus_voltage"]],
+        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tc_pos"],["tc_speed","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec"],["cali_current"],["cali_angle_step"],["cali_run"],["cali_encoder_en","anticogging_en"],["anticogging_max_val"],["nominal_voltage"],["state"],["cal_pos"],["cal_speed"],["cal_current"]],
         "less_r": [["tc_pos"],["tc_speed","tc_accel"],["state","cal_current"]],
         "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"],["cal_speed"],["cal_current"]]
     },

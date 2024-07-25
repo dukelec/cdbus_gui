@@ -142,6 +142,7 @@ if __name__ == "__main__":
             with open(in_file, 'rb') as f:
                 dat = f.read()
             print('write %d bytes @%08x from file' % (len(dat), addr), in_file)
+            _erase_flash(addr, len(dat))
             write_flash(addr, dat)
 
         elif in_file.lower().endswith('.hex'):

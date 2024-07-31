@@ -57,11 +57,12 @@ csa = {
     'mac': 0x00,    # local mac
     'proxy': None,  # cdbus frame proxy socket
     'cfgs': [],     # config list
-    'palloc': {}    # ports alloc, url_path: []
+    'palloc': {},   # ports alloc, url_path: []
+    'l0_last_src_port': None,
+    'l0_last_dst_port': None
 }
 
-# only support dev address in format 80:NN:MM and a0:NN:MM
-# proxy to html: ('/80:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
+# proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
 async def proxy_rx_rpt(rx):
     src, dst, dat = rx
     ret = await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/{src[0]}', dst[1]))
@@ -81,8 +82,16 @@ def proxy_rx():
         frame = csa['dev'].recv(timeout=0.5)
         if frame:
             try:
-                rx = cdnet_l1.from_frame(frame, csa['net'])
-                logger.log(logging.VERBOSE, f'proxy_rx: {frame}')
+                if frame[3] & 0x80:
+                    rx = cdnet_l1.from_frame(frame, csa['net'])
+                    logger.log(logging.VERBOSE, f'proxy_rx l1: {frame}')
+                else:
+                    rx = cdnet_l0.from_frame(frame, csa['net'], csa['l0_last_dst_port'])
+                    if frame[3] & 0x40: # l0 reply
+                        rx = rx[0], (rx[1][0], csa['l0_last_src_port']), rx[2]
+                        csa['l0_last_src_port'] = None
+                        csa['l0_last_dst_port'] = None
+                    logger.log(logging.VERBOSE, f'proxy_rx l0: {frame}')
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
             except:
                 logger.warning('proxy_rx fmt err', frame)
@@ -91,7 +100,7 @@ def proxy_rx():
 
 _thread.start_new_thread(proxy_rx, ())
 
-# proxy to dev, ('/80:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
+# proxy to dev, ('/x0:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
 async def cdbus_proxy_service():
     while True:
         frame = None
@@ -101,10 +110,19 @@ async def cdbus_proxy_service():
             logger.warning(f'proxy_tx: wc_src err: {wc_src}')
             return
         try:
-            dst_mac = int(wc_dat['dst'][0].split(':')[2], 16)
-            frame = cdnet_l1.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
-                                       wc_dat['dst'], wc_dat['dat'], csa['mac'], dst_mac)
-            logger.log(logging.VERBOSE, f'proxy_tx frame: {frame}')
+            if wc_src[0][1:3] != '00':
+                dst_mac = int(wc_dat['dst'][0].split(':')[2], 16)
+                frame = cdnet_l1.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
+                                           wc_dat['dst'], wc_dat['dat'], csa['mac'], dst_mac)
+                logger.log(logging.VERBOSE, f'proxy_tx frame l1: {frame}')
+            else:
+                frame = cdnet_l0.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', CDN_DEF_PORT), \
+                                           wc_dat['dst'], wc_dat['dat'])
+                csa['l0_last_src_port'] = wc_src[1]
+                csa['l0_last_dst_port'] = wc_dat['dst'][1]
+                logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
+                print('csa[l0_last_src_port]:', csa['l0_last_src_port'])
+                print((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', CDN_DEF_PORT), wc_dat['dst'])
         except:
             logger.warning('proxy_tx: fmt err')
         

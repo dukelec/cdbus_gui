@@ -206,7 +206,7 @@ async function plot_set_en() {
         console.log('plot_set_en wait ret');
         let ret = await csa.plot.proxy_sock.recvfrom(500 * (i+1));
         console.log('plot_set_en ret', ret);
-        if (ret && ret[0].dat[0] == 0x80) {
+        if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
             console.log('plot_set_en ok');
             break;
         } else {

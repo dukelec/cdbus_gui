@@ -47,7 +47,7 @@ async function flash_erase(addr, len) {
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
     let ret = await csa.iap.proxy_sock.recvfrom(5000);
     console.log('flash_erase ret', ret);
-    if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
         return 0
     } else {
         console.log('flash_erase err');
@@ -67,7 +67,7 @@ async function flash_write_blk(addr, dat) {
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_write_blk ret', ret);
-    if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
         return 0
     } else {
         console.log('flash_write_blk err');
@@ -103,7 +103,7 @@ async function flash_read_blk(addr, len) {
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_blk ret', ret);
-    if (ret && ret[0].dat[0] == 0x80 && ret[0].dat.length == len + 1) {
+    if (ret && (ret[0].dat[0] & 0x8f) == 0x80 && ret[0].dat.length == len + 1) {
         return ret[0].dat.slice(1);
     } else {
         console.log('flash_read_blk err');
@@ -140,7 +140,7 @@ async function flash_read_crc(addr, len) {
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_crc', ret);
-    if (ret && ret[0].dat[0] == 0x80) {
+    if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
         return ret_dv.getUint16(0, true);
     } else {
@@ -178,7 +178,7 @@ async function keep_in_bl() {
     console.log('keep_in_bl wait ret');
     let ret = await csa.iap.proxy_sock.recvfrom(200);
     console.log('keep_in_bl ret', ret);
-    if (ret && ret[0].dat.length == 1 && ret[0].dat[0] == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
         console.log('keep_in_bl succeeded');
         return 0;
     } else {

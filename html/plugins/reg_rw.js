@@ -114,7 +114,7 @@ async function read_reg_val(r_idx, read_dft=false) {
     console.log('read reg wait ret');
     let ret = await csa.reg.proxy_sock_regr.recvfrom(500);
     console.log('read reg ret', ret);
-    if (ret && ret[0].dat[0] == 0x80) {
+    if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
         if (read_dft)
             csa.reg.reg_dft_r[r_idx] = true;
         
@@ -277,7 +277,7 @@ async function write_reg_val(w_idx) {
         console.log('read-before-write wait ret');
         let ret = await csa.reg.proxy_sock_regw.recvfrom(500);
         console.log('read-before-write ret', ret);
-        if (ret && ret[0].dat[0] == 0x80) {
+        if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
             csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1);
         } else {
             console.log('read-before-write err');
@@ -350,7 +350,7 @@ async function write_reg_val(w_idx) {
     console.log('write reg wait ret');
     let ret = await csa.reg.proxy_sock_regw.recvfrom(500);
     console.log('write reg ret', ret);
-    if (ret && ret[0].dat[0] == 0x80) {
+    if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
         console.log('write reg succeeded');
         set_input_bg('w', w_idx, '#D6EAF860');
         setTimeout(() => { set_input_bg('w', w_idx, ''); }, 100);

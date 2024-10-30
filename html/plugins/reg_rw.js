@@ -13,9 +13,13 @@ const R_ADDR = 0; const R_LEN = 1; const R_FMT = 2;
 const R_SHOW = 3; const R_ID = 4; const R_DESC = 5;
 
 function fmt_size(fmt) {
-    let f = fmt.replace(/\W/g, '') // remove non-alphanumeric chars
+    let f = fmt.replace(/\W/g, ''); // remove non-word chars
     let len = 0;
     for (let i = 0; i < f.length; i++) {
+        if (!isNaN(f[i+1])) {       // e.g. '{H,B2}'
+            len += Number(f[++i]);
+            continue;
+        }
         switch (f[i]) {
         case 'c': len += 1; break;
         case 'b': len += 1; break;
@@ -33,9 +37,9 @@ function fmt_size(fmt) {
 function reg2str(dat, ofs, fmt, show) {
     let ret = '';
     let dv = new DataView(dat.buffer);
-    fmt = fmt.replace(/\W/g, ''); // remove non-alphanumeric chars
-    for (let f of fmt) {
-        switch (f) {
+    let f = fmt.replace(/\W/g, ''); // remove non-word chars
+    for (let i = 0; i < f.length; i++) {
+        switch (f[i]) {
         case 'c':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
@@ -45,56 +49,64 @@ function reg2str(dat, ofs, fmt, show) {
                 if (d != 0)
                     ret = [ret, `${dat2str(d)}`].filter(Boolean).join(' ');
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'b':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt8(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'B':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getUint8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint8(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'h':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt16(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 2; break;
+            ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
+            break;
         case 'H':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getUint16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint16(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 2; break;
+            ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
+            break;
         case 'i':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt32(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         case 'I':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getUint32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint32(ofs, true)}`].filter(Boolean).join(' ');
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         case 'f':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getFloat32(ofs, true), 8, true, false, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${readable_float(dv.getFloat32(ofs, true))}`].filter(Boolean).join(' ');
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         }
     }
     return ret;

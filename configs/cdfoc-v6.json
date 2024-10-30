@@ -49,9 +49,9 @@
             [ 0x0148, 4, "i", 0, "bias_pos", "Offset for pos value" ],
 
             [ 0x014c, 4, "H,H", 1, "qxchg_mcast", "Offset and size for quick-exchange multicast" ],
-            [ 0x0150, 20, "{H,H}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
-            [ 0x0164, 20, "{H,H}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
-            [ 0x0178, 20, "{H,H}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
+            [ 0x0150, 20, "{H,B2}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
+            [ 0x0164, 20, "{H,B2}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
+            [ 0x0178, 20, "{H,B2}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
 
             [ 0x018c, 1, "B", 1, "dbg_str_msk", "Config which debug data to be send" ],
             [ 0x018e, 2, "H", 1, "dbg_str_skip", "Reduce debug data" ],
@@ -60,10 +60,10 @@
             [ 0x0194, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
             [ 0x0196, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
             [ 0x0197, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
-            [ 0x0198, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for current loop" ],
-            [ 0x01b0, 24, "{H,H}", 1, "dbg_raw[1]", "Config raw debug for speed loop" ],
-            [ 0x01c8, 24, "{H,H}", 1, "dbg_raw[2]", "Config raw debug for position loop" ],
-            [ 0x01e0, 24, "{H,H}", 1, "dbg_raw[3]", "Config raw debug for position plan" ],
+            [ 0x0198, 24, "{H,B2}", 1, "dbg_raw[0]", "Config raw debug for current loop" ],
+            [ 0x01b0, 24, "{H,B2}", 1, "dbg_raw[1]", "Config raw debug for speed loop" ],
+            [ 0x01c8, 24, "{H,B2}", 1, "dbg_raw[2]", "Config raw debug for position loop" ],
+            [ 0x01e0, 24, "{H,B2}", 1, "dbg_raw[3]", "Config raw debug for position plan" ],
 
             [ 0x01f8, 4, "i", 1, "tc_pos", "Set target position" ],
             [ 0x01fc, 4, "I", 1, "tc_speed", "Set target speed" ],
@@ -120,6 +120,7 @@
             [ 0x02ac, 4, "f", 0, "sen_speed_avg", "" ],
             [ 0x02b0, 4, "f", 0, "sen_rpm_avg", "" ],
             [ 0x02b4, 4, "f", 0, "bus_voltage", "" ],
+            [ 0x02b8, 4, "f", 0, "temperature", "" ],
         ],
         
         "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["nominal_voltage"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel","dbg_v"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"],["bus_voltage"]],

@@ -48,7 +48,7 @@
             [ 0x0146, 2, "H", 1, "bias_encoder", "Offset for encoder value" ],
             [ 0x0148, 4, "i", 0, "bias_pos", "Offset for pos value" ],
 
-            [ 0x014c, 4, "H,H", 1, "qxchg_mcast", "Offset and size for quick-exchange multicast" ],
+            [ 0x014c, 4, "H,B", 1, "qxchg_mcast", "Offset and size for quick-exchange multicast" ],
             [ 0x0150, 20, "{H,B2}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
             [ 0x0164, 20, "{H,B2}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
             [ 0x0178, 20, "{H,B2}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],

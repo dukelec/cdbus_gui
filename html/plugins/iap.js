@@ -169,6 +169,10 @@ function crc16(buffer) {
 };
 
 async function keep_in_bl() {
+    if (!('keep_bl' in csa.cfg.iap)) {
+        console.log('keep_in_bl skip');
+        return 0;
+    }
     let d = new Uint8Array([0x20, 0, 0, 1]);
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.keep_bl, true);
@@ -187,8 +191,8 @@ async function keep_in_bl() {
     }
 }
 
-async function do_reboot() {
-    let d = new Uint8Array([0x20, 0, 0, 1]);
+async function do_reboot(bl_args) {
+    let d = new Uint8Array([0x20, 0, 0, bl_args]);
     let dv = new DataView(d.buffer);
     dv.setUint16(1, csa.cfg.iap.reboot, true);
     
@@ -256,7 +260,7 @@ async function do_iap() {
             } else {
                 console.log('not found (bl), reboot');
                 document.getElementById('iap_progress').innerHTML = `Not found string "(bl)", reboot...`;
-                await do_reboot();
+                await do_reboot(1);
                 reboot_cnt++;
             }
         } else {
@@ -353,7 +357,7 @@ async function do_iap() {
     }
     
     if (action == 'bl_full' && document.getElementById('iap_start').disabled)
-        await do_reboot();
+        await do_reboot(2);
     
     stop_iap();
 };

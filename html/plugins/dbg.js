@@ -4,6 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
+import { AnsiUp } from '../libs/ansi_up-6.0.2.js'
 import { L } from '../utils/lang.js'
 import { timestamp, dat2str } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';

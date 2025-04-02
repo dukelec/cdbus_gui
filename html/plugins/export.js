@@ -65,7 +65,7 @@ function import_data() {
             }
             
             for (let p of csa.plugins) {
-                console.log(`export: p: ${p}`);
+                console.log(`import: p: ${p}`);
                 if ('dat_import' in csa[p]) {
                     csa[p].dat_import(prj[p]);
                 }

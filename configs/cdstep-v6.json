@@ -82,16 +82,14 @@
     },
     
     "plot": {
-        "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
-        "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
+        "mask": "dbg_raw_msk", // uint8_t raw dbg mask
         "fmt": [
-            // number before . is cnt_inc (>= 1)
             "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
             "I1.ifif - N, pid target, i_term, last_in, cal_speed",
         ],
-        "color": [],                    // use color_dft if empty
+        "color": [],
         "cal": [
-            [ "diff13: _D(1) - _D(3)" ] // data1 - data3 (support in the future)
+            [ "pos_err: _d[4].at(-1) - _d[3].at(-1)" ] // data4 - data3
         ]
     },
     

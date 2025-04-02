@@ -14,6 +14,26 @@ import { reg_idx_by_name } from './reg.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 
+let color_dft = [ "black", "red", "green", "blue", "cyan", "magenta", "gold",
+                  "purple", "brown", "teal", "lime", "hotpink", "tan",
+                  "olive", "orange", "pink", "#00000080" ];
+
+
+function append_cal_val(idx, start, rm_oldest) {
+    let cals = csa.cfg.plot.cal[idx];
+    if (!Array.isArray(cals))
+        return;
+    let _d = csa.plot.dat[idx];
+    
+    for (let i = 0; i < cals.length; i++) {
+        let c_name = cals[i].split(':')[0];
+        let c_str = cals[i].slice(c_name.length + 1);
+        let val = eval(c_str);
+        csa.plot.dat[idx][start+i].push(isNaN(val) ? null : val);
+        if (rm_oldest)
+            csa.plot.dat[idx][start+i].shift();
+    }
+}
 
 function dv_fmt_read(dv, ofs, fmt) {
     let ret = [];
@@ -82,6 +102,7 @@ async function dbg_raw_service() {
                         csa.plot.dat[idx][i].shift();
                 }
                 ofs += grp_size;
+                append_cal_val(idx, grp_vals.length, rm_oldest);
             }
         
         } else { // x, d1,d2,d3, d1,d2,d3
@@ -104,6 +125,7 @@ async function dbg_raw_service() {
                 }
                 loop += 1;
                 ofs += grp_size;
+                append_cal_val(idx, grp_vals.length + 1, rm_oldest);
             }
         }
         
@@ -251,13 +273,21 @@ async function init_plot() {
         let series_num = f_fmt.split('.')[1].length + 1;
         let series = [];
         
+        let cals = csa.cfg.plot.cal[i];
+        if (Array.isArray(cals)) {
+            series_num += cals.length;
+            for (let cal of cals) {
+                let c_name = cal.split(':')[0];
+                f_str += `, ${c_name}`;
+            }
+        }
+        
         csa.plot.dat.push([]);
         for (let s = 0; s < series_num; s++) {
-            let color = csa.cfg.plot.length > i ? csa.cfg.plot[i][s] : null;
+            let colors = csa.cfg.plot.color[i] ? csa.cfg.plot.color[i] : color_dft;
+            let color = colors[(s-1) % colors.length];
             if (!color)
-                color = csa.cfg.plot.color_dft[s];
-            if (!color)
-                color = csa.cfg.plot.color_dft[0];
+                color = "black";
             let name = f_str.split(',')[s];
             if (!name)
                 name = '~';
@@ -310,8 +340,9 @@ async function init_plot() {
     
     csa.plot.dat_export = () => { return csa.plot.dat; };
     csa.plot.dat_import = (dat) => {
-        csa.plot.dat = dat;
         for (let i = 0; i < csa.plot.plots.length; i++) {
+            let padding = Math.max(csa.plot.dat[i].length - dat[i].length, 0);
+            csa.plot.dat[i] = dat[i].concat(Array(padding).fill([]));
             csa.plot.plots[i].setData(csa.plot.dat[i]);
         }
     };

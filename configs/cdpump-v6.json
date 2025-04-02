@@ -53,15 +53,20 @@
     },
     
     "plot": {
-        "mask": "dbg_raw_msk",          // uint8_t raw dbg mask
-        "color_dft": [ "#00000080", "green", "blue", "black", "red", "cyan", "purple", "orange" ],  // start from index 1
+        "mask": "dbg_raw_msk", // uint8_t raw dbg mask
         "fmt": [
-            // number before . is cnt_inc (>= 1)
             "I1.fffH - N, pid target, i_term, last_in, cur_pwm",
         ],
-        "color": [],                    // use color_dft if empty
+        "color": [],
         "cal": [
-            [ "diff13: _D(1) - _D(3)" ] // data1 - data3 (support in the future)
+            [
+                "err: _d[3].at(-1) - _d[1].at(-1)", // data3 - data1
+                "in_avg:                        \
+                    let a = 0;                  \
+                    for (let i = 0; i < 5; i++) \
+                        a += _d[3].at(-1-i);    \
+                    a / 5;"
+            ]
         ]
     },
     

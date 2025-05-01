@@ -204,53 +204,60 @@ async function read_reg_val(r_idx, read_dft=false) {
 
 function str2reg(dat, ofs, fmt, show, str, s_idx) {
     let dv = new DataView(dat.buffer);
-    fmt = fmt.replace(/\W/g, ''); // remove non-alphanumeric chars
+    let f = fmt.replace(/\W/g, ''); // remove non-word chars
     let str_a = str.split(' ');
-    for (let f of fmt) {
-        switch (f) {
+    for (let i = 0; i < f.length; i++) {
+        switch (f[i]) {
         case 'c':
             switch (show) {
             case 1:  dv.setInt8(ofs, parseInt(str_a[s_idx]), true); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dat.set(str2dat(str[s_idx]), ofs);
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'b':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'B':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default: dv.setUint8(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 1; break;
+            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            break;
         case 'h':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
             default: dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 2; break;
+            ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
+            break;
         case 'H':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
             default: dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 2; break;
+            ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
+            break;
         case 'i':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         case 'I':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         case 'f':
             switch (show) {
             case 1:
@@ -267,7 +274,8 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setFloat32(ofs, parseFloat(str_a[s_idx]), true);
             }
-            ofs += 4; break;
+            ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
+            break;
         }
         s_idx += 1;
     }

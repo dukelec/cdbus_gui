@@ -21,6 +21,7 @@ import json5
 import asyncio
 import aiohttp
 import websockets
+from collections import deque
 from intelhex import IntelHex
 from time import sleep
 from cd_ws import CDWebSocket, CDWebSocketNS
@@ -61,7 +62,7 @@ csa = {
     'proxy': None,  # cdbus frame proxy socket
     'cfgs': [],     # config list
     'palloc': {},   # ports alloc, url_path: []
-    'l0dev': {}     # mac: {'l0_lp': l0_lp, 'src_port': port, 't_last': time)
+    'l0dev': {}     # mac: {'l0_lp': l0_lp, 'src_port': port, 't_last': time, 'pend_frm': deque())
 }
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
@@ -102,11 +103,18 @@ def proxy_rx():
                             logger.warning(f'proxy_rx fmt err (no l0dev): {frame}')
                             continue
                         rx = rx[0], (rx[1][0], csa['l0dev'][k]['src_port']), rx[2]
-                        del csa['l0dev'][k]
+                        if not len(csa['l0dev'][k]['pend_frm']):
+                            del csa['l0dev'][k]
+                        else:
+                            csa['l0dev'][k]['l0_lp'], csa['l0dev'][k]['src_port'], tx_frm = csa['l0dev'][k]['pend_frm'].popleft()
+                            csa['l0dev'][k]['t_last'] = time.monotonic()
+                            logger.log(logging.VERBOSE, f'proxy_rx frame l0 tx: {tx_frm}')
+                            if csa['dev']:
+                                csa['dev'].send(tx_frm)
                     logger.log(logging.VERBOSE, f'proxy_rx l0: {frame}')
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
-            except:
-                logger.warning('proxy_rx fmt err', frame)
+            except Exception as err:
+                logger.warning(f'proxy_rx fmt err {err}', frame)
     
     logger.info('exit proxy_rx')
 
@@ -121,9 +129,15 @@ async def cdbus_proxy_service():
             should_delete = []
             for k in csa['l0dev']:
                 if time.monotonic() - csa['l0dev'][k]['t_last'] > l0_timeout:
-                    print(f"l0dev {k:02x} timeout, l0_lp: {csa['l0dev'][k]['l0_lp']}, src_port: {csa['l0dev'][k]['src_port']}")
-                    should_delete.append(k)
-                    continue
+                    logger.warning(f"l0dev {k:02x} timeout, {csa['l0dev'][k]}")
+                    if not len(csa['l0dev'][k]['pend_frm']):
+                        should_delete.append(k)
+                    else:
+                        csa['l0dev'][k]['l0_lp'], csa['l0dev'][k]['src_port'], frm = csa['l0dev'][k]['pend_frm'].popleft()
+                        csa['l0dev'][k]['t_last'] = time.monotonic()
+                        logger.log(logging.VERBOSE, f'proxy_tx frame l0 (dequeue): {frame}')
+                        if csa['dev']:
+                            csa['dev'].send(frame)
             for k in should_delete:
                 del csa['l0dev'][k]
             continue
@@ -143,17 +157,20 @@ async def cdbus_proxy_service():
             else:
                 frame = cdnet_l0.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', CDN_DEF_PORT), \
                                            wc_dat['dst'], wc_dat['dat'])
+                logger.log(logging.VERBOSE, f'({wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}, {CDN_DEF_PORT}), {wc_dat["dst"]}')
                 if dst_mac in csa['l0dev']:
-                    logger.warning(f'proxy_tx: l0dev {dst_mac:02x} busy')
+                    if len(csa['l0dev'][dst_mac]['pend_frm']) >= 3:
+                        logger.warning(f'proxy_tx: l0dev {dst_mac:02x} queue full')
+                    else:
+                        csa['l0dev'][dst_mac]['pend_frm'].append((wc_dat['dst'][1], wc_src[1], frame))
+                        logger.log(logging.VERBOSE, f'proxy_tx frame l0 (enqueue): {frame}')
                 else:
-                    csa['l0dev'][dst_mac] = {'l0_lp': wc_dat['dst'][1], 'src_port': wc_src[1], 't_last': time.monotonic()}
+                    csa['l0dev'][dst_mac] = {'l0_lp': wc_dat['dst'][1], 'src_port': wc_src[1], 't_last': time.monotonic(), 'pend_frm': deque()}
                     logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
-                    print("csa['l0dev'][dst_mac]:", csa['l0dev'][dst_mac])
-                    print((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', CDN_DEF_PORT), wc_dat['dst'])
                     if csa['dev']:
                         csa['dev'].send(frame)
-        except:
-            logger.warning('proxy_tx: fmt err')
+        except Exception as err:
+            logger.warning(f'proxy_tx: fmt err: {err}')
 
 
 async def dev_service(): # cdbus tty setup

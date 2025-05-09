@@ -10,6 +10,7 @@ Args:
   --help    | -h    # this help message
   --verbose | -v    # debug level: verbose
   --debug   | -d    # debug level: debug
+  --l0-timeout SEC  # default 2 sec
 """
 
 import os, sys
@@ -42,7 +43,7 @@ if args.get("--help", "-h") != None:
     print(__doc__)
     exit()
 
-l0_timeout = int(args.get("--l0-timeout", dft="2"), 0) # default 2 sec
+l0_timeout = int(args.get("--l0-timeout", dft="2"), 0)
 
 if args.get("--verbose", "-v") != None:
     logger_init(logging.VERBOSE)

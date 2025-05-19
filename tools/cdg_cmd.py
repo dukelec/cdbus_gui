@@ -16,7 +16,7 @@ Args:
   --tty   PORT      # default: ttyACM0
   --baud  BAUD      # default: 115200
   --local LOCAL_MAC # default: 0
-  --dev   TARGET    # default: 80:00:fe
+  --dev   TARGET    # default: 00:00:fe
 
   --quiet   | -q
   --pretend | -p
@@ -73,7 +73,7 @@ def cdg_cmd_init(doc=None):
     tty_str = args.get("--tty", dft="ttyACM0")
     baud = int(args.get("--baud", dft="115200"), 0)
     local_mac = int(args.get("--local", dft="0x00"), 0)
-    csa['dev_addr'] = args.get("--dev", dft="80:00:fe")
+    csa['dev_addr'] = args.get("--dev", dft="00:00:fe")
     cfg_file = args.get("--cfg")
 
     csa['quiet'] = args.get("--quiet", "-q") != None
@@ -100,7 +100,7 @@ def cdg_cmd_init(doc=None):
     dev = CDBusSerial(tty_str, baud=baud)
 
     CDNetIntf(dev, mac=local_mac)
-    csa['sock'] = CDNetSocket(('', 0xcdcd))
+    csa['sock'] = CDNetSocket(('', 0x40))
     sock_dbg = CDNetSocket(('', 9))
 
     with open(cfg_file) as f:
@@ -116,7 +116,7 @@ def dbg_echo():
     while True:
         rx = sock_dbg.recvfrom()
         if not csa['quiet']:
-            csa['logger'].info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][1:-1].decode() + '\x1b[0m')
+            csa['logger'].info(f'#{rx[1][0][-2:]}  \x1b[0;37m' + rx[0][:-1].decode() + '\x1b[0m')
 
 
 # for unicast only
@@ -142,10 +142,10 @@ def cd_reg_rw(dev_addr, reg_addr, write=None, read=0, timeout=0.8, retry=3):
 
 def cd_read_info(dev_addr, timeout=0.8):
     csa['sock'].clear()
-    csa['sock'].sendto(b'\x00', (dev_addr, 0x1))
+    csa['sock'].sendto(b'', (dev_addr, 0x1))
     dat, src = csa['sock'].recvfrom(timeout=timeout)
     if src:
-        return dat[1:].decode()
+        return dat.decode()
     csa['logger'].warning('read info error')
     return 'error'
 

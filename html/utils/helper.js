@@ -230,6 +230,16 @@ async function blob2dat(blob) {
     return ret;
 }
 
+function compare_dat(a, b) {
+    if (a.length !== b.length)
+        return -1;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i])
+            return i;
+    }
+    return null;
+}
+
 export {
     sleep, read_file, load_img, date2num, timestamp,
     sha256, aes256,
@@ -237,5 +247,5 @@ export {
     cpy, Queue,
     download,
     escape_html, readable_size, readable_float,
-    blob2dat
+    blob2dat, compare_dat
 };

@@ -50,7 +50,7 @@ async function init_cfg_list() {
     
     let devs = await csa.db.get('tmp', '_index_/dev.list');
     for (let i = 0; i < 10; i++) {
-        let tgt = (devs && devs[i]) ? devs[i].tgt : `80:00:fe`;
+        let tgt = (devs && devs[i]) ? devs[i].tgt : `00:00:fe`;
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';
         let name = (devs && devs[i]) ? devs[i].name : '';
         let html = `
@@ -108,7 +108,7 @@ function init_ws() {
         cfgs = dat[0];
         
         await alloc_port('clr_all');
-        init_dbg();
+        await init_dbg();
         
         await init_cfg_list();
         await init_serial_cfg();

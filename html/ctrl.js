@@ -39,6 +39,9 @@ function init_ws() {
         await init_pic();
         await init_iap();
         await init_export();
+        
+        let port = await alloc_port();
+        csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, port);
         document.getElementById('dev_read_info').click();
     }
     ws.onmessage = async function(evt) {
@@ -83,12 +86,12 @@ document.getElementById('dev_read_info').onclick = async function() {
     }
     
     csa.proxy_sock_info.flush();
-    await csa.proxy_sock_info.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+    await csa.proxy_sock_info.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
     console.log('read info wait ret');
     let ret = await csa.proxy_sock_info.recvfrom(500);
     console.log('read info ret', ret);
     if (ret) {
-        elem.innerHTML = `${dat2str(ret[0].dat.slice(1))}`;
+        elem.innerHTML = `${dat2str(ret[0].dat)}`;
         elem.style.background = '#D5F5E360';
         setTimeout(() => { elem.style.background = ''; }, 100);
     } else {
@@ -124,7 +127,6 @@ window.addEventListener('load', async function() {
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
-    csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, 0x00f0);
     
     csa.db = await new Idb();
     init_ws();

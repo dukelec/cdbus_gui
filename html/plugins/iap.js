@@ -6,7 +6,7 @@
 
 import { L } from '../utils/lang.js'
 import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
+         read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { Idb } from '../utils/idb.js';
 import { csa, alloc_port } from '../common.js';
@@ -47,7 +47,7 @@ async function flash_erase(addr, len) {
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
     let ret = await csa.iap.proxy_sock.recvfrom(5000);
     console.log('flash_erase ret', ret);
-    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
         return 0
     } else {
         console.log('flash_erase err');
@@ -67,7 +67,7 @@ async function flash_write_blk(addr, dat) {
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_write_blk ret', ret);
-    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
         return 0
     } else {
         console.log('flash_write_blk err');
@@ -103,7 +103,7 @@ async function flash_read_blk(addr, len) {
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_blk ret', ret);
-    if (ret && (ret[0].dat[0] & 0x8f) == 0x80 && ret[0].dat.length == len + 1) {
+    if (ret && (ret[0].dat[0] & 0xf) == 0 && ret[0].dat.length == len + 1) {
         return ret[0].dat.slice(1);
     } else {
         console.log('flash_read_blk err');
@@ -140,7 +140,7 @@ async function flash_read_crc(addr, len) {
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
     let ret = await csa.iap.proxy_sock.recvfrom(500);
     console.log('flash_read_crc', ret);
-    if (ret && (ret[0].dat[0] & 0x8f) == 0x80) {
+    if (ret && (ret[0].dat[0] & 0xf) == 0) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
         return ret_dv.getUint16(0, true);
     } else {
@@ -182,7 +182,7 @@ async function keep_in_bl() {
     console.log('keep_in_bl wait ret');
     let ret = await csa.iap.proxy_sock.recvfrom(200);
     console.log('keep_in_bl ret', ret);
-    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0x8f) == 0x80) {
+    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
         console.log('keep_in_bl succeeded');
         return 0;
     } else {
@@ -243,12 +243,12 @@ async function do_iap() {
     while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
     
         csa.iap.proxy_sock.flush();
-        await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([0x00])}, ['server', 'proxy']);
+        await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
         console.log('read info wait ret');
         let ret = await csa.iap.proxy_sock.recvfrom(200);
         console.log('read info ret', ret);
         if (ret && ret[0].src[1] == 0x0001) {
-            let s = dat2str(ret[0].dat.slice(1));
+            let s = dat2str(ret[0].dat);
             if (s.includes('(bl)')) {
                 console.log(`found (bl): ${s}`);
                 if (await keep_in_bl()) {
@@ -331,7 +331,7 @@ async function do_iap() {
                 stop_iap();
                 return;
             } else if (crc_back != crc_ori) {
-                document.getElementById('iap_progress').innerHTML = `CRC Err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
+                document.getElementById('iap_progress').innerHTML = `CRC err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
                 stop_iap();
                 return;
             }
@@ -344,9 +344,10 @@ async function do_iap() {
                 stop_iap();
                 return;
             }
-            let crc_back = crc16(buf);
-            if (crc_back != crc_ori) {
-                document.getElementById('iap_progress').innerHTML = `CRC Err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
+            let cmp_ret = compare_dat(dat, buf);
+            if (cmp_ret !== null) {
+                document.getElementById('iap_progress').innerHTML =
+                    `Compare err at: ${cmp_ret} (w: ${val2hex(dat[cmp_ret], 1)}, r: ${val2hex(buf[cmp_ret], 1)})`;
                 stop_iap();
                 return;
             }

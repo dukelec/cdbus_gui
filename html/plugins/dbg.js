@@ -36,10 +36,10 @@ async function dbg_service() {
     let ansi_up = new AnsiUp;
     while (true) {
         let dat = await csa.dbg.sock.recvfrom();
-        console.log('dbg get:', dat2str(dat[0].dat.slice(1)));
+        console.log('dbg get:', dat2str(dat[0].dat));
         let elem = document.getElementById('dbg_log');
         let addition = is_index ? ` [${dat[0].src[0]}]` : '';
-        let txt = `${timestamp()}${addition}: ${dat2str(dat[0].dat.slice(1))}`;
+        let txt = `${timestamp()}${addition}: ${dat2str(dat[0].dat)}`;
         let html = ansi_up.ansi_to_html(txt);
         html = html.replaceAll('  ', ' &nbsp;');
         html = html.replaceAll('\t', '&nbsp;'.repeat(4));

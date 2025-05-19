@@ -54,7 +54,7 @@ def _read_flash(addr, _len):
     csa['sock'].sendto(b'\x00' + struct.pack("<IB", addr, _len), (csa['dev_addr'], 8))
     ret, _ = csa['sock'].recvfrom()
     print(('  %08x: ' % addr) + ret.hex())
-    if (ret[0] & 0x8f) != 0x80 or len(ret[1:]) != _len:
+    if (ret[0] & 0xf) != 0 or len(ret[1:]) != _len:
         print('read flash error')
         exit(-1)
     return ret[1:]
@@ -64,7 +64,7 @@ def _write_flash(addr, dat):
     csa['sock'].sendto(b'\x20' + struct.pack("<I", addr) + dat, (csa['dev_addr'], 8))
     ret, _ = csa['sock'].recvfrom()
     print('  write ret: ' + ret.hex())
-    if (ret[0] & 0x8f) != 0x80:
+    if (ret[0] & 0xf) != 0:
         print('write flash error')
         exit(-1)
 
@@ -72,7 +72,7 @@ def _erase_flash(addr, _len):
     csa['sock'].sendto(b'\x2f' + struct.pack("<II", addr, _len), (csa['dev_addr'], 8))
     ret, _ = csa['sock'].recvfrom()
     print('  erase ret: ' + ret.hex())
-    if (ret[0] & 0x8f) != 0x80:
+    if (ret[0] & 0xf) != 0:
         print('erase flash error')
         exit(-1)
 

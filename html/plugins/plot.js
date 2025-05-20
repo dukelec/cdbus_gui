@@ -75,11 +75,12 @@ async function dbg_raw_service() {
     while (true) {
         let msg = await csa.plot.dbg_raw_sock.recvfrom();
         let dat = msg[0].dat;
+        let src_port = msg[0].src[1];
         dat = dat.slice(0); // dataview return wrong value without this
         let dv = new DataView(dat.buffer);
         //console.log('dbg_raw get', dat2hex(dat, ' '));
         
-        let idx = dat[0] & 0x3f;
+        let idx = src_port & 0xf;
         if (idx >= csa.cfg.plot.fmt.length) {
             console.log('dbg_raw: drop');
             continue;
@@ -88,7 +89,7 @@ async function dbg_raw_service() {
         if (csa.plot.dat[idx][0].length > document.getElementById(`plot${idx}_len`).value)
             rm_oldest = true;
         
-        let ofs = 1;
+        let ofs = 0;
         let f = csa.cfg.plot.fmt[idx].split(' - ')[0];
 
         if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3

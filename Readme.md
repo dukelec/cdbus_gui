@@ -6,10 +6,7 @@ When a master board is controlling a slave, the PC can be hooked up to the same 
 
 
 #### Download this tool:
-`git clone --recurse-submodules https://github.com/dukelec/cdbus_gui.git`
-
-#### Update:
-`git pull --recurse-submodules`
+`git clone --recursive https://github.com/dukelec/cdbus_gui.git`
 
 
 #### Dependence:
@@ -125,7 +122,6 @@ As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilita
 ```
 
  - Broadcast and multicast can also use the "local link" format, there is no need to use the "multicast" format for simple occasions.
- - Generally speaking, it is good to use "80" for simple occasions. And the one starting with "00" is mainly to reduce one or two characters when knocking bare data for testing, which is not recommended for machines.
  - "unique local" is used only when cross-segment, for example, there are multiple network segments, each subnet has multiple devices.
 
 The cdnet ip address can be directly mapped to a standard ipv6 address, so that the computer can interact with mcu through standard udp programming, and the code on the mcu side does not need to change, so the overhead is very small and there is no need to run the ipv6 protocol stack.

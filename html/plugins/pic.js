@@ -20,8 +20,9 @@ async function pic_service() {
     
     while (true) {
         let msg = await csa.pic.sock.recvfrom();
-        let hdr = msg[0].dat[0]; // [5:4] FRAGMENT: 00: error, 01: first, 10: more, 11: last, [3:0]: cnt
-        let dat = msg[0].dat.slice(1);
+        let dat = msg[0].dat.slice(0);
+        let src_port = msg[0].src[1];
+        let hdr = src_port; // [5:4] FRAGMENT: 00: error, 01: first, 10: more, 11: last, [3:0]: cnt
         
         if (hdr == 0x50) { // first
             img_dat = dat;

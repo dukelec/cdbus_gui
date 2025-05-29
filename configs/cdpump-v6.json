@@ -19,11 +19,7 @@
             [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", " Active TX_EN before TX" ],
 
             [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
-            [ 0x0026, 3, "[B]", 2, "dbg_dst_addr", "Send debug message to this address" ],
-            [ 0x002a, 2, "H", 1, "dbg_dst_port", "Send debug message to this port" ],
 
-            [ 0x0040, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
-            [ 0x0044, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
             [ 0x0046, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
             [ 0x0047, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
             [ 0x0048, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
@@ -35,8 +31,8 @@
             [ 0x0084, 4, "f", 0, "pid_pressure_out_max", "" ],
 
             [ 0x00f8, 4, "f", 0, "set_pressure", "" ],
-            [ 0x0110, 4, "f", 0, "ori_pressure", "" ],
-            [ 0x0114, 4, "f", 0, "bias_pressure", "" ],
+            //[ 0x0110, 4, "f", 0, "ori_pressure", "" ],
+            //[ 0x0114, 4, "f", 0, "bias_pressure", "" ],
 
             [ 0x0124, 4, "f", 0, "sen_pressure", "kpa" ],
             [ 0x0128, 4, "f", 0, "sen_temperature", "c" ],
@@ -46,14 +42,17 @@
         ],
         
         // button groups
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en","dbg_dst_port"],["dbg_raw_dst_addr","dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["ori_pressure"],["bias_pressure"],["sen_pressure","loop_cnt"]],
-        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["dbg_raw_dst_addr","dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["ori_pressure"],["bias_pressure"]],
+        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk","dbg_raw_th"],
+                  ["dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["sen_pressure","loop_cnt"]],
+        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+                  ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],
+                  ["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"]],
         "less_r": [],
         "less_w": []
     },
     
     "plot": {
-        "mask": "dbg_raw_msk", // uint8_t raw dbg mask
+        "mask": "dbg_raw_msk",
         "fmt": [
             "I1.fffH - N, pid target, i_term, last_in, cur_pwm",
         ],
@@ -70,6 +69,5 @@
         ]
     },
     
-    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 }
 }
-

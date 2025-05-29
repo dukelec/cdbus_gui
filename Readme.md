@@ -6,7 +6,7 @@ When a master board is controlling a slave, the PC can be hooked up to the same 
 
 
 #### Download this tool:
-`git clone --recursive https://github.com/dukelec/cdbus_gui.git`
+`git clone --recursive https://github.com/dukelec/cdbus_gui`
 
 
 #### Dependence:
@@ -34,7 +34,7 @@ The firmware on the mcu side of the following demonstration, as well as the usag
  - The Logs window can be resized at will.
  - Edited data is automatically saved.
 
-<img src="doc/p1.png">  
+<img src="doc/p1.avif">  
 
 
 ### Device Page
@@ -47,14 +47,14 @@ The following is the debug window for a specific device, starting with the data 
  - Arrays and multiple data formats are supported, and can be set to display in hexadecimal (data box with H flag) or as uint8_t arrays (with B flag).
  - Inside the same group, there are some with a small notch, indicating a hole between two registers. The group is read back before the first write to avoid modifying the data in the hole, which may be empty or any reserved vendor register(s).
 
-<img src="doc/p2.png">  
+<img src="doc/p2.avif">  
 
-<img src="doc/p3.png">  
+<img src="doc/p3.avif">  
 
  - This is the Log debug on the Device page, which can also be changed to any size.
  - Further below is the waveform window, which also supports size selection.
 
-<img src="doc/p4.png">  
+<img src="doc/p4.avif">  
 
 
 #### Waveform windows:
@@ -67,7 +67,7 @@ The following is the debug window for a specific device, starting with the data 
  - The number of waveform windows is not limited.
  - You can start and stop multiple plots at the same time by directly setting the `dbg_raw_msk` register.
 
-<img src="doc/p5.png">  
+<img src="doc/p5.avif">  
 
 
 #### Picture preview:
@@ -75,7 +75,7 @@ The following is the debug window for a specific device, starting with the data 
 
 (Tips: You can string multiple cameras, multiple servo motors and other devices on a single RS-485 bus, simplifying costs and wiring.)
 
-<img src="doc/p8.png">  
+<img src="doc/p6.avif">  
 
 
 #### The last are IAP and data export and import:
@@ -94,7 +94,76 @@ Finally, there is the json configuration:
  - The "fmt" string with "[]" is an array, which displays all data in one edit box.
  - The ones with "{}" are also arrays, each group occupies one edit box, and each box supports multiple data, which is convenient for struct arrays.
 
-<img src="doc/p6.png">  
+**E.g.** `cdstep-v7.json`
+```json5
+{
+    "reg": {
+        // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
+        // show: 0: normal, 1: hex, 2: bytes
+        "list": [
+            [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
+            [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
+            [ 0x0004, 1, "B", 0, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
+            [ 0x0005, 1, "B", 0, "do_reboot", "1: reboot to bl, 2: reboot to app" ],
+            [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+
+            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
+            [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
+            [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
+            // ...
+
+            [ 0x00bc, 4, "i", 0, "tc_pos", "Set target position" ],
+            [ 0x00c0, 4, "I", 0, "tc_speed", "Set target speed" ],
+            [ 0x00c4, 4, "I", 0, "tc_accel", "Set target accel" ],
+            [ 0x00c8, 4, "I", 0, "tc_accel_emg", "Set emergency accel" ],
+
+            [ 0x00d4, 4, "f", 0, "pid_pos_kp", "" ],
+            [ 0x00d8, 4, "f", 0, "pid_pos_ki", "" ],
+            [ 0x00dc, 4, "f", 0, "pid_pos_kd", "" ],
+            [ 0x0100, 4, "i", 0, "cal_pos", "PID input position" ],
+            [ 0x0104, 4, "f", 0, "cal_speed", "PID output speed" ],
+
+            [ 0x0108, 1, "B", 0, "state", "0: disable drive, 1: enable drive" ],
+
+            // --------------- Follows are not writable: -------------------
+            [ 0x0109, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run" ],
+            [ 0x010c, 4, "i", 0, "cur_pos", "Motor current position" ],
+            [ 0x0110, 4, "f", 0, "tc_vc", "Motor current speed" ],
+            [ 0x0114, 4, "f", 0, "tc_ac", "Motor current accel" ],
+
+            [ 0x0124, 4, "I", 0, "loop_cnt", "Count for plot" ],
+            [ 0x0128, 10, "[c]", 0, "string_test", "String test" ]
+        ],
+        
+        // button groups
+        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
+                  ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
+                  ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
+                  ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
+        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+                  ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],
+                  ["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],
+                  ["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],
+                  ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
+        "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
+        "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]
+    },
+    
+    "plot": {
+        "mask": "dbg_raw_msk",
+        "fmt": [
+            "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
+            "I1.ifif - N, pid target, i_term, last_in, cal_speed",
+        ],
+        "color": [],
+        "cal": [
+            [ "pos_err: _d[4].at(-1) - _d[3].at(-1)" ] // data4 - data3
+        ]
+    },
+    
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 }
+}
+```
 
  - "reg_r" and "reg_w" are the default register group config, you can left them empty and edit on the UI.
  - The "fmt" of the "plot" data corresponds to two packet formats: "x1 a1 b1 a2 b2 ..." and "x1 a1 b1 x2 a2 b2 ...".
@@ -102,8 +171,6 @@ Finally, there is the json configuration:
  - The latter is the one without a number after "I", where each set of data inside a package has an x value, suitable for scenarios where the loop period changes.
 
 (Notes: The "reg_r", "reg_w", "less_r" and "less_w" will be printed in the console when the editing is finished.)
-
-<img src="doc/p7.png">  
 
 
 ### More Info

@@ -6,7 +6,7 @@
             [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
             [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
             [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
-            [ 0x0005, 1, "b", 0, "do_reboot", "1: reboot to bl, 2: reboot to app" ],
+            [ 0x0005, 1, "B", 0, "do_reboot", "1: reboot to bl, 2: reboot to app" ],
             [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
 
             [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
@@ -19,8 +19,6 @@
             [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", " Active TX_EN before TX" ],
 
             [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
-            [ 0x0026, 3, "[B]", 2, "dbg_dst_addr", "Send debug message to this address" ],
-            [ 0x002a, 2, "H", 1, "dbg_dst_port", "Send debug message to this port" ],
 
             [ 0x002c, 4, "f", 0, "pid_pos_kp", "" ],
             [ 0x0030, 4, "f", 0, "pid_pos_ki", "" ],
@@ -52,13 +50,10 @@
             [ 0x014c, 4, "H,B2", 1, "qxchg_mcast", "Offset and size for quick-exchange multicast" ],
             [ 0x0150, 20, "{H,B2}", 1, "qxchg_set", "Config the write data components for quick-exchange channel" ],
             [ 0x0164, 20, "{H,B2}", 1, "qxchg_ret", "Config the return data components for quick-exchange channel" ],
-            [ 0x0178, 20, "{H,B2}", 1, "qxchg_ro", "Config the return data components for the read only quick-exchange channel" ],
 
             [ 0x018c, 1, "B", 1, "dbg_str_msk", "Config which debug data to be send" ],
             [ 0x018e, 2, "H", 1, "dbg_str_skip", "Reduce debug data" ],
 
-            [ 0x0190, 3, "[B]", 2, "dbg_raw_dst_addr", "Send raw debug data to this address" ],
-            [ 0x0194, 2, "H", 1, "dbg_raw_dst_port", "Send raw debug data to this port" ],
             [ 0x0196, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
             [ 0x0197, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
             [ 0x0198, 24, "{H,B2}", 1, "dbg_raw[0]", "Config raw debug for current loop" ],
@@ -69,9 +64,6 @@
             [ 0x01f8, 4, "i", 1, "tc_pos", "Set target position" ],
             [ 0x01fc, 4, "I", 1, "tc_speed", "Set target speed" ],
             [ 0x0200, 4, "I", 1, "tc_accel", "Set target accel" ],
-            [ 0x0204, 1, "b", 0, "tc_rpt_end", "Report finish event" ],
-            [ 0x0206, 3, "[B]", 2, "tc_rpt_dst_addr", "Send report to this address" ],
-            [ 0x020a, 2, "H", 1, "tc_rpt_dst_port", "Send report to this port" ],
 
             [ 0x020c, 4, "f", 0, "cali_angle_elec", "Calibration mode angle" ],
             [ 0x0210, 4, "f", 0, "cali_current", "Calibration mode current" ],
@@ -122,24 +114,20 @@
             [ 0x02ac, 4, "f", 0, "sen_speed_avg", "" ],
             [ 0x02b0, 4, "f", 0, "sen_rpm_avg", "" ],
             [ 0x02b4, 4, "f", 0, "bus_voltage", "" ],
-            [ 0x02b8, 4, "f", 0, "temperature", "" ],
+            [ 0x02b8, 4, "f", 0, "temperature", "" ]
         ],
         
-        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["nominal_voltage","tc_max_err"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel","dbg_v"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"],["bus_voltage","temperature"]],
-        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_dst_addr","dbg_dst_port"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["motor_wire_swap"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ro"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_dst_addr","dbg_raw_dst_port"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tc_pos"],["tc_speed","tc_accel"],["tc_rpt_end","tc_rpt_dst_port"],["cali_angle_elec"],["cali_current"],["cali_angle_step"],["cali_run"],["cali_encoder_en","anticogging_en"],["anticogging_max_val"],["nominal_voltage"],["tc_max_err"],["state"],["cal_pos"],["cal_speed"],["cal_current"]],
+        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["nominal_voltage","tc_max_err"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel","dbg_v"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"],["bus_voltage","temperature"]],
+        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp","pid_pos_kd"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_kd"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["motor_wire_swap"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk","dbg_str_skip"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tc_pos"],["tc_speed","tc_accel"],["cali_angle_elec"],["cali_current"],["cali_angle_step"],["cali_run"],["cali_encoder_en","anticogging_en"],["anticogging_max_val"],["nominal_voltage"],["tc_max_err"],["state"],["cal_pos"],["cal_speed"],["cal_current"]],
         "less_r": [["tc_pos"],["tc_speed","tc_accel"],["state","cal_current"]],
         "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"],["cal_speed"],["cal_current"]]
     },
     
     "plot": {
-        "mask": "dbg_raw_msk", // uint8_t raw dbg mask
+        "mask": "dbg_raw_msk",
         "fmt": [
             "I1.fffffHff - N, sq tgt, sq i_term, sq in, sd i_term, sd in, sen_encoder, sq cal, sd cal",
-            
             "I5.fffiHf - N, speed target, i_term, last_in, cal_current, sen_encoder, delta_encoder",
-            //"I5.hhHH - N, rpm, angle, magnitude, sen_encoder",
-            //"I5.fffffHff - N, sq tgt, sq i_term, sq in, sd i_term, sd in, sen_encoder, sq cal, sd cal",
-            
             "I25.ifif - N, pos target, i_term, last_in, cal_speed",
             "I25.Biiff - N, tc_state, tc_poc, cal_pos, tc_vc, tc_ac",
         ],
@@ -164,6 +152,5 @@
         ]
     },
     
-    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 } // iap related register address
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 }
 }
-

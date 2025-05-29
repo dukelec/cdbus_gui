@@ -31,6 +31,5 @@
     },
     
     
-    "iap": { "reboot": 0x0005 } // iap related register address
+    "iap": { "reboot": 0x0005 }
 }
-

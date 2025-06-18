@@ -229,10 +229,14 @@ def read_reg(name):
         ret = []
         join = '' if reg['fmt'][1] == 'c' and reg['show'] == 0 else ' '
         fmt_len = fmt_size(reg['fmt'])
-        for i in range(round(reg['len']/fmt_len)):
-            ret.append(reg2str(dat[1:], reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show']))
+        i = 0
+        while i < round(reg['len']/fmt_len):
+            cur_ofs = reg['addr'] - grp[0] + fmt_len * i
+            r_, ofs = reg2str(dat[1:], reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show'])
+            ret.append(r_)
+            i += ofs - cur_ofs;
         return join.join(ret)
-    return reg2str(dat[1:], reg['addr'] - grp[0], reg['fmt'], reg['show'])
+    return reg2str(dat[1:], reg['addr'] - grp[0], reg['fmt'], reg['show'])[0]
 
 
 def write_reg(name, str_):

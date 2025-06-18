@@ -73,6 +73,8 @@ function hex2dat(hex, le=false) {
 }
 
 function dat2str(dat) {
+    if (dat.indexOf(0) >= 0)
+        dat = dat.slice(0, dat.indexOf(0));
     return new TextDecoder().decode(dat);
 }
 

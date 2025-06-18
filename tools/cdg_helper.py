@@ -95,15 +95,23 @@ def reg2str(dat, ofs, fmt, show):
     while i < len(f):
         fnext = f[i+1] if i < len(f) - 1 else ''
         if f[i] == 'c':
+            c_len = 1
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<b', dat[ofs:ofs+1])[0], 2, True)}"]))
             elif show == 2:
                 ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+1], ' ')}"]))
             else:
-                d = dat[ofs]
-                if d != 0:
-                    ret = ' '.join(filter(None, [ret, f"{chr(d)}"]))
-            ofs += int(fnext) if fnext.isdigit() else 1
+                c_hdr = dat[ofs];
+                if (c_hdr & 0b11100000) == 0b11000000:
+                    c_len = 2 # 110xxxxx
+                elif (c_hdr & 0b11110000) == 0b11100000:
+                    c_len = 3 # 1110xxxx
+                elif (c_hdr & 0b11111000) == 0b11110000:
+                    c_len = 4 # 11110xxx
+                d = dat[ofs:ofs+c_len]
+                if len(d) and d[0] != 0:
+                    ret = ' '.join(filter(None, [ret, f"{d.decode()}"]))
+            ofs += int(fnext) if fnext.isdigit() else c_len
         elif f[i] == 'b':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<b', dat[ofs:ofs+1])[0], 2, True)}"]))
@@ -161,7 +169,7 @@ def reg2str(dat, ofs, fmt, show):
                 ret = ' '.join(filter(None, [ret, f"{readable_float(struct.unpack('<f', dat[ofs:ofs+4])[0])}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
         i += 2 if fnext.isdigit() else 1
-    return ret
+    return ret, ofs
 
 
 def str2reg(dat, ofs, fmt, show, str_, s_idx):
@@ -177,7 +185,8 @@ def str2reg(dat, ofs, fmt, show, str_, s_idx):
             elif show == 2:
                 dat[ofs:ofs+1] = hex2dat(str_a[s_idx])[0:1]
             else:
-                dat[ofs:ofs+1] = bytes([ord(str_[s_idx])]) if s_idx < len(str_) else b'\x00'
+                str_b = str_.encode()
+                dat[ofs:ofs+1] = bytes([str_b[s_idx]]) if s_idx < len(str_b) else b'\x00'
             ofs += int(fnext) if fnext.isdigit() else 1
         elif f[i] == 'b':
             if show == 2:

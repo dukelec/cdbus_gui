@@ -41,15 +41,22 @@ function reg2str(dat, ofs, fmt, show) {
     for (let i = 0; i < f.length; i++) {
         switch (f[i]) {
         case 'c':
+            let c_len = 1;
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
             case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default:
-                let d = dat.slice(ofs,ofs+1);
-                if (d != 0)
-                    ret = [ret, `${dat2str(d)}`].filter(Boolean).join(' ');
+                let c_hdr = dat[ofs];
+                if ((c_hdr & 0b11100000) === 0b11000000)
+                    c_len = 2; // 110xxxxx
+                else if ((c_hdr & 0b11110000) === 0b11100000)
+                    c_len = 3; // 1110xxxx
+                else if ((c_hdr & 0b11111000) === 0b11110000)
+                    c_len = 4; // 11110xxx
+                let d = dat.slice(ofs,ofs+c_len); // handle utf8
+                ret = [ret, `${dat2str(d)}`].filter(Boolean).join(' ');
             }
-            ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
+            ofs += isNaN(f[i+1]) ? c_len : Number(f[++i]);
             break;
         case 'b':
             switch (show) {
@@ -109,7 +116,7 @@ function reg2str(dat, ofs, fmt, show) {
             break;
         }
     }
-    return ret;
+    return [ret, ofs];
 }
 
 async function read_reg_val(r_idx, read_dft=false) {
@@ -151,7 +158,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
-                    let str = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
+                    let [str, ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                     if (read_dft) {
                         let elem = document.getElementById(`reg_dft.${r[R_ID]}.${n}`);
                         elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
@@ -165,8 +172,12 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let count = Math.trunc(r[R_LEN] / one_size);
                 let val = '';
                 let join = r[R_FMT][1] == 'c' && r[R_SHOW] == 0 ? '' : ' ';
-                for (let n = 0; n < count; n++)
-                    val = [val, reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW])].filter(Boolean).join(join);
+                for (let n = 0; n < count; /**/) {
+                    let cur_ofs = r[R_ADDR] - start + one_size * n;
+                    let [str, ofs] = reg2str(ret[0].dat.slice(1), cur_ofs, r[R_FMT], r[R_SHOW]);
+                    val = [val, str].filter(Boolean).join(join);
+                    n += ofs - cur_ofs;
+                }
                 
                 if (read_dft)
                     document.getElementById(`reg_dft.${r[R_ID]}`).setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}`);
@@ -174,7 +185,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                     document.getElementById(`reg.${r[R_ID]}`).value = val;
                 
             } else {
-                let str = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
+                let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
                 if (read_dft) {
                     let elem = document.getElementById(`reg_dft.${r[R_ID]}`);
                     elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
@@ -212,7 +223,12 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             switch (show) {
             case 1:  dv.setInt8(ofs, parseInt(str_a[s_idx]), true); break;
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
-            default: dat.set(str2dat(str[s_idx]), ofs);
+            default:
+                let str_dat = str2dat(str); // handle utf8
+                let str_idx = str_dat.slice(s_idx,s_idx+1);
+                if (!str_idx.length)
+                    str_idx = new Uint8Array(1); // zero
+                dat.set(str_idx, ofs);
             }
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;

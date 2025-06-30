@@ -105,21 +105,20 @@ def write_flash(addr, dat):
 
 def _enter_bl():
     while True:
-        info_str = cd_read_info(csa['dev_addr'], timeout=0.2)
+        info_str = cd_read_info(csa['dev_addr'], timeout=0.1)
         print('waiting (bl) in info string ...')
         print(f'info: {info_str}')
         if '(bl)' in info_str:
             if 'keep_bl' in csa['cfg']['iap']:
-                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['keep_bl'], write=b'\x01')
+                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['keep_bl'], write=b'\x01', timeout=0.2)
                 print('keeped in bl mode')
             break
         elif info_str != 'error':
             print('do reboot before flash ...')
             try:
-                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.3, retry=1)
+                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x01', timeout=0.2, retry=1)
             except Exception as err:
                 pass
-        sleep(0.2)
 
 
 if __name__ == "__main__":
@@ -173,7 +172,7 @@ if __name__ == "__main__":
         if not flash_only:
             print('do reboot after flash ...')
             try:
-                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x02', timeout=0.3, retry=1)
+                cd_reg_rw(csa['dev_addr'], csa['cfg']['iap']['reboot'], write=b'\x02', timeout=0.2, retry=1)
             except Exception as err:
                 pass
         print('flash succeed.')

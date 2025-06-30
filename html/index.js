@@ -103,7 +103,7 @@ function init_ws() {
         
         csa.cmd_sock.flush();
         await csa.cmd_sock.sendto({'action': 'get_cfgs'}, ['server', 'cfgs']);
-        let dat = await csa.cmd_sock.recvfrom(500);
+        let dat = await csa.cmd_sock.recvfrom(2000);
         console.log('get_cfgs ret', dat);
         cfgs = dat[0];
         
@@ -144,7 +144,7 @@ document.getElementById('set_local').onclick = async function() {
     document.getElementById('set_local').disabled = true;
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(500);
+    let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('set_local ret', dat);
     await document.getElementById('btn_dev_get').onclick();
     document.getElementById('set_local').disabled = false;
@@ -159,7 +159,7 @@ document.getElementById('btn_dev_get').onclick = async function() {
     
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(500);
+    let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
     status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? L('Online') : L('Offline')} ` +
                        `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
@@ -190,7 +190,7 @@ document.getElementById('btn_dev_open').onclick = async function() {
     document.getElementById('btn_dev_open').disabled = true;
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(500);
+    let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_open ret', dat);
     await document.getElementById('btn_dev_get').onclick();
     document.getElementById('btn_dev_open').disabled = false;
@@ -202,7 +202,7 @@ document.getElementById('btn_dev_close').onclick = async function() {
     document.getElementById('btn_dev_close').disabled = true;
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(500);
+    let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_close ret', dat);
     await document.getElementById('btn_dev_get').onclick();
     document.getElementById('btn_dev_close').disabled = false;

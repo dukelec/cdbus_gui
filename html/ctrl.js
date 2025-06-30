@@ -28,7 +28,7 @@ function init_ws() {
         
         csa.cmd_sock.flush();
         await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'cfgs']);
-        let dat = await csa.cmd_sock.recvfrom(500);
+        let dat = await csa.cmd_sock.recvfrom(2000);
         console.log('get_cfg ret', dat[0]);
         csa.cfg = dat[0];
         
@@ -74,7 +74,7 @@ document.getElementById('dev_read_info').onclick = async function() {
     
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(500);
+    let dat = await csa.cmd_sock.recvfrom(1000);
     if (!dat) {
         elem.style.background = '#F5B7B180';
         elem.innerHTML = 'WebSocket timeout';
@@ -88,7 +88,7 @@ document.getElementById('dev_read_info').onclick = async function() {
     csa.proxy_sock_info.flush();
     await csa.proxy_sock_info.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
     console.log('read info wait ret');
-    let ret = await csa.proxy_sock_info.recvfrom(500);
+    let ret = await csa.proxy_sock_info.recvfrom(1000);
     console.log('read info ret', ret);
     if (ret) {
         elem.innerHTML = `${dat2str(ret[0].dat)}`;

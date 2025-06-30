@@ -227,7 +227,7 @@ async function plot_set_en() {
         csa.plot.proxy_sock.flush();
         await csa.plot.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('plot_set_en wait ret');
-        let ret = await csa.plot.proxy_sock.recvfrom(500 * (i+1));
+        let ret = await csa.plot.proxy_sock.recvfrom(500 * (i+2));
         console.log('plot_set_en ret', ret);
         if (ret && (ret[0].dat[0] & 0xf) == 0) {
             console.log('plot_set_en ok');

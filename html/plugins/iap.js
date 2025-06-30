@@ -45,7 +45,7 @@ async function flash_erase(addr, len) {
     csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_erase wait ret, addr: ${val2hex(addr)}, len: ${(val2hex(len))}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(5000);
+    let ret = await csa.iap.proxy_sock.recvfrom(60000);
     console.log('flash_erase ret', ret);
     if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
         return 0
@@ -65,7 +65,7 @@ async function flash_write_blk(addr, dat) {
     csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(1000);
     console.log('flash_write_blk ret', ret);
     if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
         return 0
@@ -101,7 +101,7 @@ async function flash_read_blk(addr, len) {
     csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_blk wait ret, addr: ${val2hex(addr)}, len: ${len}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(1000);
     console.log('flash_read_blk ret', ret);
     if (ret && (ret[0].dat[0] & 0xf) == 0 && ret[0].dat.length == len + 1) {
         return ret[0].dat.slice(1);
@@ -138,7 +138,7 @@ async function flash_read_crc(addr, len) {
     csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(500);
+    let ret = await csa.iap.proxy_sock.recvfrom(1000);
     console.log('flash_read_crc', ret);
     if (ret && (ret[0].dat[0] & 0xf) == 0) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
@@ -229,7 +229,7 @@ async function do_iap() {
     if (action != "bl") {
         csa.cmd_sock.flush();
         await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'iap']);
-        msg = await csa.cmd_sock.recvfrom(500);
+        msg = await csa.cmd_sock.recvfrom(20000);
         if (!msg || !msg[0].length) {
             alert('invalid ihex file');
             stop_iap();
@@ -245,7 +245,7 @@ async function do_iap() {
         csa.iap.proxy_sock.flush();
         await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
         console.log('read info wait ret');
-        let ret = await csa.iap.proxy_sock.recvfrom(200);
+        let ret = await csa.iap.proxy_sock.recvfrom(100);
         console.log('read info ret', ret);
         if (ret && ret[0].src[1] == 0x0001) {
             let s = dat2str(ret[0].dat);
@@ -277,7 +277,6 @@ async function do_iap() {
         }
         if (++retry_cnt >= 4)
             retry_cnt = 0;
-        await sleep(50);
     }
     
     if (action == "flash" && document.getElementById('iap_start').disabled) {

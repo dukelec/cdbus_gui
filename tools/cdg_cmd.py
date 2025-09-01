@@ -234,7 +234,7 @@ def read_reg(name):
             cur_ofs = reg['addr'] - grp[0] + fmt_len * i
             r_, ofs = reg2str(dat[1:], reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show'])
             ret.append(r_)
-            i += ofs - cur_ofs;
+            i += round((ofs - cur_ofs) / fmt_len);
         return join.join(ret)
     return reg2str(dat[1:], reg['addr'] - grp[0], reg['fmt'], reg['show'])[0]
 

@@ -176,7 +176,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                     let cur_ofs = r[R_ADDR] - start + one_size * n;
                     let [str, ofs] = reg2str(ret[0].dat.slice(1), cur_ofs, r[R_FMT], r[R_SHOW]);
                     val = [val, str].filter(Boolean).join(join);
-                    n += ofs - cur_ofs;
+                    n += Math.trunc((ofs - cur_ofs) / one_size);
                 }
                 
                 if (read_dft)

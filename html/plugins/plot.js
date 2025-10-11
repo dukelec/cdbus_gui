@@ -299,17 +299,18 @@ async function init_plot() {
         }
         
         let html = `
-            <label class="checkbox"><input type="checkbox" id="plot${i}_en"> Enable Plot${i}</label>
-            <select id="plot${i}_size" value="none">
-                <option value="1200x200">1200x200</option>
-                <option value="1200x400">1200x400</option>
-                <option value="1200x800">1200x800</option>
-                <option value="1800x1000">1800x1000</option>
-                <option value="none">Hide</option>
-            </select>
-            | Depth: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
-            <button class="button is-small" id="plot${i}_clear">Clear</button>
-            <br>
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+                <label class="checkbox"><input type="checkbox" id="plot${i}_en"> Enable Plot${i}</label>
+                <select id="plot${i}_size" value="none">
+                    <option value="1200x200">1200x200</option>
+                    <option value="1200x400">1200x400</option>
+                    <option value="1200x800">1200x800</option>
+                    <option value="1800x1000">1800x1000</option>
+                    <option value="none">Hide</option>
+                </select>
+                | Depth: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
+                <button class="button is-small" id="plot${i}_clear">Clear</button>
+            </div>
             <div id="plot${i}"></div>
         `;
         

@@ -476,24 +476,22 @@ async function init_reg() {
         <div class="container">
             <h2 class="title is-size-4"><span>${L('Regs')}</span></h2>
         
-            <div class="columns">
-                <div class="column">
-                    <button class="button is-small" id="dev_read_all">${L('Read All')}</button>
-                    <button class="button is-small" id="dev_write_all">${L('Write All')}</button>
-                    |
-                    <label class="checkbox"><input type="checkbox" id="less_reg"> <span>${L('Less')}</span></label>,
-                    <label class="checkbox"><input type="checkbox" id="keep_read"> <span>${L('Read per')}</span></label>
-                    <input type="text" size="5" placeholder="1000" id="read_period" value="1000"> ms
-                    |
-                    <button class="button is-small" id="button_edit">${L('Button Edit')}</button>
-                    <div id="button_subs" style="display: none;">
-                    <button class="button is-small" id="group_on">${L('Enable')} & ${L('Group')}</button>
-                    <button class="button is-small" id="group_off">${L('Ungroup')}</button>
-                    <button class="button is-small" id="enable_on">${L('Enable')}</button>
-                    <button class="button is-small" id="enable_off">${L('Disable')}</button>
-                    <button class="button is-small" id="button_all">${L('Select All')}</button>
-                    <button class="button is-small" id="button_def">${L('Load Default')}</button>
-                    </div>
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+                <button class="button is-small" id="dev_read_all">${L('Read All')}</button>
+                <button class="button is-small" id="dev_write_all">${L('Write All')}</button>
+                |
+                <label class="checkbox"><input type="checkbox" id="less_reg"> <span>${L('Less')}</span></label>
+                <label class="checkbox"><input type="checkbox" id="keep_read"> <span>${L('Read per')}</span></label>
+                <input type="text" size="5" placeholder="1000" id="read_period" value="1000"> ms
+                |
+                <button class="button is-small" id="button_edit">${L('Button Edit')}</button>
+                <div id="button_subs" style="display: none;">
+                <button class="button is-small" id="group_on">${L('Enable')} & ${L('Group')}</button>
+                <button class="button is-small" id="group_off">${L('Ungroup')}</button>
+                <button class="button is-small" id="enable_on">${L('Enable')}</button>
+                <button class="button is-small" id="enable_off">${L('Disable')}</button>
+                <button class="button is-small" id="button_all">${L('Select All')}</button>
+                <button class="button is-small" id="button_def">${L('Load Default')}</button>
                 </div>
             </div>
         

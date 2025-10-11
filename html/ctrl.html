@@ -43,11 +43,9 @@
 
     <div class="container">
         <h2 class="title is-size-4"><span>${L('Device')}</span> <span class="is-size-6" id="tgt_name"></span></h2>
-        <div class="columns">
-            <div class="column">
-                <button class="button is-small" id="dev_read_info">${L('Read Info')}</button> &nbsp;
-                <span>${L('Device Info')}</span>: <span id="dev_info">--</span>
-            </div>
+        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+            <button class="button is-small" id="dev_read_info">${L('Read Info')}</button>
+            <span>${L('Device Info')}:</span> <span id="dev_info">--</span>
         </div>
     </div>
     <br>

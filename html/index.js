@@ -16,7 +16,24 @@ import { init_dbg } from './plugins/dbg.js';
 csa.ws_ns = new CDWebSocketNS('/');
 csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
 let cfgs = null;
+const dev_max = 100;
+let devs = [];
 
+
+function auto_hide() {
+    console.log("auto_hide:", devs);
+    let skip_hide = true;
+    for (let i = 0; i < dev_max; i++) {
+        if (i < Math.max(5, devs.length)) {
+            console.log(`${i}, show`);
+            document.getElementById(`device_grp${i}`).style.display = '';
+        } else {
+            console.log(`${i}, hide`);
+            document.getElementById(`device_grp${i}`).style.display = skip_hide ? '' : 'none';
+            skip_hide = false;
+        }
+    }
+}
 
 async function init_serial_cfg() {
     let ser_cfg = await csa.db.get('tmp', '_index_/ser.cfg');
@@ -48,16 +65,21 @@ async function init_cfg_list() {
         sel_ops += `<option value="${op}">${op}</option>`;
     let list = document.getElementById('cfg_list');
     
-    let devs = await csa.db.get('tmp', '_index_/dev.list');
-    for (let i = 0; i < 10; i++) {
+    devs = await csa.db.get('tmp', '_index_/dev.list');
+    console.log("init get devs:", devs);
+    for (let i = 0; i < dev_max; i++) {
         let tgt = (devs && devs[i]) ? devs[i].tgt : `00:00:fe`;
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';
         let name = (devs && devs[i]) ? devs[i].name : '';
         let html = `
-            <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
-            <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
-            <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
-            <button class="button is-small" id="cfg${i}.btn">${L('Open Window')}</button> <br>
+            <div id="device_grp${i}">
+                <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 1px 0;">
+                    <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
+                    <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
+                    <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
+                    <button class="button is-small" id="cfg${i}.btn">${L('Open Window')}</button>
+                </div>
+            </div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -79,17 +101,22 @@ async function init_cfg_list() {
                 document.getElementById(`cfg${i}.tgt`).onchange =
                 document.getElementById(`cfg${i}.cfg`).onchange = async () => {
             
-            let devs = [];
-            for (let n = 0; n < 10; n++) {
-                devs.push({
+            devs = [];
+            for (let n = 0; n < dev_max; n++) {
+                const dev = {
                     tgt: document.getElementById(`cfg${n}.tgt`).value,
                     cfg: document.getElementById(`cfg${n}.cfg`).value,
                     name: document.getElementById(`cfg${n}.name`).value,
-                });
+                };
+                if (!dev.name && n >= 5)
+                    break;
+                devs.push(dev);
             }
             await csa.db.set('tmp', '_index_/dev.list', devs);
+            auto_hide();
         };
     }
+    auto_hide();
 }
 
 

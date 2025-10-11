@@ -15,21 +15,23 @@ import { csa, alloc_port } from '../common.js';
 let html = `
     <div class="container">
         <h2 class="title is-size-4">IAP</h2>
-        <input type="text" size="85" placeholder="Full path of intel hex file on system" id="iap_path">
-        <select id="iap_action" value="bl_full">
-            <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
-            <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
-            <option value="bl">${L('Reboot')} -> BL (${L('Enter')} BootLoader)</option>
-            <option value="flash">${L('Flash Only')}</option>
-        </select>
-        <select id="iap_check" value="none">
-            <option value="none">${L('No Check')}</option>
-            <option value="read">${L('Read Back Check')}</option>
-            <option value="crc">${L('Read CRC Check')}</option>
-        </select>
-        <button class="button is-small" id="iap_start">${L('Start')}</button>
-        <button class="button is-small" id="iap_stop" disabled>${L('Stop')}</button> <br>
-        
+        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+            <input type="text" size="80" placeholder="Full path of intel hex file on system" id="iap_path">
+            <select id="iap_action" value="bl_full">
+                <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
+                <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
+                <option value="bl">${L('Reboot')} -> BL (${L('Enter')} BootLoader)</option>
+                <option value="flash">${L('Flash Only')}</option>
+            </select>
+            <select id="iap_check" value="none">
+                <option value="none">${L('No Check')}</option>
+                <option value="read">${L('Read Back Check')}</option>
+                <option value="crc">${L('Read CRC Check')}</option>
+            </select>
+            <button class="button is-small" id="iap_start">${L('Start')}</button>
+            <button class="button is-small" id="iap_stop" disabled>${L('Stop')}</button>
+        </div>
+        <br>
         <span>${L('Progress')}</span>: <span id="iap_epoch"></span> <span id="iap_progress">--</span>
     </div>
     <br>`;

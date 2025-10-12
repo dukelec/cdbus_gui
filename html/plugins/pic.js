@@ -40,6 +40,8 @@ async function pic_service() {
             if (dat_cnt == (hdr & 0xf)) {
                 img_dat = Uint8Array.from([...img_dat, ...dat]);
                 // show pic
+                if (document.getElementById('pic_id').src)
+                    URL.revokeObjectURL(document.getElementById('pic_id').src);
                 document.getElementById('pic_id').src = URL.createObjectURL( new Blob([img_dat.buffer], { type: `image/${csa.cfg.pic.fmt}` }) );
                 document.getElementById('pic_cnt').innerHTML = `- #${pic_cnt}`;
                 pic_cnt++;

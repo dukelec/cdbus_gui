@@ -21,9 +21,10 @@ let trans_zh_cn = {
     'Set': '设置',
     
     'Scroll end': '滚动到最后',
-    'Len': '长度',
+    'Max Len': '最大长度',
     'Clear': '清除',
-    'Add blank': '插入空行',
+    'Prev': '上一个',
+    'Next': '下一个',
     
     'Online': '在线',
     'Offline': '离线',
@@ -47,6 +48,7 @@ let trans_zh_cn = {
     'Load Default': '加载默认',
     
     'Device Info': '设备信息',
+    'Depth': '深度',
     
     'Reboot': '重启',
     'Flash': '烧录',

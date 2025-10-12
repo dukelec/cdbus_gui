@@ -20,9 +20,10 @@ let trans_zh_hk = {
     'Set': '設置',
     
     'Scroll end': '滾動到最後',
-    'Len': '長度',
+    'Max Len': '最大長度',
     'Clear': '清除',
-    'Add blank': '插入空行',
+    'Prev': '上一個',
+    'Next': '下一個',
     
     'Online': '在綫',
     'Offline': '離線',
@@ -46,6 +47,7 @@ let trans_zh_hk = {
     'Load Default': '加載預設',
     
     'Device Info': '設備信息',
+    'Depth': '深度',
     
     'Reboot': '重啟',
     'Flash': '燒錄',

@@ -52,12 +52,12 @@ function init_reg_list() {
         let html = `
             <div class="columns is-mobile is-gapless">
               <div class="column">
-                <div class="level is-mobile" style="margin: 5px 0 5px 0;">
+                <div class="level is-mobile" style="margin: 5px 0;">
                   <span class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" data-tooltip="${reg[R_DESC]}">${reg[R_ID]}</span>
                   <span class="level-right" style="margin: 0 8px 0 4px; font-family: monospace;">0x${val2hex(reg[R_ADDR])}</span>
                 </div>
               </div>
-              <div class="column" style="margin: 5px 0 5px 0;">
+              <div class="column is-mobile" style="margin: 5px 0; flex: 0 0 200px;">
                 ${html_input}
               </div>
               <div class="column is-1 reg_btn_rw" id="reg_btn_r.${reg[R_ID]}">R</div>

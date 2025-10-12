@@ -1,10 +1,6 @@
 CDBUS GUI Tool
 =======================================
 
-#### Let's start by listing one of the features of this tool:
-When a master board is controlling a slave, the PC can be hooked up to the same RS-485 bus (CDBUS) and the PC can read and write to the slave, view slave print messages, and view data waveforms without interfering with the control of the slave by the existing master board.
-
-
 #### Download this tool:
 `git clone --recursive https://github.com/dukelec/cdbus_gui`
 
@@ -16,20 +12,24 @@ Python version >= 3.8
 #### Usage:
 Run `main.py` or `start.sh`, then open url in your web browser: http://localhost:8910
 
-The code architecture is python + web, where python communicates with each web page through a single websocket pipe.  
-The web side is bare javascript (vanilla, es6), so you don't need to learn a specific front-end framework to get involved in code editing. It is also convenient to use this app as a template for some product-specific software.  
+The underlying protocol for Serial Port is CDBUS, which uses the following frame format:  
+`src, dst, len, [payload], crc_l, crc_h`
 
-The protocol between mcu and python is cdnet, currently only the minimal version of the level 1 format is used.  
-The protocol between python and the web is similar to cdnet, with arbitrary strings used instead of addresses and ports.  
+Each frame includes a 3-byte header, a variable-length payload, and a 2-byte CRC (identical to Modbus CRC).  
+For more information on the CDBUS protocol, please refer to:
+ - https://cdbus.org
 
-The firmware on the mcu side of the following demonstration, as well as the usage of cdnet, can be roughly referred to in this project: https://github.com/dukelec/cdstep  
+The payload is encoded using the CDNET protocol. For detailed information, please refer to:
+ - https://github.com/dukelec/cdnet
+ - https://github.com/dukelec/cdnet/wiki/CDNET-Intro-and-Demo
 
 
 ### Index Page
  - "Available" lists all the serial ports of your computer, just paste any sub string of them and fill in the first input box of "Serial". The advantage of this is that if the port changes, you can still open the correct serial port. Or you can select the serial port that is plugged into the specified USB port.
- - During use, the serial port will automatically reconnect if it is dropped. On the right is the python background print: successfully reconnected again after unplugging and plugging.
+ - The serial port supports automatic reconnection.
  - "Devices" is mainly to choose which slave to debug, supports debugging multiple devices at the same time, the number of devices is unlimited.
- - "Logs" is the message printed by all devices on the bus, while each device's respective page prints only its own debug message.
+ - "Logs" is the message printed by all devices on the bus, while each device's respective page prints only its own debug message.  
+   (Pressing `Enter` inserts a blank line; Holding `Alt` or `Ctrl + Alt` allows block selection.)
  - Printing supports color (ANSI), just like the terminal under Linux, so it is easy to locate errors quickly in many logs.
  - The Logs window can be resized at will.
  - Edited data is automatically saved.
@@ -51,8 +51,7 @@ The following is the debug window for a specific device, starting with the data 
 
 <img src="doc/p3.avif">  
 
- - This is the Log debug on the Device page, which can also be changed to any size.
- - Further below is the waveform window, which also supports size selection.
+ - Below is the waveform window, which also supports selecting different window sizes.
 
 <img src="doc/p4.avif">  
 
@@ -83,8 +82,6 @@ The following is the debug window for a specific device, starting with the data 
  - IAP supports intel hex file with multiple segments.
  - When the register format is changed, it can be migrated by exporting and importing.
  - Waveform data and log printing will be exported at the same time.
-
-For example, if you are doing motor control, you can ask your customer to send you the waveform he collected for analysis, so as to remotely assist the customer in adjusting PID and other parameters.
 
 
 ### JSON Format
@@ -174,22 +171,24 @@ Finally, there is the json configuration:
 
 
 ### More Info
-As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilitates the use of strings to represent different addresses (for efficiency, mcu uses a 3-byte uint8_t array) and is defined as follows.
+As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilitates the use of strings to represent different addresses and is defined as follows.
 
 ```
 /* CDNET address string formats:
 *
-*              local link     unique local    multicast
-* level0:       00:NN:MM
-* level1:       80:NN:MM        a0:NN:MM       f0:MH:ML
+*            localhost      local link     unique local    multicast
+*             10:00:00
+* level0:                    00:NN:MM
+* level1:                    80:NN:MM        a0:NN:MM       f0:MH:ML
 *
 * Notes:
-*   NN: net_id, MM: mac_addr, MH+ML: multicast_id (H: high byte, L: low byte)
+*   NN: net_id, MM: mac_addr, MH/ML: multicast_id (H: high byte, L: low byte)
 */
 ```
 
  - Broadcast and multicast can also use the "local link" format, there is no need to use the "multicast" format for simple occasions.
  - "unique local" is used only when cross-segment, for example, there are multiple network segments, each subnet has multiple devices.
 
-The cdnet ip address can be directly mapped to a standard ipv6 address, so that the computer can interact with mcu through standard udp programming, and the code on the mcu side does not need to change, so the overhead is very small and there is no need to run the ipv6 protocol stack.
+Serial CDNET packets can be directly mapped to UDP packets, allowing multiple software applications to access the same serial device. Please refer to:
+https://github.com/dukelec/cdnet
 

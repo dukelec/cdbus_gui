@@ -28,14 +28,13 @@ let html = `
     </div>
     <br>`;
 
-let is_index = false;
 let term = null;
-let origin_log = '';
+let origin_log = [];
 
 function write_log(line) {
     const buffer = term.buffer.active;
     term.write(line);
-    origin_log += line;
+    origin_log.push(line);
     if(buffer.viewportY + term.rows >= buffer.length)
         term.scrollToBottom();
 }
@@ -75,17 +74,18 @@ async function dbg_service() {
         if (e.ctrlKey && e.code == 'KeyC' && e.type == 'keydown') {
             if (term.hasSelection()) {
                 const selected = term.getSelection();
-                navigator.clipboard.writeText(selected).then(() => {
-                    console.log('Copied to clipboard:', selected);
-                }).catch(console.error);
+                navigator.clipboard.writeText(selected);
                 e.preventDefault();
                 return false;
             }
         }
         if (e.code == 'Enter' && e.type == 'keydown') {
             term.writeln('');
+            origin_log.push('\n');
             return false;
         }
+        if (e.key == "F5")
+            return false; // allow F5 refresh page
         return true;
     });
     
@@ -110,11 +110,7 @@ async function dbg_service() {
         let dat = await csa.dbg.sock.recvfrom();
         console.log('dbg get:', dat2str(dat[0].dat));
         let elem = document.getElementById('dbg_log');
-        let addition = is_index ? ` [${dat[0].src[0]}]` : '';
-        let txt = `${timestamp()}${addition}: ${dat2str(dat[0].dat)}`;
-        
-        const n_indent = '\n' + ' '.repeat(is_index ? 25 : 14);
-        txt = txt.replace(/\n(?!$)/g, n_indent); // except the end '\n'
+        let txt = dat2str(dat[0].dat);
         write_log(txt);
     }
 }
@@ -122,7 +118,6 @@ async function dbg_service() {
 async function init_dbg() {
     csa.dbg = {};
     csa.plugins.push('dbg');
-    is_index = !('tgt' in csa.arg);
     
     let port = await alloc_port(9);
     console.log(`init_dbg, alloc port: ${port}`);
@@ -133,7 +128,7 @@ async function init_dbg() {
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     dbg_service();
     
-    csa.dbg.dat_export = () => { return origin_log; };
+    csa.dbg.dat_export = () => { return origin_log.join(''); };
     csa.dbg.dat_import = (dat) => {
         term.write(dat);
         term.scrollToBottom();

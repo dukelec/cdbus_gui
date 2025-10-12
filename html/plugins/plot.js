@@ -300,7 +300,7 @@ async function init_plot() {
         
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-                <label class="checkbox"><input type="checkbox" id="plot${i}_en"> Enable Plot${i}</label>
+                <label class="checkbox"><input type="checkbox" id="plot${i}_en"> ${L('Enable')} Plot${i}</label>
                 <select id="plot${i}_size" value="none">
                     <option value="1200x200">1200x200</option>
                     <option value="1200x400">1200x400</option>
@@ -308,8 +308,8 @@ async function init_plot() {
                     <option value="1800x1000">1800x1000</option>
                     <option value="none">Hide</option>
                 </select>
-                | Depth: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
-                <button class="button is-small" id="plot${i}_clear">Clear</button>
+                | ${L('Depth')}: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
+                <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
             </div>
             <div id="plot${i}"></div>
         `;

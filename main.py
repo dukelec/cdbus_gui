@@ -12,14 +12,11 @@ Args:
   --debug   | -d    # debug level: debug
 """
 
-import os, sys
+import os, sys, re
 import _thread
-import time
-import datetime
-import copy
-import json5
-import asyncio
-import aiohttp
+import time, datetime
+import copy, json5
+import asyncio, aiohttp
 import websockets
 from collections import deque
 from intelhex import IntelHex
@@ -65,13 +62,18 @@ csa = {
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
 async def proxy_rx_rpt(rx):
     src, dst, dat = rx
+    logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
+    if dst[1] == 0x9:
+        time_str = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3].encode()
+        # dbg and dev_info msg also send to index.html 
+        dat4idx = re.sub(b'\n(?!$)', b'\n' + b' ' * 25, dat) # except the end '\n'
+        dat4idx = time_str + b' [' + src[0].encode() + b']' + b': ' + dat4idx
+        await csa['proxy'].sendto({'src': src, 'dat': dat4idx}, (f'/', 0x9))
+        dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
+        dat = time_str + b': ' + dat
     ret = await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/{src[0]}', dst[1]))
     if ret:
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')
-    
-    logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
-    if dst[1] == 0x9 or src[1] == 0x1: # dbg and dev_info msg also send to index.html
-        await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/', 0x9))
 
 def proxy_rx():
     logger.info('start proxy_rx')
@@ -91,7 +93,6 @@ def proxy_rx():
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
             except Exception as err:
                 logger.warning(f'proxy_rx fmt err {err}', frame)
-    
     logger.info('exit proxy_rx')
 
 _thread.start_new_thread(proxy_rx, ())
@@ -120,7 +121,6 @@ async def cdbus_proxy_service():
                 logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
             if csa['dev']:
                 csa['dev'].send(frame)
-
         except Exception as err:
             logger.warning(f'proxy_tx: fmt err: {err}')
 

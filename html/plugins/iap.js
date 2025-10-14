@@ -5,8 +5,8 @@
  */
 
 import { L } from '../utils/lang.js'
-import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
+import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, read_file, download,
+         readable_size, blob2dat, compare_dat, dat_append, crc16 } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { Idb } from '../utils/idb.js';
 import { csa, alloc_port } from '../common.js';
@@ -79,7 +79,8 @@ async function flash_write_blk(addr, dat) {
 
 async function flash_write(addr, dat, blk_size=128) {
     let cur = addr;
-    while (document.getElementById('iap_start').disabled) {
+    let iap_progress_elm = document.getElementById('iap_progress');
+    while (!csa.iap.stop) {
         let size = Math.min(blk_size, dat.length - (cur - addr));
         if (size == 0)
             return 0;
@@ -88,7 +89,7 @@ async function flash_write(addr, dat, blk_size=128) {
         if (ret)
             return -1;
         cur += size;
-        document.getElementById('iap_progress').innerHTML = `Write ${Math.round((cur - addr) / dat.length * 100)}%`;
+        iap_progress_elm.innerText = `Write ${Math.round((cur - addr) / dat.length * 100)}%`;
     }
     return -2;
 }
@@ -116,16 +117,17 @@ async function flash_read_blk(addr, len) {
 async function flash_read(addr, len, blk_size=128) {
     let cur = addr;
     let buf = new Uint8Array(0);
-    while (document.getElementById('iap_start').disabled) {
+    let iap_progress_elm = document.getElementById('iap_progress');
+    while (!csa.iap.stop) {
         let size = Math.min(blk_size, len - (cur - addr));
         if (size == 0)
             return buf;
         let ret = await flash_read_blk(cur, size);
         if (ret == null)
             return null;
-        buf = Uint8Array.from([...buf, ...ret]);
+        buf = dat_append(buf, ret);
         cur += size;
-        document.getElementById('iap_progress').innerHTML = `Read ${Math.round((cur - addr) / len * 100)}%`;
+        iap_progress_elm.innerText = `Read ${Math.round((cur - addr) / len * 100)}%`;
     }
     return null;
 }
@@ -150,25 +152,6 @@ async function flash_read_crc(addr, len) {
         return null;
     }
 }
-
-function crc16(buffer) {
-    var crc = 0xFFFF;
-    var odd;
-
-    for (var i = 0; i < buffer.length; i++) {
-        crc = crc ^ buffer[i];
-
-        for (var j = 0; j < 8; j++) {
-            odd = crc & 0x0001;
-            crc = crc >> 1;
-            if (odd) {
-                crc = crc ^ 0xA001;
-            }
-        }
-    }
-
-    return crc;
-};
 
 async function keep_in_bl() {
     if (!('keep_bl' in csa.cfg.iap)) {
@@ -208,12 +191,12 @@ async function do_reboot(bl_args) {
 
 async function stop_iap() {
     document.getElementById('iap_start').disabled = false;
-    document.getElementById('iap_stop').disabled = true;
+    document.getElementById('iap_stop').disabled = csa.iap.stop = true;
 }
 
 async function do_iap() {
     document.getElementById('iap_start').disabled = true;
-    document.getElementById('iap_stop').disabled = false;
+    document.getElementById('iap_stop').disabled = csa.iap.stop = false;
     document.getElementById('iap_epoch').innerHTML = '';
     document.getElementById('iap_progress').innerHTML = '--';
     
@@ -242,7 +225,7 @@ async function do_iap() {
     
     let retry_cnt = 0;
     let reboot_cnt = 0;
-    while (action.startsWith('bl') && document.getElementById('iap_start').disabled) {
+    while (action.startsWith('bl') && !csa.iap.stop) {
     
         csa.iap.proxy_sock.flush();
         await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
@@ -281,7 +264,7 @@ async function do_iap() {
             retry_cnt = 0;
     }
     
-    if (action == "flash" && document.getElementById('iap_start').disabled) {
+    if (action == "flash" && !csa.iap.stop) {
         if (await keep_in_bl()) {
             document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
             stop_iap();
@@ -293,7 +276,7 @@ async function do_iap() {
     }
     
     for (let idx = 0; action != "bl" && idx < msg[0].length; idx++) {
-        if (!document.getElementById('iap_start').disabled)
+        if (csa.iap.stop)
             break;
         let seg = msg[0][idx];
         let addr = seg[0];
@@ -310,7 +293,7 @@ async function do_iap() {
     }
     
     for (let idx = 0; action != "bl" && idx < msg[0].length; idx++) {
-        if (!document.getElementById('iap_start').disabled)
+        if (csa.iap.stop)
             break;
         let seg = msg[0][idx];
         let addr = seg[0];
@@ -358,7 +341,7 @@ async function do_iap() {
         }
     }
     
-    if (action == 'bl_full' && document.getElementById('iap_start').disabled)
+    if (action == 'bl_full' && !csa.iap.stop)
         await do_reboot(2);
     
     stop_iap();
@@ -367,6 +350,7 @@ async function do_iap() {
 async function init_iap() {
     csa.iap = {};
     csa.plugins.push('iap');
+    csa.iap.stop = true;
     
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     

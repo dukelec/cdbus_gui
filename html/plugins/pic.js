@@ -15,7 +15,8 @@ import { csa, alloc_port } from '../common.js';
 
 async function pic_service() {
     let pic_cnt = 1;
-    let img_dat = new Uint8Array(0);
+    let img_dats = [];
+    let img_dat_len = 0;
     let dat_cnt = 0;
     
     while (true) {
@@ -25,20 +26,30 @@ async function pic_service() {
         let hdr = src_port; // [5:4] FRAGMENT: 00: error, 01: first, 10: more, 11: last, [3:0]: cnt
         
         if (hdr == 0x50) { // first
-            img_dat = dat;
+            img_dats = [];
+            img_dats.push(dat);
+            img_dat_len = dat.length;
             dat_cnt = 0;
             console.log(`img: header ${dat[0]} ${dat[1]}`);
         
         } else if ((hdr & 0xf0) == 0x60) { // more
             if (dat_cnt == (hdr & 0xf)) {
-                img_dat = Uint8Array.from([...img_dat, ...dat]);
+                img_dats.push(dat);
+                img_dat_len += dat.length;
             } else {
                 console.warn(`pic, wrong cnt, local: ${dat_cnt} != rx: ${hdr & 0xf}, dat len: ${dat.length}`);
             }
             
         } else if ((hdr & 0xf0) == 0x70) { // end
             if (dat_cnt == (hdr & 0xf)) {
-                img_dat = Uint8Array.from([...img_dat, ...dat]);
+                img_dats.push(dat);
+                img_dat_len += dat.length;
+                let img_dat = new Uint8Array(img_dat_len);
+                let ofs = 0;
+                for (let d of img_dats) {
+                    img_dat.set(d, ofs);
+                    ofs += d.length;
+                }
                 // show pic
                 if (document.getElementById('pic_id').src)
                     URL.revokeObjectURL(document.getElementById('pic_id').src);
@@ -51,7 +62,7 @@ async function pic_service() {
                 console.warn(`pic, wrong cnt at end, local: ${dat_cnt} != rx: ${hdr & 0xf}, dat len: ${dat.length}`);
             }
         } else { // err
-            console.warn(`pic, receive err, local: ${dat_cnt}, rx: ${hdr & 0xf}, all len: ${img_dat.length}`);
+            console.warn(`pic, receive err, local: ${dat_cnt}, rx: ${hdr & 0xf}, all len: ${img_dat_len}`);
         }
         
         if (++dat_cnt == 0x10)

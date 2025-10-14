@@ -166,13 +166,13 @@
                     let a = 0;                   \
                     for (let i = 0; i < 5; i++)  \
                         a += _d[9].at(-1-i);     \
-                    a / 5;",
+                    return a / 5;",
                 "sq_err_avg2:                           \
                     if (_d[9]._f == undefined)          \
                         _d[9]._f = 0;                   \
                     let err = _d[9].at(-1) - _d[9]._f;  \
                     _d[9]._f += err * 0.02;             \
-                    _d[9]._f;",
+                    return _d[9]._f;",
             ],
             [
                 "speed_err2i: _d[2].at(-1) - _d[1].at(-1)",

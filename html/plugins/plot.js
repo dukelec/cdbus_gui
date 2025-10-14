@@ -19,19 +19,30 @@ let color_dft = [ "black", "red", "green", "blue", "cyan", "magenta", "gold",
                   "olive", "orange", "pink", "#00000080" ];
 
 
-function append_cal_val(idx, start, rm_oldest) {
-    let cals = csa.cfg.plot.cal[idx];
-    if (!Array.isArray(cals))
+function append_cal_val(idx, start, max_len) {
+    let fcals = csa.plot.cal_fn[idx];
+    if (!Array.isArray(fcals))
         return;
     let _d = csa.plot.dat[idx];
-    
+    for (let i = 0; i < fcals.length; i++) {
+        const cal_fn = fcals[i];
+        let val = cal_fn(_d);
+        let cal_d = csa.plot.dat[idx][start+i];
+        cal_d.push(isNaN(val) ? null : val);
+        if (max_len && cal_d.length > max_len)
+            cal_d.splice(0, cal_d.length - max_len);
+    }
+}
+
+function init_cal_fn(idx) {
+    csa.plot.cal_fn[idx] = [];
+    let cals = csa.cfg.plot.cal[idx];
     for (let i = 0; i < cals.length; i++) {
         let c_name = cals[i].split(':')[0];
         let c_str = cals[i].slice(c_name.length + 1);
-        let val = eval(c_str);
-        csa.plot.dat[idx][start+i].push(isNaN(val) ? null : val);
-        if (rm_oldest)
-            csa.plot.dat[idx][start+i].shift();
+        if (!/\breturn\b/.test(c_str))
+            c_str = `return ( ${c_str} )`;
+        csa.plot.cal_fn[idx].push(new Function('_d', `${c_str}`));
     }
 }
 
@@ -69,8 +80,7 @@ function dv_fmt_read(dv, ofs, fmt) {
 }
 
 async function dbg_raw_service() {
-    let t_last = new Date().getTime();
-    let timer = null;
+    let timer_pending = false;
     
     while (true) {
         let msg = await csa.plot.dbg_raw_sock.recvfrom();
@@ -85,9 +95,9 @@ async function dbg_raw_service() {
             console.log('dbg_raw: drop');
             continue;
         }
-        let rm_oldest = false;
-        if (csa.plot.dat[idx][0].length > document.getElementById(`plot${idx}_len`).value)
-            rm_oldest = true;
+        let max_len = 0;
+        if (!timer_pending)
+            max_len = csa.plot.plot_max_len[idx];
         
         let ofs = 0;
         let f = csa.cfg.plot.fmt[idx].split(' - ')[0];
@@ -98,12 +108,13 @@ async function dbg_raw_service() {
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, f);
                 for (let i = 0; i < grp_vals.length; i++) {
-                    csa.plot.dat[idx][i].push(grp_vals[i]);
-                    if (rm_oldest)
-                        csa.plot.dat[idx][i].shift();
+                    let dat_d = csa.plot.dat[idx][i];
+                    dat_d.push(grp_vals[i]);
+                    if (max_len && dat_d.length > max_len)
+                        dat_d.splice(0, dat_d.length - max_len);
                 }
                 ofs += grp_size;
-                append_cal_val(idx, grp_vals.length, rm_oldest);
+                append_cal_val(idx, grp_vals.length, max_len);
             }
         
         } else { // x, d1,d2,d3, d1,d2,d3
@@ -116,32 +127,27 @@ async function dbg_raw_service() {
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
-                csa.plot.dat[idx][0].push(cnt_start + cnt_inc * loop);
-                if (rm_oldest)
-                    csa.plot.dat[idx][0].shift();
+                let dat_d = csa.plot.dat[idx][0];
+                dat_d.push(cnt_start + cnt_inc * loop);
+                if (max_len && dat_d.length > max_len)
+                    dat_d.splice(0, dat_d.length - max_len);
                 for (let i = 0; i < grp_vals.length; i++) {
-                    csa.plot.dat[idx][i+1].push(grp_vals[i]);
-                    if (rm_oldest)
-                        csa.plot.dat[idx][i+1].shift();
+                    let dat_d = csa.plot.dat[idx][i+1];
+                    dat_d.push(grp_vals[i]);
+                    if (max_len && dat_d.length > max_len)
+                        dat_d.splice(0, dat_d.length - max_len);
                 }
                 loop += 1;
                 ofs += grp_size;
-                append_cal_val(idx, grp_vals.length + 1, rm_oldest);
+                append_cal_val(idx, grp_vals.length + 1, max_len);
             }
         }
         
-        if (timer) {
-            clearTimeout(timer);
-            timer = null;
-        }
-        let t_cur = new Date().getTime();
-        if (t_cur - t_last >= 100) {
-            csa.plot.plots[idx].setData(csa.plot.dat[idx]); // setData(data, resetScales=true)
-            t_last = t_cur;
-        } else {
-            timer = setTimeout(() => {
+        if (!timer_pending) {
+            timer_pending = true;
+            setTimeout(() => {
                 csa.plot.plots[idx].setData(csa.plot.dat[idx]);
-                t_last = t_cur;
+                timer_pending = false;
             }, 100);
         }
     }
@@ -264,8 +270,11 @@ async function init_plot() {
     
     
     let list = document.getElementById('plot_list');
+    const max_len = 10000;
     csa.plot.plots = [];
     csa.plot.dat = [];
+    csa.plot.cal_fn = [];
+    csa.plot.plot_max_len = [];
     
     for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         let f = csa.cfg.plot.fmt[i];
@@ -273,6 +282,7 @@ async function init_plot() {
         let f_str = f.slice(f_fmt.length + ' - '.length);
         let series_num = f_fmt.split('.')[1].length + 1;
         let series = [];
+        csa.plot.plot_max_len.push(max_len);
         
         let cals = csa.cfg.plot.cal[i];
         if (Array.isArray(cals)) {
@@ -281,6 +291,7 @@ async function init_plot() {
                 let c_name = cal.split(':')[0];
                 f_str += `, ${c_name}`;
             }
+            init_cal_fn(i);
         }
         
         csa.plot.dat.push([]);
@@ -308,7 +319,7 @@ async function init_plot() {
                     <option value="1800x1000">1800x1000</option>
                     <option value="none">Hide</option>
                 </select>
-                | ${L('Depth')}: <input type="text" size="8" placeholder="10000" id="plot${i}_len" value="10000">
+                | ${L('Depth')}: <input type="text" size="8" placeholder="${max_len}" id="plot${i}_len" value="${max_len}">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
             </div>
             <div id="plot${i}"></div>
@@ -330,6 +341,10 @@ async function init_plot() {
                 u.setSize({width, height});
                 document.getElementById(`plot${i}`).style.display = 'block';
             }
+        };
+        document.getElementById(`plot${i}_len`).onchange = async () => {
+            let len = Number(document.getElementById(`plot${i}_len`).value);
+            csa.plot.plot_max_len[i] = len;
         };
         document.getElementById(`plot${i}_clear`).onclick = async () => {
             for (let s = 0; s < series_num; s++)

@@ -24,7 +24,7 @@ let html = `
             <button class="button is-small" id="dbg_search_prev">${L('Prev')}</button>
             <button class="button is-small" id="dbg_search_next">${L('Next')}</button>
         </div>
-        <div id="dbg_log" style="resize: vertical; overflow: auto;"></div>
+        <div id="dbg_log" class="resizable"></div>
     </div>
     <br>`;
 

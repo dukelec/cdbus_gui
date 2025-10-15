@@ -1,0 +1,49 @@
+/*
+ * Software License Agreement (MIT License)
+ *
+ * Author: Duke Fong <d@d-l.io>
+ */
+
+.columns.is-gapless>.is-1.reg_btn_rw {
+    width: 30px;
+    margin: 1px 1px 1px 1px;
+    border-radius: 6px 6px 6px 6px;
+    border-width: 0.1px;
+    border-style: dashed;
+    
+    /* txt center: */
+    display: flex;
+    justify-content: center; /* align horizontal */
+    align-items: center;     /* align vertical */
+}
+.reg_btn_rw:hover {
+    cursor: pointer;
+}
+
+.columns.is-gapless:not(:last-child) {
+    margin-bottom: 0rem;
+}
+
+.resizable {
+  position: relative;
+  resize: vertical;
+  overflow: auto;
+}
+
+.resizable::after {
+    content: "";
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    width: 14px;
+    height: 14px;
+    background: #cdcdcdcd
+        url("data:image/svg+xml;utf8,                                       \
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'> \
+              <polygon points='8,2 3,7 13,7' fill='black'/>                 \
+              <polygon points='8,14 3,9 13,9' fill='black'/>                \
+            </svg>")
+        no-repeat right 0px bottom 0px;
+    background-size: 14px 14px;
+    cursor: se-resize;
+}

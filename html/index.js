@@ -25,10 +25,8 @@ function auto_hide() {
     let skip_hide = true;
     for (let i = 0; i < dev_max; i++) {
         if (i < Math.max(5, devs.length)) {
-            console.log(`${i}, show`);
             document.getElementById(`device_grp${i}`).style.display = '';
         } else {
-            console.log(`${i}, hide`);
             document.getElementById(`device_grp${i}`).style.display = skip_hide ? '' : 'none';
             skip_hide = false;
         }
@@ -65,8 +63,10 @@ async function init_cfg_list() {
         sel_ops += `<option value="${op}">${op}</option>`;
     let list = document.getElementById('cfg_list');
     
-    devs = await csa.db.get('tmp', '_index_/dev.list');
+    let db_devs = await csa.db.get('tmp', '_index_/dev.list');
     console.log("init get devs:", devs);
+    if (db_devs)
+        devs = db_devs;
     for (let i = 0; i < dev_max; i++) {
         let tgt = (devs && devs[i]) ? devs[i].tgt : `00:00:fe`;
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';

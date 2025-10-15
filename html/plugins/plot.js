@@ -161,7 +161,7 @@ function make_chart(eid, name, series) {
     let opts = {
         title: name,
         width: 1200,
-        height: 200,
+        height: 300,
         plugins: [
             wheelZoomPlugin({factor: 0.90}),
             touchZoomPlugin()
@@ -325,7 +325,7 @@ async function init_plot() {
                 <input type="text" size="6" placeholder="${less_len}" id="plot${i}_less_len" value="${less_len}">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
             </div>
-            <div id="plot${i}" style="resize: vertical; overflow: auto;"></div>
+            <div id="plot${i}" class="resizable"></div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -338,7 +338,7 @@ async function init_plot() {
             let title_height = elm.querySelector('.u-title').offsetHeight;
             let legend_height = elm.querySelector('.u-legend').offsetHeight;
             let height = elm.clientHeight - title_height - legend_height;
-            console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
+            //console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
             u.setSize({width: elm.clientWidth, height});
         });
         observer.observe(document.getElementById(`plot${i}`));

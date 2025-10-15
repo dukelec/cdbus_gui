@@ -65,8 +65,6 @@ async function dbg_service() {
     const search_addon = new SearchAddon();
     term.loadAddon(search_addon);
     term.open(document.getElementById('dbg_log'));
-    fit_addon.fit();
-    window.addEventListener('resize', () => fit_addon.fit());
     const observer = new ResizeObserver(() => fit_addon.fit());
     observer.observe(document.getElementById('dbg_log'));
     
@@ -124,7 +122,6 @@ async function init_dbg() {
     csa.dbg.sock = new CDWebSocket(csa.ws_ns, port);
     
     document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="./libs/xterm-5.6.0-beta.129.css">');
-    
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     dbg_service();
     

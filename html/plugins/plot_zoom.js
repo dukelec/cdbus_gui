@@ -8,16 +8,17 @@ let shift_key = false;
 let ctrl_key = false;
 
 window.addEventListener('keydown', function(e) {
-    if (e.keyCode == 16)
+    if (e.keyCode == 16) {
         shift_key = true;
-    if (e.keyCode == 17)
+        ctrl_key = false;
+    } else if (e.keyCode == 17) {
+        shift_key = false;
         ctrl_key = true;
+    }
 });
 window.addEventListener('keyup', function(e) {
-    if (e.keyCode == 16)
-        shift_key = false;
-    if (e.keyCode == 17)
-        ctrl_key = false;
+    if (e.keyCode == 16 || e.keyCode == 17)
+        shift_key = ctrl_key = false;
 });
 
 

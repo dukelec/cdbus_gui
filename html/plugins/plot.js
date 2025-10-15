@@ -104,8 +104,7 @@ async function dbg_raw_service() {
         let msg = await csa.plot.dbg_raw_sock.recvfrom();
         let dat = msg[0].dat;
         let src_port = msg[0].src[1];
-        dat = dat.slice(0); // dataview return wrong value without this
-        let dv = new DataView(dat.buffer);
+        let dv = new DataView(dat.buffer, dat.byteOffset, dat.byteLength);
         //console.log('dbg_raw get', dat2hex(dat, ' '));
         
         let idx = src_port & 0xf;
@@ -194,7 +193,7 @@ function make_chart(eid, name, series) {
         axes: [
             {
                 space(self, axisIdx, min, max, fullDim) {
-                    return Math.max(min.toFixed(3).length * 8, max.toFixed(3).length * 8);
+                    return Math.max(min.toFixed(3).length, max.toFixed(3).length) * 6 + 24;
                 },
             }, {
                 size(self, values, axisIdx, cycleNum) {
@@ -202,7 +201,7 @@ function make_chart(eid, name, series) {
                         return self.axes[axisIdx]._size;
                     if (!values)
                         return 40;
-                    return Math.max(values[0].length * 8, values[values.length-1].length * 8) + 8;
+                    return Math.max(values[0].length, values[values.length-1].length) * 6 + 24;
                 },
             }
         ],
@@ -321,19 +320,12 @@ async function init_plot() {
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
                 <label class="checkbox"><input type="checkbox" id="plot${i}_en"> ${L('Enable')} Plot${i}</label>
-                <select id="plot${i}_size" value="none">
-                    <option value="1200x200">1200x200</option>
-                    <option value="1200x400">1200x400</option>
-                    <option value="1200x800">1200x800</option>
-                    <option value="1800x1000">1800x1000</option>
-                    <option value="none">Hide</option>
-                </select>
                 | ${L('Depth')}: <input type="text" size="8" placeholder="${max_len}" id="plot${i}_len" value="${max_len}">
                 ${L('Realtime')} <input type="checkbox" id="plot${i}_less" checked>:
                 <input type="text" size="6" placeholder="${less_len}" id="plot${i}_less_len" value="${less_len}">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
             </div>
-            <div id="plot${i}"></div>
+            <div id="plot${i}" style="resize: vertical; overflow: auto;"></div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -341,18 +333,16 @@ async function init_plot() {
         let u = make_chart(`plot${i}`, `Plot${i}`, series);
         csa.plot.plots.push(u);
         
-        document.getElementById(`plot${i}_size`).onchange = async () => {
-            let size = document.getElementById(`plot${i}_size`).value;
-            if (size == 'none') {
-                document.getElementById(`plot${i}`).style.display = 'none';
-            } else {
-                let ss = size.split('x');
-                let width = parseInt(ss[0]);
-                let height = parseInt(ss[1]);
-                u.setSize({width, height});
-                document.getElementById(`plot${i}`).style.display = 'block';
-            }
-        };
+        const observer = new ResizeObserver(() => {
+            let elm = document.getElementById(`plot${i}`);
+            let title_height = elm.querySelector('.u-title').offsetHeight;
+            let legend_height = elm.querySelector('.u-legend').offsetHeight;
+            let height = elm.clientHeight - title_height - legend_height;
+            console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
+            u.setSize({width: elm.clientWidth, height});
+        });
+        observer.observe(document.getElementById(`plot${i}`));
+        
         document.getElementById(`plot${i}_len`).onchange = async () => {
             let len = Number(document.getElementById(`plot${i}_len`).value);
             csa.plot.plot_max_len[i] = len;

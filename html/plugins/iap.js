@@ -197,8 +197,8 @@ async function stop_iap() {
 async function do_iap() {
     document.getElementById('iap_start').disabled = true;
     document.getElementById('iap_stop').disabled = csa.iap.stop = false;
-    document.getElementById('iap_epoch').innerHTML = '';
-    document.getElementById('iap_progress').innerHTML = '--';
+    document.getElementById('iap_epoch').innerText = '';
+    document.getElementById('iap_progress').innerText = '--';
     
     let path = document.getElementById('iap_path').value;
     let check = document.getElementById('iap_check').value;
@@ -237,14 +237,14 @@ async function do_iap() {
             if (s.includes('(bl)')) {
                 console.log(`found (bl): ${s}`);
                 if (await keep_in_bl()) {
-                    document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
+                    document.getElementById('iap_progress').innerText = `keep_in_bl failed`;
                 } else {
-                    document.getElementById('iap_progress').innerHTML = `keep_in_bl succeeded`;
+                    document.getElementById('iap_progress').innerText = `keep_in_bl succeeded`;
                     break;
                 }
             } else {
                 console.log('not found (bl), reboot');
-                document.getElementById('iap_progress').innerHTML = `Not found string "(bl)", reboot...`;
+                document.getElementById('iap_progress').innerText = `Not found string "(bl)", reboot...`;
                 await do_reboot(1);
                 reboot_cnt++;
             }
@@ -266,12 +266,12 @@ async function do_iap() {
     
     if (action == "flash" && !csa.iap.stop) {
         if (await keep_in_bl()) {
-            document.getElementById('iap_progress').innerHTML = `keep_in_bl failed`;
+            document.getElementById('iap_progress').innerText = `keep_in_bl failed`;
             stop_iap();
             return;
         } else {
             console.log(`keep_in_bl succeeded`);
-            document.getElementById('iap_progress').innerHTML = `keep_in_bl succeeded`;
+            document.getElementById('iap_progress').innerText = `keep_in_bl succeeded`;
         }
     }
     
@@ -282,11 +282,11 @@ async function do_iap() {
         let addr = seg[0];
         let dat = seg[1];
         let len = dat.length;
-        document.getElementById('iap_epoch').innerHTML = `[${idx+1}/${msg[0].length}]`;
+        document.getElementById('iap_epoch').innerText = `[${idx+1}/${msg[0].length}]`;
         
-        document.getElementById('iap_progress').innerHTML = `Erasing...`;
+        document.getElementById('iap_progress').innerText = `Erasing...`;
         if (await flash_erase(addr, len)) {
-            document.getElementById('iap_progress').innerHTML = `Erase failed`;
+            document.getElementById('iap_progress').innerText = `Erase failed`;
             stop_iap();
             return;
         }
@@ -300,10 +300,10 @@ async function do_iap() {
         let dat = seg[1];
         let len = dat.length;
         let crc_ori = crc16(dat);
-        document.getElementById('iap_epoch').innerHTML = `[${idx+1}/${msg[0].length}]`;
+        document.getElementById('iap_epoch').innerText = `[${idx+1}/${msg[0].length}]`;
         
         if (await flash_write(addr, dat)) {
-            document.getElementById('iap_progress').innerHTML = `Write failed`;
+            document.getElementById('iap_progress').innerText = `Write failed`;
             stop_iap();
             return;
         }
@@ -311,33 +311,33 @@ async function do_iap() {
         if (check == "crc") {
             let crc_back = await flash_read_crc(addr, len);
             if (crc_back == null) {
-                document.getElementById('iap_progress').innerHTML = 'Read crc failed.';
+                document.getElementById('iap_progress').innerText = 'Read crc failed.';
                 stop_iap();
                 return;
             } else if (crc_back != crc_ori) {
-                document.getElementById('iap_progress').innerHTML = `CRC err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
+                document.getElementById('iap_progress').innerText = `CRC err: ${val2hex(crc_back, 2)} != ${val2hex(crc_ori, 2)}`;
                 stop_iap();
                 return;
             }
-            document.getElementById('iap_progress').innerHTML = 'Succeeded with crc check.';
+            document.getElementById('iap_progress').innerText = 'Succeeded with crc check.';
         
         } else if (check == "read") {
             let buf = await flash_read(addr, len);
             if (!buf) {
-                document.getElementById('iap_progress').innerHTML = 'Read back failed.';
+                document.getElementById('iap_progress').innerText = 'Read back failed.';
                 stop_iap();
                 return;
             }
             let cmp_ret = compare_dat(dat, buf);
             if (cmp_ret !== null) {
-                document.getElementById('iap_progress').innerHTML =
+                document.getElementById('iap_progress').innerText =
                     `Compare err at: ${cmp_ret} (w: ${val2hex(dat[cmp_ret], 1)}, r: ${val2hex(buf[cmp_ret], 1)})`;
                 stop_iap();
                 return;
             }
-            document.getElementById('iap_progress').innerHTML = 'Succeeded with read back check.';
+            document.getElementById('iap_progress').innerText = 'Succeeded with read back check.';
         } else {
-            document.getElementById('iap_progress').innerHTML = 'Succeeded without check.';
+            document.getElementById('iap_progress').innerText = 'Succeeded without check.';
         }
     }
     

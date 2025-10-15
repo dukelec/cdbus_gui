@@ -70,18 +70,18 @@ function init_ws() {
 document.getElementById('dev_read_info').onclick = async function() {
     let elem = document.getElementById('dev_info');
     elem.style.background = '#D5F5E3';
-    elem.innerHTML = 'Reading ...';
+    elem.innerText = 'Reading ...';
     
     csa.cmd_sock.flush();
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(1000);
     if (!dat) {
         elem.style.background = '#F5B7B180';
-        elem.innerHTML = 'WebSocket timeout';
+        elem.innerText = 'WebSocket timeout';
         return;
     } else if (!dat[0].online) {
         elem.style.background = '#F5B7B180';
-        elem.innerHTML = L('Serial disconnected');
+        elem.innerText = L('Serial disconnected');
         return;
     }
     
@@ -91,11 +91,11 @@ document.getElementById('dev_read_info').onclick = async function() {
     let ret = await csa.proxy_sock_info.recvfrom(1000);
     console.log('read info ret', ret);
     if (ret) {
-        elem.innerHTML = `${dat2str(ret[0].dat)}`;
+        elem.innerText = `${dat2str(ret[0].dat)}`;
         elem.style.background = '#D5F5E360';
         setTimeout(() => { elem.style.background = ''; }, 100);
     } else {
-        elem.innerHTML = 'Timeout';
+        elem.innerText = 'Timeout';
         elem.style.background = '#F5B7B180';
     }
 };
@@ -123,7 +123,7 @@ window.addEventListener('load', async function() {
         alert("no tgt or cfg");
         return;
     }
-    document.getElementById('tgt_name').innerHTML = ` - ${csa.arg.name} < ${csa.arg.tgt} | ${csa.arg.cfg} >`;
+    document.getElementById('tgt_name').innerText = ` - ${csa.arg.name} < ${csa.arg.tgt} | ${csa.arg.cfg} >`;
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');

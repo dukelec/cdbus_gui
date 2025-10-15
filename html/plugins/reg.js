@@ -39,14 +39,18 @@ function init_reg_list() {
                     <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}.${n}">
                       <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
                     </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
-                `; 
+                `;
+                csa.reg.elm[`reg_dft.${reg[R_ID]}.${n}`] = null;
+                csa.reg.elm[`reg.${reg[R_ID]}.${n}`] = null;
             }
         } else {
             html_input = `
                 <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}">
                   <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
                 </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
-            `; 
+            `;
+            csa.reg.elm[`reg_dft.${reg[R_ID]}`] = null;
+            csa.reg.elm[`reg.${reg[R_ID]}`] = null;
         }
         
         let html = `
@@ -63,9 +67,14 @@ function init_reg_list() {
               <div class="column is-1 reg_btn_rw" id="reg_btn_r.${reg[R_ID]}">R</div>
               <div class="column is-1 reg_btn_rw" id="reg_btn_w.${reg[R_ID]}">W</div>
             </div>`;
+        csa.reg.elm[`reg_btn_r.${reg[R_ID]}`] = null;
+        csa.reg.elm[`reg_btn_w.${reg[R_ID]}`] = null;
         list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', html);
         cur_line += count;
     }
+    
+    for (let e in csa.reg.elm)
+        csa.reg.elm[e] = document.getElementById(e);
 }
 
 
@@ -89,16 +98,16 @@ function update_reg_rw_btn(rw='r') {
         let rw_idx_pre = null;
         let rw_idx_next = null;
         let reg = csa.cfg.reg.list[i];
-        let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+        let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
         let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
         if (i > 0) {
             reg_pre = csa.cfg.reg.list[i-1];
-            btn_pre = document.getElementById(`reg_btn_${rw}.${reg_pre[R_ID]}`);
+            btn_pre = csa.reg.elm[`reg_btn_${rw}.${reg_pre[R_ID]}`];
             rw_idx_pre = in_reg_rw(reg_rw, reg_pre[R_ADDR]);
         }
         if (i < csa.cfg.reg.list.length - 1) {
             reg_next = csa.cfg.reg.list[i+1];
-            btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
+            btn_next = csa.reg.elm[`reg_btn_${rw}.${reg_next[R_ID]}`];
             rw_idx_next = in_reg_rw(reg_rw, reg_next[R_ADDR]);
         }
         
@@ -116,13 +125,13 @@ function update_reg_rw_btn(rw='r') {
             if (rw == 'w') {
                 if (reg[R_FMT][0] == '{') {
                     for (let n = 0; n < Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])); n++) {
-                        document.getElementById(`reg.${reg[R_ID]}.${n}`).onkeydown = async (event) => {
+                        csa.reg.elm[`reg.${reg[R_ID]}.${n}`].onkeydown = async (event) => {
                             if (event.keyCode == 13) // enter key
                                 await write_reg_val(rw_idx);
                         };
                     }
                 } else {
-                    document.getElementById(`reg.${reg[R_ID]}`).onkeydown = async (event) => {
+                    csa.reg.elm[`reg.${reg[R_ID]}`].onkeydown = async (event) => {
                         if (event.keyCode == 13)
                             await write_reg_val(rw_idx);
                     };
@@ -173,7 +182,7 @@ function cal_reg_rw(rw='r') {
     
     for (let i = 0; i < csa.cfg.reg.list.length; i++) {
         let reg = csa.cfg.reg.list[i];
-        let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+        let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
         
         if (btn.style['background'] != '') {
             if (btn.style['margin-top'] == '' )
@@ -260,8 +269,8 @@ async function button_edit() {
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
-            let btn_r = document.getElementById(`reg_btn_r.${reg[R_ID]}`);
-            let btn_w = document.getElementById(`reg_btn_w.${reg[R_ID]}`);
+            let btn_r = csa.reg.elm[`reg_btn_r.${reg[R_ID]}`];
+            let btn_w = csa.reg.elm[`reg_btn_w.${reg[R_ID]}`];
             btn_r.onclick = () => {
                 btn_r.style.color = btn_r.style.color ? '' : 'yellow';
             };
@@ -300,13 +309,13 @@ function set_group(on) {
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
-            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
             let btn_next = null;
             
             let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
             if (i < csa.cfg.reg.list.length - 1) {
                 let reg_next = csa.cfg.reg.list[i+1];
-                btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
+                btn_next = csa.reg.elm[`reg_btn_${rw}.${reg_next[R_ID]}`];
             }
             
             if (btn.style.background && btn.style.color) {
@@ -341,18 +350,18 @@ function set_enable(on) {
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
-            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
             let btn_pre = null;
             let btn_next = null;
             
             let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
             if (i > 0) {
                 let reg_pre = csa.cfg.reg.list[i-1];
-                btn_pre = document.getElementById(`reg_btn_${rw}.${reg_pre[R_ID]}`);
+                btn_pre = csa.reg.elm[`reg_btn_${rw}.${reg_pre[R_ID]}`];
             }
             if (i < csa.cfg.reg.list.length - 1) {
                 let reg_next = csa.cfg.reg.list[i+1];
-                btn_next = document.getElementById(`reg_btn_${rw}.${reg_next[R_ID]}`);
+                btn_next = csa.reg.elm[`reg_btn_${rw}.${reg_next[R_ID]}`];
             }
             
             if (btn.style.color) {
@@ -384,7 +393,7 @@ function button_all() {
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
-            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
             btn.style.color = 'yellow';
         }
     }
@@ -396,7 +405,7 @@ function button_none() {
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
-            let btn = document.getElementById(`reg_btn_${rw}.${reg[R_ID]}`);
+            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
             btn.style.color = '';
         }
     }
@@ -460,7 +469,8 @@ async function init_reg() {
         reg_r: null,
         reg_w: null,
         reg_dft_r: [],  // first read flag
-        reg_rbw: []     // read before write data
+        reg_rbw: [],    // read before write data
+        elm: {}         // cache dom elements
     };
     csa.plugins.push('reg');
     
@@ -550,13 +560,13 @@ async function init_reg() {
                 let one_size = fmt_size(r[R_FMT]);
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
-                    if (document.getElementById(`reg.${r[R_ID]}.${n}`).value != '')
-                        reg_str[`${r[R_ID]}.${n}`] = document.getElementById(`reg.${r[R_ID]}.${n}`).value;
+                    if (csa.reg.elm[`reg.${r[R_ID]}.${n}`].value != '')
+                        reg_str[`${r[R_ID]}.${n}`] = csa.reg.elm[`reg.${r[R_ID]}.${n}`].value;
                 }
             
             } else {
-                if (document.getElementById(`reg.${r[R_ID]}`).value != '')
-                    reg_str[`${r[R_ID]}`] = document.getElementById(`reg.${r[R_ID]}`).value;
+                if (csa.reg.elm[`reg.${r[R_ID]}`].value != '')
+                    reg_str[`${r[R_ID]}`] = csa.reg.elm[`reg.${r[R_ID]}`].value;
             }
             
         }
@@ -572,11 +582,11 @@ async function init_reg() {
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
                     if (`${r[R_ID]}.${n}` in dat)
-                        document.getElementById(`reg.${r[R_ID]}.${n}`).value = dat[`${r[R_ID]}.${n}`];
+                        csa.reg.elm[`reg.${r[R_ID]}.${n}`].value = dat[`${r[R_ID]}.${n}`];
                 }
             } else {
                 if (`${r[R_ID]}` in dat)
-                    document.getElementById(`reg.${r[R_ID]}`).value = dat[`${r[R_ID]}`];
+                    csa.reg.elm[`reg.${r[R_ID]}`].value = dat[`${r[R_ID]}`];
             }
         }
     };

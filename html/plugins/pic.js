@@ -54,7 +54,7 @@ async function pic_service() {
                 if (document.getElementById('pic_id').src)
                     URL.revokeObjectURL(document.getElementById('pic_id').src);
                 document.getElementById('pic_id').src = URL.createObjectURL( new Blob([img_dat.buffer], { type: `image/${csa.cfg.pic.fmt}` }) );
-                document.getElementById('pic_cnt').innerHTML = `- #${pic_cnt}`;
+                document.getElementById('pic_cnt').innerText = `- #${pic_cnt}`;
                 pic_cnt++;
                 // download(img_dat); // debug
                 

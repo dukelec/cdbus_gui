@@ -160,10 +160,10 @@ async function read_reg_val(r_idx, read_dft=false) {
                 for (let n = 0; n < count; n++) {
                     let [str, ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                     if (read_dft) {
-                        let elem = document.getElementById(`reg_dft.${r[R_ID]}.${n}`);
+                        let elem = csa.reg.elm[`reg_dft.${r[R_ID]}.${n}`];
                         elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
                     } else {
-                        let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                        let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
                         elem.value = str;
                     }
                 }
@@ -180,17 +180,17 @@ async function read_reg_val(r_idx, read_dft=false) {
                 }
                 
                 if (read_dft)
-                    document.getElementById(`reg_dft.${r[R_ID]}`).setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}`);
+                    csa.reg.elm[`reg_dft.${r[R_ID]}`].setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}`);
                 else
-                    document.getElementById(`reg.${r[R_ID]}`).value = val;
+                    csa.reg.elm[`reg.${r[R_ID]}`].value = val;
                 
             } else {
                 let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
                 if (read_dft) {
-                    let elem = document.getElementById(`reg_dft.${r[R_ID]}`);
+                    let elem = csa.reg.elm[`reg_dft.${r[R_ID]}`];
                     elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
                 } else {
-                    let elem = document.getElementById(`reg.${r[R_ID]}`);
+                    let elem = csa.reg.elm[`reg.${r[R_ID]}`];
                     elem.value = str;
                 }
             }
@@ -351,7 +351,7 @@ async function write_reg_val(w_idx) {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
             for (let n = 0; n < count; n++) {
-                let elem = document.getElementById(`reg.${r[R_ID]}.${n}`);
+                let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
                 if (elem.value == '')
                     has_empty = true;
                 str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, 0);
@@ -359,14 +359,14 @@ async function write_reg_val(w_idx) {
         } else if (r[R_FMT][0] == '[') {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
-            let elem = document.getElementById(`reg.${r[R_ID]}`);
+            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
             if (elem.value == '' && r[R_FMT] != '[c]')
                 has_empty = true;
             for (let n = 0; n < count; n++)
                 str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, n);
             
         } else {
-            let elem = document.getElementById(`reg.${r[R_ID]}`);
+            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
             if (elem.value == '')
                 has_empty = true;
             str2reg(dat, r[R_ADDR]-start+3, r[R_FMT], r[R_SHOW], elem.value, 0);
@@ -424,9 +424,9 @@ function set_input_bg(rw='r', idx, bg) {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
             for (let n = 0; n < count; n++)
-                document.getElementById(`reg.${r[R_ID]}.${n}`).style.background = bg;
+                csa.reg.elm[`reg.${r[R_ID]}.${n}`].style.background = bg;
         } else {
-            document.getElementById(`reg.${r[R_ID]}`).style.background = bg;
+            csa.reg.elm[`reg.${r[R_ID]}`].style.background = bg;
         }
     }
 }

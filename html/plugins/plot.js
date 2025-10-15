@@ -19,7 +19,28 @@ let color_dft = [ "black", "red", "green", "blue", "cyan", "magenta", "gold",
                   "olive", "orange", "pink", "#00000080" ];
 
 
-function append_cal_val(idx, start, max_len) {
+function plot_update(idx) {
+    let max_len = csa.plot.plot_max_len[idx];
+    let cur_len = csa.plot.dat[idx][0].length;
+    let plot_dat = csa.plot.dat[idx];
+    if (cur_len > max_len) {
+        for (let i = 0; i < plot_dat.length; i++)
+            plot_dat[i].splice(0, cur_len - max_len);
+        cur_len = max_len;
+    }
+    if (csa.plot.plot_less[idx]) {
+        let less_len = csa.plot.plot_less_len[idx];
+        if (cur_len > less_len) {
+            let less_dat = [];
+            for (let i = 0; i < plot_dat.length; i++)
+                less_dat.push(plot_dat[i].slice(cur_len - less_len));
+            plot_dat = less_dat;
+        }
+    }
+    csa.plot.plots[idx].setData(plot_dat);
+}
+
+function append_cal_val(idx, start) {
     let fcals = csa.plot.cal_fn[idx];
     if (!Array.isArray(fcals))
         return;
@@ -27,10 +48,7 @@ function append_cal_val(idx, start, max_len) {
     for (let i = 0; i < fcals.length; i++) {
         const cal_fn = fcals[i];
         let val = cal_fn(_d);
-        let cal_d = csa.plot.dat[idx][start+i];
-        cal_d.push(isNaN(val) ? null : val);
-        if (max_len && cal_d.length > max_len)
-            cal_d.splice(0, cal_d.length - max_len);
+        csa.plot.dat[idx][start+i].push(isNaN(val) ? null : val);
     }
 }
 
@@ -95,9 +113,6 @@ async function dbg_raw_service() {
             console.log('dbg_raw: drop');
             continue;
         }
-        let max_len = 0;
-        if (!timer_pending)
-            max_len = csa.plot.plot_max_len[idx];
         
         let ofs = 0;
         let f = csa.cfg.plot.fmt[idx].split(' - ')[0];
@@ -107,14 +122,10 @@ async function dbg_raw_service() {
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, f);
-                for (let i = 0; i < grp_vals.length; i++) {
-                    let dat_d = csa.plot.dat[idx][i];
-                    dat_d.push(grp_vals[i]);
-                    if (max_len && dat_d.length > max_len)
-                        dat_d.splice(0, dat_d.length - max_len);
-                }
+                for (let i = 0; i < grp_vals.length; i++)
+                    csa.plot.dat[idx][i].push(grp_vals[i]);
                 ofs += grp_size;
-                append_cal_val(idx, grp_vals.length, max_len);
+                append_cal_val(idx, grp_vals.length);
             }
         
         } else { // x, d1,d2,d3, d1,d2,d3
@@ -127,26 +138,19 @@ async function dbg_raw_service() {
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
-                let dat_d = csa.plot.dat[idx][0];
-                dat_d.push(cnt_start + cnt_inc * loop);
-                if (max_len && dat_d.length > max_len)
-                    dat_d.splice(0, dat_d.length - max_len);
-                for (let i = 0; i < grp_vals.length; i++) {
-                    let dat_d = csa.plot.dat[idx][i+1];
-                    dat_d.push(grp_vals[i]);
-                    if (max_len && dat_d.length > max_len)
-                        dat_d.splice(0, dat_d.length - max_len);
-                }
+                csa.plot.dat[idx][0].push(cnt_start + cnt_inc * loop);
+                for (let i = 0; i < grp_vals.length; i++)
+                    csa.plot.dat[idx][i+1].push(grp_vals[i]);
                 loop += 1;
                 ofs += grp_size;
-                append_cal_val(idx, grp_vals.length + 1, max_len);
+                append_cal_val(idx, grp_vals.length + 1);
             }
         }
         
         if (!timer_pending) {
             timer_pending = true;
             setTimeout(() => {
-                csa.plot.plots[idx].setData(csa.plot.dat[idx]);
+                plot_update(idx);
                 timer_pending = false;
             }, 100);
         }
@@ -270,11 +274,14 @@ async function init_plot() {
     
     
     let list = document.getElementById('plot_list');
-    const max_len = 10000;
+    const max_len = 50000;
+    const less_len = 5000;
     csa.plot.plots = [];
     csa.plot.dat = [];
     csa.plot.cal_fn = [];
     csa.plot.plot_max_len = [];
+    csa.plot.plot_less_len = [];
+    csa.plot.plot_less = [];
     
     for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
         let f = csa.cfg.plot.fmt[i];
@@ -283,6 +290,8 @@ async function init_plot() {
         let series_num = f_fmt.split('.')[1].length + 1;
         let series = [];
         csa.plot.plot_max_len.push(max_len);
+        csa.plot.plot_less_len.push(less_len);
+        csa.plot.plot_less.push(true);
         
         let cals = csa.cfg.plot.cal[i];
         if (Array.isArray(cals)) {
@@ -320,6 +329,8 @@ async function init_plot() {
                     <option value="none">Hide</option>
                 </select>
                 | ${L('Depth')}: <input type="text" size="8" placeholder="${max_len}" id="plot${i}_len" value="${max_len}">
+                ${L('Realtime')} <input type="checkbox" id="plot${i}_less" checked>:
+                <input type="text" size="6" placeholder="${less_len}" id="plot${i}_less_len" value="${less_len}">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
             </div>
             <div id="plot${i}"></div>
@@ -345,6 +356,14 @@ async function init_plot() {
         document.getElementById(`plot${i}_len`).onchange = async () => {
             let len = Number(document.getElementById(`plot${i}_len`).value);
             csa.plot.plot_max_len[i] = len;
+        };
+        document.getElementById(`plot${i}_less_len`).onchange = async () => {
+            let len = Number(document.getElementById(`plot${i}_less_len`).value);
+            csa.plot.plot_less_len[i] = len;
+        };
+        document.getElementById(`plot${i}_less`).onchange = async () => {
+            csa.plot.plot_less[i] = document.getElementById(`plot${i}_less`).checked;
+            plot_update(i);
         };
         document.getElementById(`plot${i}_clear`).onclick = async () => {
             for (let s = 0; s < series_num; s++)

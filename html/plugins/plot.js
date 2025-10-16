@@ -113,7 +113,7 @@ async function dbg_raw_service() {
         }
         
         let ofs = 0;
-        let f = csa.cfg.plot.plots[idx].fmt[0];
+        let f = csa.cfg.plot.plots[idx].fmt;
 
         if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
             let grp_size = fmt_size(f);
@@ -248,18 +248,18 @@ async function plot_set_en() {
 
 
 function plot_init_series(idx) {
-    let f = csa.cfg.plot.plots[idx].fmt;
-    let f_fmt = f[0];
+    let f_fmt = csa.cfg.plot.plots[idx].fmt;
+    let f_label = csa.cfg.plot.plots[idx].label;
     let series_num = f_fmt.split('.')[1].length + 1;
-    let f_name = f.slice(1, 1 + series_num);
-    if (f_name.length < series_num)
-        f_name[series_num-1] = '~';
+    f_label = f_label.slice(0, series_num);
+    if (f_label.length < series_num)
+        f_label[series_num-1] = '~';
     let series = [];
     
     let cals = csa.cfg.plot.plots[idx].cal;
     if (cals) {
         series_num += Object.keys(cals).length;
-        f_name = [...f_name, ...Object.keys(cals)];
+        f_label = [...f_label, ...Object.keys(cals)];
         init_cal_fn(idx);
     }
     
@@ -269,12 +269,12 @@ function plot_init_series(idx) {
         let color = colors[(s-1) % colors.length];
         if (!color)
             color = "black";
-        let name = f_name[s];
-        if (!name)
-            name = '~';
+        let label = f_label[s];
+        if (!label)
+            label = '~';
         else
-            name = name.trim();
-        series.push({ label: name, stroke: color });
+            label = label.trim();
+        series.push({ label, stroke: color });
         csa.plot.dat[idx].push([]);
     }
     return series;
@@ -297,7 +297,7 @@ async function plot_cal_update(idx) {
     
     let dat_bk = csa.plot.dat[idx];
     let series = plot_init_series(idx);
-    let f_fmt = csa.cfg.plot.plots[idx].fmt[0];
+    let f_fmt = csa.cfg.plot.plots[idx].fmt;
     let f_num = f_fmt.split('.')[1].length + 1;
     for (let i = 0; i < dat_bk[0].length; i++) {
         for (let n = 0; n < f_num; n++)

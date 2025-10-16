@@ -133,7 +133,8 @@
         "plots": [
             {
                 // "color": ["black", "red", "green"]
-                "fmt": ["I1.fffffffH", "N", "sq in", "sd in", "sq tgt", "sq i_term", "sd i_term", "sq cal", "sd cal", "sen_encoder"],
+                "fmt": "I1.fffffffH",
+                "label": ["N", "sq in", "sd in", "sq tgt", "sq i_term", "sd i_term", "sq cal", "sd cal", "sen_encoder"],
                 "cal": {
                     "sq_err": "_d[1].at(-1) - _d[3].at(-1)", // data1 - data3
                     "sq_err_avg": "                  \
@@ -149,20 +150,23 @@
                         return _d[9]._f;"
                 }
             }, {
-                "fmt": ["I5.fffiHf", "N", "sen_speed", "speed target", "i_term", "cal_current", "sen_encoder", "sen_speed_avg"],
+                "fmt": "I5.fffiHf",
+                "label": ["N", "sen_speed", "speed target", "i_term", "cal_current", "sen_encoder", "sen_speed_avg"],
                 "cal": {
                     "speed_err2i": "_d[2].at(-1) - _d[1].at(-1)",
                     "speed_err2p": "_d[2].at(-1) - _d[6].at(-1)",
                     "p term": "_d[4].at(-1) - _d[3].at(-1)"
                 }
             }, {
-                "fmt": ["I25.iiffff", "N", "pos_cur", "pos target", "i_term", "cal_speed", "tc_vc_avg", "sen_speed_avg"],
+                "fmt": "I25.iiffff",
+                "label": ["N", "pos_cur", "pos target", "i_term", "cal_speed", "tc_vc_avg", "sen_speed_avg"],
                 "cal": {
                     "pos_err": "_d[2].at(-1) - _d[1].at(-1)",
                     "p term": "_d[7].at(-1) * 50"
                 }
             }, {
-                "fmt": ["I25.Biiff", "N", "tc_state", "tc_poc", "cal_pos", "tc_vc", "tc_ac"],
+                "fmt": "I25.Biiff",
+                "label": ["N", "tc_state", "tc_poc", "cal_pos", "tc_vc", "tc_ac"],
             }
         ]
     },

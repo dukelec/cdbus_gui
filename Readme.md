@@ -91,7 +91,7 @@ Finally, there is the json configuration:
  - The "fmt" string with "[]" is an array, which displays all data in one edit box.
  - The ones with "{}" are also arrays, each group occupies one edit box, and each box supports multiple data, which is convenient for struct arrays.
 
-**E.g.** `cdstep-v7.json`
+**E.g.** `cdstep-v6.json`
 ```json5
 {
     "reg": {
@@ -148,13 +148,17 @@ Finally, there is the json configuration:
     
     "plot": {
         "mask": "dbg_raw_msk",
-        "fmt": [
-            "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
-            "I1.ifif - N, pid target, i_term, last_in, cal_speed",
-        ],
-        "color": [],
-        "cal": [
-            [ "pos_err: _d[4].at(-1) - _d[3].at(-1)" ] // data4 - data3
+        "plots": [
+            {
+                // "color": ["black", "red", "green", ...]
+                "fmt": "I1.iBiiff",
+                "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
+                "cal": {
+                    "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
+                }
+            }, {
+                "fmt": ["I1.ifif", "N", "pid target", "i_term", "last_in", "cal_speed"]
+            }
         ]
     },
     

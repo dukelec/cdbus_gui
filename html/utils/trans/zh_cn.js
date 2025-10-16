@@ -50,6 +50,7 @@ let trans_zh_cn = {
     'Device Info': '设备信息',
     'Depth': '深度',
     'Realtime': '实时',
+    'Re-Calc': '更新计算',
     
     'Reboot': '重启',
     'Flash': '烧录',

@@ -49,6 +49,7 @@ let trans_zh_hk = {
     'Device Info': '設備信息',
     'Depth': '深度',
     'Realtime': '實時',
+    'Re-Calc': '更新計算',
     
     'Reboot': '重啟',
     'Flash': '燒錄',

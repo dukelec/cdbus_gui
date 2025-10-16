@@ -6,7 +6,7 @@
 
 import { L } from '../utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
+         read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa, alloc_port } from '../common.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
@@ -54,10 +54,9 @@ function append_cal_val(idx, start) {
 
 function init_cal_fn(idx) {
     csa.plot.cal_fn[idx] = [];
-    let cals = csa.cfg.plot.cal[idx];
-    for (let i = 0; i < cals.length; i++) {
-        let c_name = cals[i].split(':')[0];
-        let c_str = cals[i].slice(c_name.length + 1);
+    let cals = csa.cfg.plot.plots[idx].cal;
+    for (let c_name in cals) {
+        let c_str = cals[c_name];
         if (!/\breturn\b/.test(c_str))
             c_str = `return ( ${c_str} )`;
         csa.plot.cal_fn[idx].push(new Function('_d', `${c_str}`));
@@ -108,13 +107,13 @@ async function dbg_raw_service() {
         //console.log('dbg_raw get', dat2hex(dat, ' '));
         
         let idx = src_port & 0xf;
-        if (idx >= csa.cfg.plot.fmt.length) {
+        if (idx >= csa.cfg.plot.plots.length) {
             console.log('dbg_raw: drop');
             continue;
         }
         
         let ofs = 0;
-        let f = csa.cfg.plot.fmt[idx].split(' - ')[0];
+        let f = csa.cfg.plot.plots[idx].fmt[0];
 
         if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
             let grp_size = fmt_size(f);
@@ -222,7 +221,7 @@ async function plot_set_en() {
     let mask_addr = csa.cfg.reg.list[idx][R_ADDR];
     
     let msk = 0;
-    for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
+    for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         if (document.getElementById(`plot${i}_en`).checked)
             msk |= 1 << i;
     }
@@ -245,6 +244,75 @@ async function plot_set_en() {
             console.warn(`plot_set_en err retry${i}`);
         }
     }
+}
+
+
+function plot_init_series(idx) {
+    let f = csa.cfg.plot.plots[idx].fmt;
+    let f_fmt = f[0];
+    let series_num = f_fmt.split('.')[1].length + 1;
+    let f_name = f.slice(1, 1 + series_num);
+    if (f_name.length < series_num)
+        f_name[series_num-1] = '~';
+    let series = [];
+    
+    let cals = csa.cfg.plot.plots[idx].cal;
+    if (cals) {
+        series_num += Object.keys(cals).length;
+        f_name = [...f_name, ...Object.keys(cals)];
+        init_cal_fn(idx);
+    }
+    
+    csa.plot.dat[idx] = [];
+    for (let s = 0; s < series_num; s++) {
+        let colors = csa.cfg.plot.plots[idx].color ? csa.cfg.plot.plots[idx].color : color_dft;
+        let color = colors[(s-1) % colors.length];
+        if (!color)
+            color = "black";
+        let name = f_name[s];
+        if (!name)
+            name = '~';
+        else
+            name = name.trim();
+        series.push({ label: name, stroke: color });
+        csa.plot.dat[idx].push([]);
+    }
+    return series;
+}
+
+
+async function plot_cal_update(idx) {
+    let cal_keys_bk = csa.cfg.plot.plots[idx].cal;
+    cal_keys_bk = cal_keys_bk ? Object.keys(cal_keys_bk) : [];
+    csa.plot.proxy_sock.flush();
+    await csa.plot.proxy_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'cfgs']);
+    let dat = await csa.plot.proxy_sock.recvfrom(2000);
+    if (dat && dat[0] && dat[0].plot.plots[idx]) {
+        csa.cfg.plot.plots[idx] = dat[0].plot.plots[idx];
+        console.log('get_cfg ret', csa.cfg.plot.plots[idx]);
+    } else {
+        console.warn('get_cfg ret', dat);
+        return;
+    }
+    
+    let dat_bk = csa.plot.dat[idx];
+    let series = plot_init_series(idx);
+    let f_fmt = csa.cfg.plot.plots[idx].fmt[0];
+    let f_num = f_fmt.split('.')[1].length + 1;
+    for (let i = 0; i < dat_bk[0].length; i++) {
+        for (let n = 0; n < f_num; n++)
+            csa.plot.dat[idx][n].push(dat_bk[n][i]);
+        append_cal_val(idx, f_num);
+    }
+    let cal_keys = csa.cfg.plot.plots[idx].cal;
+    cal_keys = cal_keys ? Object.keys(cal_keys) : [];
+    if (compare_dat(cal_keys_bk, cal_keys) !== null) {
+        console.log(`replace chart, key changes: ${cal_keys_bk} -> ${cal_keys}`);
+        csa.plot.plots[idx].destroy();
+        let u = make_chart(`plot${idx}`, `Plot${idx}`, series);
+        csa.plot.plots[idx] = u;
+    }
+    plot_update(idx);
 }
 
 
@@ -282,40 +350,10 @@ async function init_plot() {
     csa.plot.plot_less_len = [];
     csa.plot.plot_less = [];
     
-    for (let i = 0; i < csa.cfg.plot.fmt.length; i++) {
-        let f = csa.cfg.plot.fmt[i];
-        let f_fmt = f.split(' - ')[0];
-        let f_str = f.slice(f_fmt.length + ' - '.length);
-        let series_num = f_fmt.split('.')[1].length + 1;
-        let series = [];
+    for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         csa.plot.plot_max_len.push(max_len);
         csa.plot.plot_less_len.push(less_len);
         csa.plot.plot_less.push(true);
-        
-        let cals = csa.cfg.plot.cal[i];
-        if (Array.isArray(cals)) {
-            series_num += cals.length;
-            for (let cal of cals) {
-                let c_name = cal.split(':')[0];
-                f_str += `, ${c_name}`;
-            }
-            init_cal_fn(i);
-        }
-        
-        csa.plot.dat.push([]);
-        for (let s = 0; s < series_num; s++) {
-            let colors = csa.cfg.plot.color[i] ? csa.cfg.plot.color[i] : color_dft;
-            let color = colors[(s-1) % colors.length];
-            if (!color)
-                color = "black";
-            let name = f_str.split(',')[s];
-            if (!name)
-                name = '~';
-            else
-                name = name.trim();
-            series.push({ label: name, stroke: color });
-            csa.plot.dat[i].push([]);
-        }
         
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
@@ -324,12 +362,14 @@ async function init_plot() {
                 ${L('Realtime')} <input type="checkbox" id="plot${i}_less" checked>:
                 <input type="text" size="6" placeholder="${less_len}" id="plot${i}_less_len" value="${less_len}">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
+                <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
             </div>
             <div id="plot${i}" class="resizable"></div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
         document.getElementById(`plot${i}_en`).onchange = async () => await plot_set_en();
+        let series = plot_init_series(i);
         let u = make_chart(`plot${i}`, `Plot${i}`, series);
         csa.plot.plots.push(u);
         
@@ -339,7 +379,7 @@ async function init_plot() {
             let legend_height = elm.querySelector('.u-legend').offsetHeight;
             let height = elm.clientHeight - title_height - legend_height;
             //console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
-            u.setSize({width: elm.clientWidth, height});
+            csa.plot.plots[i].setSize({width: elm.clientWidth, height});
         });
         observer.observe(document.getElementById(`plot${i}`));
         
@@ -356,9 +396,14 @@ async function init_plot() {
             plot_update(i);
         };
         document.getElementById(`plot${i}_clear`).onclick = async () => {
-            for (let s = 0; s < series_num; s++)
+            for (let s = 0; s < csa.plot.dat[i].length; s++)
                 csa.plot.dat[i][s] = [];
             csa.plot.plots[i].setData(csa.plot.dat[i]);
+        };
+        document.getElementById(`plot${i}_re_cal`).onclick = async () => {
+            document.getElementById(`plot${i}_re_cal`).disabled = true;
+            await plot_cal_update(i);
+            document.getElementById(`plot${i}_re_cal`).disabled = false;
         };
     }
     

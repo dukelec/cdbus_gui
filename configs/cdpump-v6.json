@@ -53,19 +53,19 @@
     
     "plot": {
         "mask": "dbg_raw_msk",
-        "fmt": [
-            "I1.fffH - N, pid target, i_term, last_in, cur_pwm",
-        ],
-        "color": [],
-        "cal": [
-            [
-                "err: _d[3].at(-1) - _d[1].at(-1)", // data3 - data1
-                "in_avg:                        \
-                    let a = 0;                  \
-                    for (let i = 0; i < 5; i++) \
-                        a += _d[3].at(-1-i);    \
-                    return a / 5;"
-            ]
+        "plots": [
+            {
+                // "color": ["black", "red", "green"]
+                "fmt": ["I1.fffH", "N", "pid target", "i_term", "last_in", "cur_pwm"],
+                "cal": {
+                    "err": "_d[3].at(-1) - _d[1].at(-1)", // data3 - data1
+                    "in_avg": "                     \
+                        let a = 0;                  \
+                        for (let i = 0; i < 5; i++) \
+                            a += _d[3].at(-1-i);    \
+                        return a / 5;"
+                }
+            }
         ]
     },
     

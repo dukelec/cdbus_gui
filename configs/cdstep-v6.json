@@ -79,13 +79,16 @@
     
     "plot": {
         "mask": "dbg_raw_msk",
-        "fmt": [
-            "I1.iBiiff - N, tc_pos, tc_state, cal_pos, cur_pos, tc_vc, tc_va",
-            "I1.ifif - N, pid target, i_term, last_in, cal_speed",
-        ],
-        "color": [],
-        "cal": [
-            [ "pos_err: _d[4].at(-1) - _d[3].at(-1)" ] // data4 - data3
+        "plots": [
+            {
+                // "color": ["black", "red", "green"]
+                "fmt": ["I1.iBiiff", "N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
+                "cal": {
+                    "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
+                }
+            }, {
+                "fmt": ["I1.ifif", "N", "pid target", "i_term", "last_in", "cal_speed"]
+            }
         ]
     },
     

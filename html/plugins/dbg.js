@@ -83,8 +83,11 @@ async function dbg_service() {
             return false;
         }
         if (e.key == "F5")
-            return false; // allow F5 refresh page
+            return false; // allow page refresh with F5
         return true;
+    });
+    term.element.addEventListener('wheel', (e) => {
+        e.preventDefault(); // scroll log without scrolling the page
     });
     
     document.getElementById('dbg_clear').onclick = () => {

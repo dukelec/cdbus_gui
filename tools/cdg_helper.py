@@ -10,12 +10,18 @@ import re, struct, math
 def readable_float(num, double=False):
     if not math.isfinite(num):
         return str(num)
-    fixed = 12
-    if not double:
-        num = float(f"{num:.7g}")  # for 32-bit float
-    n = f"{num:.{fixed}f}"
+    fixed = 18 if double else 9
+    precision = 16 if double else 7
+    n = f"{num:.{precision}g}"
     if 'e' in n:
         return n
+    parts = n.split('.')
+    int_part = parts[0]
+    dec_part = parts[1] if len(parts) > 1 else '0'
+    
+    dec_part = dec_part.ljust(fixed, '0')
+    n = f"{int_part}.{dec_part}"
+    
     for _ in range(fixed // 3):
         if n.endswith('000'):
             n = n[:-3]
@@ -35,6 +41,14 @@ def hex2dat(hex_, le=False):
     ret = bytes.fromhex(hex_)
     return bytes(reversed(ret)) if le else ret
 
+def hex2float(hex_):
+    parts = hex_.split('.')
+    if len(parts) > 1:
+        sign = -1 if hex_.startswith('-') else 1
+        val = int(parts[0], 16) + int(parts[1], 16) / pow(16, len(parts[1])) * sign
+    else:
+        val = int(parts[0], 16)
+    return val
 
 def val2hex(val, fixed=4, prefix=False, upper=False, float_=False):
     sign = '-' if val < 0 else ''
@@ -74,16 +88,14 @@ def fmt_size(fmt):
             len_ += int(fnext)
             i += 2
             continue
-        if f[i] == 'c':
-            len_ += 1
-        elif f[i] == 'b' or f[i] == 'B':
+        if f[i] == 'c' or f[i] == 'b' or f[i] == 'B':
             len_ += 1
         elif f[i] == 'h' or f[i] == 'H':
             len_ += 2
-        elif f[i] == 'i' or f[i] == 'I':
+        elif f[i] == 'i' or f[i] == 'I' or f[i] == 'f':
             len_ += 4
-        elif f[i] == 'f':
-            len_ += 4
+        elif f[i] == 'q' or f[i] == 'Q' or f[i] == 'd':
+            len_ += 8
         i += 1
     return len_;
 
@@ -160,6 +172,22 @@ def reg2str(dat, ofs, fmt, show):
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<I', dat[ofs:ofs+4])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
+        elif f[i] == 'q':
+            if show == 1:
+                ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<q', dat[ofs:ofs+8])[0], 16, True)}"]))
+            elif show == 2:
+                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
+            else:
+                ret = ' '.join(filter(None, [ret, f"{struct.unpack('<q', dat[ofs:ofs+8])[0]}"]))
+            ofs += int(fnext) if fnext.isdigit() else 8
+        elif f[i] == 'Q':
+            if show == 1:
+                ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<Q', dat[ofs:ofs+8])[0], 16, True)}"]))
+            elif show == 2:
+                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
+            else:
+                ret = ' '.join(filter(None, [ret, f"{struct.unpack('<Q', dat[ofs:ofs+8])[0]}"]))
+            ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'f':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<f', dat[ofs:ofs+4])[0], 8, True, False, True)}"]))
@@ -168,6 +196,14 @@ def reg2str(dat, ofs, fmt, show):
             else:
                 ret = ' '.join(filter(None, [ret, f"{readable_float(struct.unpack('<f', dat[ofs:ofs+4])[0])}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
+        elif f[i] == 'd':
+            if show == 1:
+                ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<d', dat[ofs:ofs+8])[0], 16, True, False, True)}"]))
+            elif show == 2:
+                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
+            else:
+                ret = ' '.join(filter(None, [ret, f"{readable_float(struct.unpack('<d', dat[ofs:ofs+8])[0], True)}"]))
+            ofs += int(fnext) if fnext.isdigit() else 8
         i += 2 if fnext.isdigit() else 1
     return ret, ofs
 
@@ -224,20 +260,34 @@ def str2reg(dat, ofs, fmt, show, str_, s_idx):
             else:
                 dat[ofs:ofs+4] = struct.pack('<I', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 4
+        elif f[i] == 'q':
+            if show == 2:
+                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
+            else:
+                dat[ofs:ofs+8] = struct.pack('<q', int(str_a[s_idx], 0))
+            ofs += int(fnext) if fnext.isdigit() else 8
+        elif f[i] == 'Q':
+            if show == 2:
+                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
+            else:
+                dat[ofs:ofs+8] = struct.pack('<Q', int(str_a[s_idx], 0))
+            ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'f':
             if show == 1:
-                parts = str_a[s_idx].split(".")
-                if len(parts) > 1:
-                    sign = -1 if val < 0 else 1
-                    val = int(parts[0], 16) + int(parts[1], 16) / pow(16, len(parts[1])) * sign
-                else:
-                    val = int(parts[0], 16)
-                dat[ofs:ofs+4] = struct.pack('<f', val)
+                dat[ofs:ofs+4] = struct.pack('<f', hex2float(str_a[s_idx]))
             elif show == 2:
                 dat[ofs:ofs+4] = hex2dat(str_a[s_idx])[0:4]
             else:
                 dat[ofs:ofs+4] = struct.pack('<f', float(str_a[s_idx]))
             ofs += int(fnext) if fnext.isdigit() else 4
+        elif f[i] == 'd':
+            if show == 1:
+                dat[ofs:ofs+8] = struct.pack('<d', hex2float(str_a[s_idx]))
+            elif show == 2:
+                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
+            else:
+                dat[ofs:ofs+8] = struct.pack('<d', float(str_a[s_idx]))
+            ofs += int(fnext) if fnext.isdigit() else 8
         
         i += 2 if fnext.isdigit() else 1
         s_idx += 1

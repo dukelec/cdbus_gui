@@ -72,6 +72,18 @@ function hex2dat(hex, le=false) {
     return ret;
 }
 
+function hex2float(hex) {
+    let parts = hex.split('.');
+    let val;
+    if (parts.length > 1) {
+        let sign = hex.startsWith('-') ? -1 : 1;
+        val = parseInt(parts[0], 16) + parseInt(parts[1], 16) / Math.pow(16, parts[1].length) * sign;
+    } else {
+        val = parseInt(parts[0], 16);
+    }
+    return val;
+}
+
 function dat2str(dat) {
     if (dat.indexOf(0) >= 0)
         dat = dat.slice(0, dat.indexOf(0));
@@ -84,8 +96,11 @@ function str2dat(str) {
 }
 
 function val2hex(val, fixed=4, prefix=false, upper=false, float=false) {
-    let sign = Math.sign(val);
-    val = Math.abs(val);
+    let sign = 1;
+    if (val < 0) {
+        sign = -1;
+        val = -val;
+    }
     let str = upper ? val.toString(16).toUpperCase() : val.toString(16);
     let arr = str.split('.');
     if (arr[0].length < fixed)
@@ -97,6 +112,13 @@ function val2hex(val, fixed=4, prefix=false, upper=false, float=false) {
     if (float && arr.length == 1)
         arr.push('0');
     return arr.join('.');
+}
+
+function parse_bigint(str) {
+    if (str.startsWith('-')) // handles format: '-0x...'
+        return -BigInt(str.slice(1));
+    else
+        return BigInt(str);
 }
 
 // list: ['x', 'y']
@@ -204,12 +226,14 @@ function readable_size(bytes, fixed=3, si=true) {
 function readable_float(num, double=false) {
     if (!isFinite(num))
         return num.toString();
-    let fixed = 12;
-    if (!double)
-        num = parseFloat(num.toPrecision(7)); // for 32-bit float
-    let n = num.toFixed(fixed);
+    let fixed = double ? 18 : 9;
+    let n = num.toPrecision(double ? 16 : 7);
     if (n.indexOf('e') != -1)
         return n;
+    let [int_part, dec_part = '0'] = n.split('.');
+    dec_part = dec_part.padEnd(fixed, '0');
+    n = `${int_part}.${dec_part}`;
+    
     for (let i = 0; i < fixed / 3; i++) {
         if (n.endsWith('000'))
             n = n.slice(0, n.length - 3);
@@ -298,7 +322,7 @@ function crc16(data, crc_val=0xffff) {
 export {
     sleep, read_file, load_img, date2num, timestamp,
     sha256, aes256,
-    dat2hex, hex2dat, dat2str, str2dat, val2hex,
+    dat2hex, hex2dat, hex2float, dat2str, str2dat, val2hex, parse_bigint,
     cpy, Queue,
     download,
     escape_html, readable_size, readable_float,

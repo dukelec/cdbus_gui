@@ -5,7 +5,7 @@
  */
 
 import { L } from '../utils/lang.js'
-import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_float,
          read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa, alloc_port } from '../common.js';
@@ -87,10 +87,18 @@ function dv_fmt_read(dv, ofs, fmt) {
         case 'I':
             ret.push(dv.getUint32(ofs, true));
             ofs += 4; break;
+        case 'q':
+            ret.push(Number(dv.getBigInt64(ofs, true)));
+            ofs += 8; break;
+        case 'Q':
+            ret.push(Number(dv.getBigUint64(ofs, true)));
+            ofs += 8; break;
         case 'f':
-            //ret.push(+dv.getFloat32(ofs, true).toFixed(9));
             ret.push(dv.getFloat32(ofs, true));
             ofs += 4; break;
+        case 'd':
+            ret.push(dv.getFloat64(ofs, true));
+            ofs += 8; break;
         }
     }
     return ret;
@@ -192,7 +200,10 @@ function make_chart(eid, name, series) {
         axes: [
             {
                 space(self, axisIdx, min, max, fullDim) {
-                    return Math.max(min.toFixed(3).length, max.toFixed(3).length) * 6 + 24;
+                    let str_len = max.toString().length;
+                    // length of number with ' separators
+                    str_len += Math.floor((str_len - 1) / 3);
+                    return str_len * 6 + 24;
                 },
             }, {
                 size(self, values, axisIdx, cycleNum) {
@@ -247,6 +258,10 @@ async function plot_set_en() {
 }
 
 
+function is_float(n) {
+    return typeof n === 'number' && !Number.isInteger(n);
+}
+
 function plot_init_series(idx) {
     let f_fmt = csa.cfg.plot.plots[idx].fmt;
     let f_label = csa.cfg.plot.plots[idx].label;
@@ -274,7 +289,7 @@ function plot_init_series(idx) {
             label = '~';
         else
             label = label.trim();
-        series.push({ label, stroke: color });
+        series.push({ label, stroke: color, value: (_, val) => is_float(val) ? readable_float(val) : val });
         csa.plot.dat[idx].push([]);
     }
     return series;

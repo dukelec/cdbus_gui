@@ -95,7 +95,8 @@ Finally, there is the json configuration:
 ```json5
 {
     "reg": {
-        // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
+        // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t
+        //       q: int64_t, Q: uint64_t, f: float, d: double
         // show: 0: normal, 1: hex, 2: bytes
         "list": [
             [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
@@ -155,9 +156,14 @@ Finally, there is the json configuration:
                 "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
                 "cal": {
                     "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
+                },
+                "fft": {
+                    "sample_rate": 5000,
+                    "size": 4096
                 }
             }, {
-                "fmt": ["I1.ifif", "N", "pid target", "i_term", "last_in", "cal_speed"]
+                "fmt": "I1.ifif",
+                "label": ["N", "pid target", "i_term", "last_in", "cal_speed"]
             }
         ]
     },

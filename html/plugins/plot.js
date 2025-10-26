@@ -167,7 +167,7 @@ async function dbg_raw_service() {
 }
 
 
-function make_chart(eid, name, series) {
+function make_chart(idx, name, series) {
     let opts = {
         title: name,
         width: 1200,
@@ -218,11 +218,16 @@ function make_chart(eid, name, series) {
                 },
             }
         ],
-        series: series
+        series: series,
+        hooks: {
+            setSeries: [
+                async (u, seriesIdx, show) => { await plot_update(idx); }
+            ]
+        }
     };
 
-    console.log(opts, eid);
-    return new uPlot(opts, null, document.getElementById(eid));
+    console.log(opts, idx);
+    return new uPlot(opts, null, document.getElementById(`plot${idx}`));
 }
 
 
@@ -329,7 +334,7 @@ async function plot_cal_update(idx) {
     if (compare_dat(cal_keys_bk, cal_keys) !== null) {
         console.log(`replace chart, key changes: ${cal_keys_bk} -> ${cal_keys}`);
         csa.plot.plots[idx].destroy();
-        let u = make_chart(`plot${idx}`, `Plot${idx}`, series);
+        let u = make_chart(idx, `Plot${idx}`, series);
         csa.plot.plots[idx] = u;
     }
     await plot_update(idx);
@@ -396,7 +401,7 @@ async function init_plot() {
         list.insertAdjacentHTML('beforeend', html);
         document.getElementById(`plot${i}_en`).onchange = async () => await plot_set_en();
         let series = plot_init_series(i);
-        let u = make_chart(`plot${i}`, `Plot${i}`, series);
+        let u = make_chart(i, `Plot${i}`, series);
         csa.plot.plots.push(u);
         
         const observer = new ResizeObserver(() => {

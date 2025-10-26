@@ -65,6 +65,10 @@
                         for (let i = 0; i < 5; i++) \
                             a += _d[3].at(-1-i);    \
                         return a / 5;"
+                },
+                "fft": {
+                    "sample_rate": 5000,
+                    "size": 4096
                 }
             }
         ]

@@ -5,7 +5,7 @@
  */
 
 import { csa } from '../common.js';
-import Module from '../libs/kissfft.131.2.0.js';
+import * as FFTModule from '../libs/kissfft.131.2.0.js';
 
 let overlay = {
     print: text => {
@@ -23,11 +23,28 @@ let overlay = {
 };
 
 
+function preprocess_signal(signal) {
+    const len = signal.length;
+    let mean = 0;
+    for (let i = 0; i < len; i++)
+        mean += signal[i];
+    mean /= len;
+    // remove dc bias; add hann window
+    const out = new Float32Array(len);
+    for (let i = 0; i < len; i++) {
+        const x = signal[i] - mean;
+        const w = 1 - Math.cos((2 * Math.PI * i) / (len - 1));
+        out[i] = x * w;
+    }
+    return out;
+}
+
 async function plot_fft(idx, dat) {
     const fft_mod = csa.plot.fft_mod;
     const fft_obj = csa.plot.plot_fft[idx];
     if (dat.length > fft_obj.size)
         dat = dat.slice(dat.length - fft_obj.size);
+    dat = preprocess_signal(dat);
     
     const input_ptr = fft_mod._calloc(fft_obj.size, 4);
     fft_mod.HEAPF32.set(dat, input_ptr / 4);
@@ -44,7 +61,7 @@ async function plot_fft(idx, dat) {
         const re = output_heap[2*k];
         const im = output_heap[2*k+1];
         let pwr = (re*re + im*im) * inv_n2;
-        mags[k] = 10 * Math.log10(Math.max(pwr, 1e-12));
+        mags[k] = 10 * Math.log10(Math.max(pwr, 1e-24));
     }
 
     fft_mod._free(input_ptr);
@@ -54,6 +71,7 @@ async function plot_fft(idx, dat) {
 
 
 async function plot_fft_cal(idx, plot_dat) {
+    const uplot = csa.plot.plots[idx];
     let fft_obj = csa.plot.plot_fft[idx];
     const out_len = fft_obj.size / 2 + 1;
     const rate = fft_obj.sample_rate;
@@ -63,8 +81,12 @@ async function plot_fft_cal(idx, plot_dat) {
     
     let fft_dat = [freqs];
     for (let i = 1; i < plot_dat.length; i++) {
-        let mags = await plot_fft(idx, plot_dat[i]);
-        fft_dat.push(mags);
+        if (uplot.series[i].show) {
+            let mags = await plot_fft(idx, plot_dat[i]);
+            fft_dat.push(mags);
+        } else {
+            fft_dat.push([]);
+        }
     }
     return fft_dat;
 }
@@ -72,7 +94,7 @@ async function plot_fft_cal(idx, plot_dat) {
 
 async function plot_fft_init(idx) {
     if (!csa.plot.fft_mod)
-        csa.plot.fft_mod = await Module(overlay);
+        csa.plot.fft_mod = await FFTModule.default(overlay);
     
     let fft_obj = csa.plot.plot_fft[idx];
     if (csa.cfg.plot.plots[idx].fft) {

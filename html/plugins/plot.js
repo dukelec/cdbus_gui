@@ -10,6 +10,7 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_flo
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa, alloc_port } from '../common.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
+import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js';
 import { reg_idx_by_name } from './reg.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
@@ -19,7 +20,7 @@ let color_dft = [ "black", "red", "green", "blue", "cyan", "magenta", "gold",
                   "olive", "orange", "pink", "#00000080" ];
 
 
-function plot_update(idx) {
+async function plot_update(idx) {
     let max_len = csa.plot.plot_max_len[idx];
     let cur_len = csa.plot.dat[idx][0].length;
     let plot_dat = csa.plot.dat[idx];
@@ -28,7 +29,7 @@ function plot_update(idx) {
             plot_dat[i].splice(0, cur_len - max_len);
         cur_len = max_len;
     }
-    if (csa.plot.plot_less[idx]) {
+    if (csa.plot.plot_less_en[idx]) {
         let less_len = csa.plot.plot_less_len[idx];
         if (cur_len > less_len) {
             let less_dat = [];
@@ -37,6 +38,8 @@ function plot_update(idx) {
             plot_dat = less_dat;
         }
     }
+    if (csa.plot.plot_fft_en[idx])
+        plot_dat = await plot_fft_cal(idx, plot_dat);
     csa.plot.plots[idx].setData(plot_dat);
 }
 
@@ -155,8 +158,8 @@ async function dbg_raw_service() {
         
         if (!timer_pending) {
             timer_pending = true;
-            setTimeout(() => {
-                plot_update(idx);
+            setTimeout(async () => {
+                await plot_update(idx);
                 timer_pending = false;
             }, 100);
         }
@@ -309,6 +312,8 @@ async function plot_cal_update(idx) {
         console.warn('get_cfg ret', dat);
         return;
     }
+    plot_fft_deinit(idx);
+    await plot_fft_init(idx);
     
     let dat_bk = csa.plot.dat[idx];
     let series = plot_init_series(idx);
@@ -327,7 +332,7 @@ async function plot_cal_update(idx) {
         let u = make_chart(`plot${idx}`, `Plot${idx}`, series);
         csa.plot.plots[idx] = u;
     }
-    plot_update(idx);
+    await plot_update(idx);
 }
 
 
@@ -363,12 +368,17 @@ async function init_plot() {
     csa.plot.cal_fn = [];
     csa.plot.plot_max_len = [];
     csa.plot.plot_less_len = [];
-    csa.plot.plot_less = [];
+    csa.plot.plot_less_en = [];
+    csa.plot.plot_fft_en = [];
+    csa.plot.plot_fft = [];
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         csa.plot.plot_max_len.push(max_len);
         csa.plot.plot_less_len.push(less_len);
-        csa.plot.plot_less.push(true);
+        csa.plot.plot_less_en.push(true);
+        csa.plot.plot_fft_en.push(false);
+        csa.plot.plot_fft.push({});
+        await plot_fft_init(i);
         
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
@@ -376,6 +386,7 @@ async function init_plot() {
                 | ${L('Depth')}: <input type="text" size="8" placeholder="${max_len}" id="plot${i}_len" value="${max_len}">
                 ${L('Realtime')} <input type="checkbox" id="plot${i}_less" checked>:
                 <input type="text" size="6" placeholder="${less_len}" id="plot${i}_less_len" value="${less_len}">
+                FFT <input type="checkbox" id="plot${i}_fft">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
                 <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
             </div>
@@ -407,8 +418,12 @@ async function init_plot() {
             csa.plot.plot_less_len[i] = len;
         };
         document.getElementById(`plot${i}_less`).onchange = async () => {
-            csa.plot.plot_less[i] = document.getElementById(`plot${i}_less`).checked;
-            plot_update(i);
+            csa.plot.plot_less_en[i] = document.getElementById(`plot${i}_less`).checked;
+            await plot_update(i);
+        };
+        document.getElementById(`plot${i}_fft`).onchange = async () => {
+            csa.plot.plot_fft_en[i] = document.getElementById(`plot${i}_fft`).checked;
+            await plot_update(i);
         };
         document.getElementById(`plot${i}_clear`).onclick = async () => {
             for (let s = 0; s < csa.plot.dat[i].length; s++)

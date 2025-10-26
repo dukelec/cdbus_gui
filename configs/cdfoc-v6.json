@@ -148,6 +148,10 @@
                         let err = _d[9].at(-1) - _d[9]._f;  \
                         _d[9]._f += err * 0.02;             \
                         return _d[9]._f;"
+                },
+                "fft": {
+                    "sample_rate": 20751.953,
+                    "size": 4096
                 }
             }, {
                 "fmt": "I5.fffiHf",

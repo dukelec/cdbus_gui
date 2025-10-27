@@ -10,7 +10,7 @@ Python version >= 3.8
 `pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp IntelHex`
 
 #### Usage:
-Run `main.py` or `start.sh`, then open url in your web browser: http://localhost:8910
+Run `main.py`, then open url in your web browser: http://localhost:8910
 
 The underlying protocol for Serial Port is CDBUS, which uses the following frame format:  
 `src, dst, len, [payload], crc_l, crc_h`
@@ -200,5 +200,5 @@ As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilita
  - "unique local" is used only when cross-segment, for example, there are multiple network segments, each subnet has multiple devices.
 
 Serial CDNET packets can be directly mapped to UDP packets, allowing multiple software applications to access the same serial device. Please refer to:
-https://github.com/dukelec/cdnet
+https://github.com/dukelec/cdnet_tun
 

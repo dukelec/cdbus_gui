@@ -37,22 +37,16 @@ async function init_serial_cfg() {
     let ser_cfg = await csa.db.get('tmp', '_index_/ser.cfg');
     let port = document.getElementById('dev_port');
     let baud = document.getElementById('dev_baud');
-    let local_net = document.getElementById('local_net');
-    let local_mac = document.getElementById('local_mac');
     
     if (ser_cfg) {
         port.value = ser_cfg.port;
         baud.value = ser_cfg.baud;
-        local_net.value = ser_cfg.local_net;
-        local_mac.value = ser_cfg.local_mac;
     }
     
-    port.onchange = baud.onchange = local_net.onchange = local_mac.onchange = async () => {
+    port.onchange = baud.onchange = async () => {
         await csa.db.set('tmp', '_index_/ser.cfg', {
             port: port.value,
-            baud: baud.value,
-            local_net: local_net.value,
-            local_mac: local_mac.value
+            baud: baud.value
         });
     };
 }
@@ -159,23 +153,6 @@ function init_ws() {
     }
 }
 
-
-document.getElementById('set_local').onclick = async function() {
-    console.log('set_local');
-    let net = document.getElementById('local_net').value;
-    let mac = document.getElementById('local_mac').value;
-    if (!net || !mac) {
-        alert('Empty not allowed');
-        return;
-    }
-    document.getElementById('set_local').disabled = true;
-    csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'set_local', 'net': parseInt(net), 'mac': parseInt(mac)}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(1000);
-    console.log('set_local ret', dat);
-    await document.getElementById('btn_dev_get').onclick();
-    document.getElementById('set_local').disabled = false;
-};
     
 document.getElementById('btn_dev_get').onclick = async function() {
     console.log('start get');
@@ -188,6 +165,11 @@ document.getElementById('btn_dev_get').onclick = async function() {
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
+    if (dat[0] == 'udp') {
+        console.log('udp mode!');
+        document.getElementById('dev_ctrl_hide').style.display = 'none';
+        return;
+    }
     status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? L('Online') : L('Offline')} ` +
                        `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
     list.innerHTML = '';
@@ -221,7 +203,6 @@ document.getElementById('btn_dev_open').onclick = async function() {
     console.log('btn_dev_open ret', dat);
     await document.getElementById('btn_dev_get').onclick();
     document.getElementById('btn_dev_open').disabled = false;
-    document.getElementById('set_local').click();
 };
 
 document.getElementById('btn_dev_close').onclick = async function() {

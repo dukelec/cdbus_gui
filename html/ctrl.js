@@ -79,7 +79,7 @@ document.getElementById('dev_read_info').onclick = async function() {
         elem.style.background = '#F5B7B180';
         elem.innerText = 'WebSocket timeout';
         return;
-    } else if (!dat[0].online) {
+    } else if (dat[0] != 'udp' && !dat[0].online) {
         elem.style.background = '#F5B7B180';
         elem.innerText = L('Serial disconnected');
         return;

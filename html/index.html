@@ -12,40 +12,35 @@
 <body>
 
 <section class="section">
-    <div class="container">
-        <h1 class="title is-size-4"><span>${L('Serial')}</span></h1>
-        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-            <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0">
-            <input type="text" placeholder="Rate (May be ignored for USB)" id="dev_baud" value="115200">
-            <button class="button is-small" id="btn_dev_get">${L('Refresh')}</button>
-            <button class="button is-small" id="btn_dev_open">${L('Open')}</button>
-            <button class="button is-small" id="btn_dev_close">${L('Close')}</button>
-        </div>
+    <div id="dev_ctrl_hide">
         <div class="container">
-            <span>${L('Current')}</span>: <span id="dev_status"></span>
+            <h1 class="title is-size-4"><span>${L('Serial')}</span></h1>
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+                <input type="text" placeholder="Any sub string of below list" id="dev_port" value="ttyACM0">
+                <input type="text" placeholder="Rate (May be ignored for USB)" id="dev_baud" value="115200">
+                <button class="button is-small" id="btn_dev_get">${L('Refresh')}</button>
+                <button class="button is-small" id="btn_dev_open">${L('Open')}</button>
+                <button class="button is-small" id="btn_dev_close">${L('Close')}</button>
+            </div>
+            <div class="container">
+                <span>${L('Current')}</span>: <span id="dev_status"></span>
+            </div>
         </div>
+
+        <br>
+        <div class="container">
+            <h1 class="title is-size-4"><span>${L('Available')}</span></h1>
+            <div class="content">
+                <ul class="content" id="dev_list">
+                  <!--li>item1</li-->
+                </ul>
+            </div>
+        </div>
+        <br>
     </div>
 
-    <br>
-    <div class="container">
-        <h1 class="title is-size-4"><span>${L('Available')}</span></h1>
-        <div class="content">
-            <ul class="content" id="dev_list">
-              <!--li>item1</li-->
-            </ul>
-        </div>
-    </div>
-    
-
-    <br>
     <div class="container">
         <h3 class="title is-size-4"><span>${L('Devices')}</span></h3>
-        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-            <input type="text" placeholder="Local NET" id="local_net" value="0x00">
-            <input type="text" placeholder="Local MAC" id="local_mac" value="0x00">
-            <button class="button is-small" id="set_local">${L('Set')} local NET & MAC</button>
-        </div>
-        <br><br>
         <div id="cfg_list">
         </div>
     </div>

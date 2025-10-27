@@ -12,15 +12,17 @@ Args:
   --debug   | -d        # debug level: debug
   --local-net LOCAL_NET # default: 0
   --local-mac LOCAL_MAC # default: 0
+  --ip6-prefix PREFIX   # default: fdcd::
+  --port-base  BASE     # default: 0xcd00
 """
 
 import os, sys, re
 import _thread
+import socket, select, ipaddress, struct
 import time, datetime
 import copy, json5
 import asyncio, aiohttp
 import websockets
-from time import sleep
 from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web
 
@@ -28,19 +30,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
 from cdnet.utils.log import *
 from cdnet.utils.cd_args import CdArgs
-from cdnet.dev.cdbus_serial import CDBusSerial
-from cdnet.utils.serial_get_port import get_ports
-from cdnet.dispatch import *
-from cdnet.parser import *
+
 
 csa = {
     'async_loop': None,
-    'dev': None,    # serial device
-    'net': 0x00,    # local net
-    'mac': 0x00,    # local mac
-    'proxy': None,  # cdbus frame proxy socket
-    'cfgs': [],     # config list
-    'palloc': {},   # ports alloc, url_path: []
+    'udp': False,
+    'udp_socks': {},    # port: sock
+    'net': 0x00,        # local net
+    'mac': 0x00,        # local mac
+    'proxy': None,      # cdbus frame proxy socket
+    'cfgs': [],         # config list
+    'palloc': {},       # ports alloc, url_path: []
 }
 
 args = CdArgs()
@@ -50,6 +50,8 @@ if args.get("--help", "-h") != None:
 
 csa['net'] = int(args.get("--local-net", dft="0x00"), 0)
 csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
+udp_ip_prefix = args.get("--ip6-prefix", dft="fdcd::")
+udp_port_base = int(args.get("--port-base", dft="0xcd00"), 0)
 
 if args.get("--verbose", "-v") != None:
     logger_init(logging.VERBOSE)
@@ -60,6 +62,16 @@ else:
 
 logging.getLogger('websockets').setLevel(logging.WARNING)
 logger = logging.getLogger(f'cdgui')
+
+
+def addr_ip2cdnet(addr):
+    full_ip = ipaddress.IPv6Address(addr).exploded
+    tmp = full_ip[32:]
+    return tmp[0:5] + ':' + tmp[5:]
+
+def addr_cdnet2ip(addr):
+    tmp = addr.split(':')
+    return f'{udp_ip_prefix}{tmp[0]}:{tmp[1]}{tmp[2]}'
 
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
@@ -78,25 +90,50 @@ async def proxy_rx_rpt(rx):
     if ret:
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')
 
+
+def udp_socks_update():
+    new_ports = []
+    for url in csa['palloc']:
+        for p in csa['palloc'][url]:
+            if p not in new_ports:
+                new_ports.append(p)
+    for p in list(csa['udp_socks'].keys()):
+        if p not in new_ports:
+            csa['udp_socks'][p].close()
+            del(csa['udp_socks'][p])
+    for p in new_ports:
+        if p not in csa['udp_socks']:
+            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_RECVPKTINFO, 1)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('::', p + udp_port_base))
+            csa['udp_socks'][p] = s
+
+
 def proxy_rx():
     logger.info('start proxy_rx')
     while True:
-        if not csa['dev']:
-            sleep(0.5)
-            continue
-        frame = None
         try:
-            frame = csa['dev'].recv(timeout=0.5)
-            if frame:
-                if frame[3] & 0x80:
-                    rx = cdnet_l1.from_frame(frame, csa['net'])
-                    logger.log(logging.VERBOSE, f'proxy_rx l1: {frame}')
-                else:
-                    rx = cdnet_l0.from_frame(frame, csa['net'])
-                    logger.log(logging.VERBOSE, f'proxy_rx l0: {frame}')
+            readable, _, _ = select.select(csa['udp_socks'].values(), [], [], 0.5)
+            if not readable:
+                continue
+            for s in readable:
+                dat, ancdata, _, src_addr = s.recvmsg(1024, 1024)
+                dst_ip = None
+                for cmsg_level, cmsg_type, cmsg_data in ancdata:
+                    if cmsg_level == socket.IPPROTO_IPV6 and cmsg_type == socket.IPV6_PKTINFO:
+                        dst_ip = socket.inet_ntop(socket.AF_INET6, cmsg_data[:16])
+                        break
+                if not dst_ip:
+                    continue
+                dst_ip = addr_ip2cdnet(dst_ip)
+                dst_port = s.getsockname()[1] - udp_port_base
+                src_ip = addr_ip2cdnet(src_addr[0])
+                src_port = src_addr[1]
+                rx = (src_ip, src_port), (dst_ip, dst_port), dat
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
         except Exception as err:
-            logger.warning(f'proxy_rx: err: {err}', frame)
+            logger.warning(f'proxy_rx: err: {err}')
 
 _thread.start_new_thread(proxy_rx, ())
 
@@ -112,19 +149,16 @@ async def cdbus_proxy_service():
             if len(wc_src[0]) != 9:
                 logger.warning(f'proxy_tx: wc_src err: {wc_src}')
                 continue
-            dst_mac = int(wc_dat['dst'][0].split(':')[2], 16)
-            if wc_src[0][1:3] != '00':
-                frame = cdnet_l1.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
-                                           wc_dat['dst'], wc_dat['dat'], csa['mac'], dst_mac)
-                logger.log(logging.VERBOSE, f'proxy_tx frame l1: {frame}')
-            else:
-                frame = cdnet_l0.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
-                                           wc_dat['dst'], wc_dat['dat'])
-                logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
-            if csa['dev']:
-                csa['dev'].send(frame)
+            dst_ip = addr_cdnet2ip(wc_dat['dst'][0])
+            dst_port = wc_dat['dst'][1]
+            src_ip = addr_cdnet2ip(f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}')
+            src_port = wc_src[1]
+            s = csa['udp_socks'][src_port]
+            pktinfo = socket.inet_pton(socket.AF_INET6, src_ip) + struct.pack("@I", 0)
+            ancdata = [(socket.IPPROTO_IPV6, socket.IPV6_PKTINFO, pktinfo)]
+            s.sendmsg([wc_dat['dat']], ancdata, 0, (dst_ip, dst_port))
         except Exception as err:
-            logger.warning(f'proxy_tx: fmt err: {err}')
+            logger.warning(f'proxy_tx: err: {err}')
 
 
 async def dev_service(): # cdbus tty setup
@@ -134,27 +168,7 @@ async def dev_service(): # cdbus tty setup
         logger.debug(f'dev ser: {dat}')
         
         if dat['action'] == 'get':
-            ports = get_ports()
-            if csa['dev']:
-                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': csa['dev'].online, 'net': csa['net'], 'mac': csa['mac']}, src)
-            else:
-                await sock.sendto({'ports': ports, 'port': None, 'online': False, 'net': csa['net'], 'mac': csa['mac']}, src)
-        
-        elif dat['action'] == 'open' and not csa['dev']:
-            try:
-                csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
-                await sock.sendto('successed', src)
-            except Exception as err:
-                logger.warning(f'open dev err: {err}')
-                await sock.sendto(f'err: {err}', src)
-        
-        elif dat['action'] == 'close' and csa['dev']:
-            logger.info('stop dev')
-            csa['dev'].stop()
-            logger.info('stop finished')
-            csa['dev'] = None
-            await sock.sendto('successed', src)
-        
+            await sock.sendto('udp', src)
         else:
             await sock.sendto('err: dev: unknown cmd', src)
 
@@ -194,6 +208,7 @@ async def port_service(): # alloc ports
         if dat['action'] == 'clr_all':
             logger.debug(f'port clr_all')
             csa['palloc'][path] = []
+            udp_socks_update()
             await sock.sendto('successed', src)
         
         elif dat['action'] == 'get_port':
@@ -201,6 +216,7 @@ async def port_service(): # alloc ports
                 if dat['port'] not in csa['palloc'][path]:
                     csa['palloc'][path].append(dat['port'])
                     logger.debug(f'port alloc {dat["port"]}')
+                    udp_socks_update()
                     await sock.sendto(dat['port'], src)
                 else:
                     logger.error(f'port alloc error')
@@ -213,6 +229,7 @@ async def port_service(): # alloc ports
                         csa['palloc'][path].append(p)
                         break
                 logger.debug(f'port alloc: {p}')
+                udp_socks_update()
                 await sock.sendto(p, src)
         
         else:

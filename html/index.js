@@ -17,20 +17,29 @@ csa.ws_ns = new CDWebSocketNS('/');
 csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');
 let cfgs = null;
 const dev_max = 100;
-let devs = [];
 
 
-function auto_hide() {
-    console.log("auto_hide:", devs);
-    let skip_hide = true;
-    for (let i = 0; i < dev_max; i++) {
-        if (i < Math.max(5, devs.length)) {
-            document.getElementById(`device_grp${i}`).style.display = '';
-        } else {
-            document.getElementById(`device_grp${i}`).style.display = skip_hide ? '' : 'none';
-            skip_hide = false;
-        }
+async function auto_hide() {
+    let devs = [];
+    for (let n = 0; n < dev_max; n++) {
+        const dev = {
+            tgt: document.getElementById(`cfg${n}.tgt`).value,
+            cfg: document.getElementById(`cfg${n}.cfg`).value,
+            name: document.getElementById(`cfg${n}.name`).value,
+        };
+        devs.push(dev);
     }
+    let actived = 7;
+    for (let n = 0; n < dev_max; n++) {
+        if (devs[n].name && n >= actived)
+            actived = n + 1;
+    }
+    devs = devs.slice(0, actived);
+    await csa.db.set('tmp', '_index_/dev.list', devs);
+
+    console.log("auto_hide:", devs);
+    for (let i = 0; i < dev_max; i++)
+        document.getElementById(`device_grp${i}`).style.display = i <= actived ? '' : 'none';
 }
 
 async function init_serial_cfg() {
@@ -57,10 +66,10 @@ async function init_cfg_list() {
         sel_ops += `<option value="${op}">${op}</option>`;
     let list = document.getElementById('cfg_list');
     
-    let db_devs = await csa.db.get('tmp', '_index_/dev.list');
+    let devs = await csa.db.get('tmp', '_index_/dev.list');
     console.log("init get devs:", devs);
-    if (db_devs)
-        devs = db_devs;
+    if (!devs)
+        devs = [];
     for (let i = 0; i < dev_max; i++) {
         let tgt = (devs && devs[i]) ? devs[i].tgt : `00:00:fe`;
         let cfg = (devs && devs[i]) ? devs[i].cfg : '';
@@ -93,24 +102,9 @@ async function init_cfg_list() {
         
         document.getElementById(`cfg${i}.name`).onchange =
                 document.getElementById(`cfg${i}.tgt`).onchange =
-                document.getElementById(`cfg${i}.cfg`).onchange = async () => {
-            
-            devs = [];
-            for (let n = 0; n < dev_max; n++) {
-                const dev = {
-                    tgt: document.getElementById(`cfg${n}.tgt`).value,
-                    cfg: document.getElementById(`cfg${n}.cfg`).value,
-                    name: document.getElementById(`cfg${n}.name`).value,
-                };
-                if (!dev.name && n >= 5)
-                    break;
-                devs.push(dev);
-            }
-            await csa.db.set('tmp', '_index_/dev.list', devs);
-            auto_hide();
-        };
+                document.getElementById(`cfg${i}.cfg`).onchange = async () => { await auto_hide(); };
     }
-    auto_hide();
+    await auto_hide();
 }
 
 

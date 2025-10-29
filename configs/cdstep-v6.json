@@ -30,7 +30,6 @@
             [ 0x0074, 2, "H", 0, "force_threshold (z)", "Set force threshold" ],
 
             [ 0x007c, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
-            [ 0x007d, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
             [ 0x007e, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
             [ 0x0096, 24, "{H,H}", 1, "dbg_raw[1]", "Config raw debug for plot1" ],
 
@@ -65,13 +64,13 @@
         
         // button groups
         "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],
-                  ["force_trigger_en / rpt_en"],["force_rpt_dst_addr (r)","force_threshold (z)"],["dbg_raw_msk"],["dbg_raw_th"],
+                  ["force_trigger_en / rpt_en"],["force_rpt_dst_addr (r)","force_threshold (z)"],["dbg_raw_msk"],
                   ["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],
                   ["cal_pos","cal_speed"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
         "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
                   ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
                   ["qxchg_set","qxchg_ret"],["force_trigger_en / rpt_en"],["force_rpt_dst_addr (r)","force_threshold (z)"],["dbg_raw_msk"],
-                  ["dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],
+                  ["dbg_raw[0]","dbg_raw[1]"],["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],
                   ["tc_speed","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
         "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
         "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]

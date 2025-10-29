@@ -21,7 +21,6 @@
             [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
 
             [ 0x0046, 1, "B", 1, "dbg_raw_msk", "Config which raw debug data to be send" ],
-            [ 0x0047, 1, "B", 0, "dbg_raw_th", "Config raw debug data package size" ],
             [ 0x0048, 24, "{H,H}", 1, "dbg_raw[0]", "Config raw debug for plot0" ],
 
             [ 0x0074, 4, "f", 0, "pid_pressure_kp", "" ],
@@ -42,10 +41,10 @@
         ],
         
         // button groups
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk","dbg_raw_th"],
+        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],
                   ["dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["sen_pressure","loop_cnt"]],
         "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-                  ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]"],
+                  ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],["dbg_raw[0]"],
                   ["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"]],
         "less_r": [],
         "less_w": []

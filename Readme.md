@@ -1,7 +1,9 @@
 CDBUS GUI Tool
 =======================================
 
-#### Download this tool:
+CDBUS GUI is an open-source, cross-platform serial debugging tool supporting register read/write, waveform plotting, log printing, IAP upgrades, and more.
+
+#### Download:
 `git clone --recursive https://github.com/dukelec/cdbus_gui`
 
 
@@ -10,9 +12,9 @@ Python version >= 3.8
 `pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp IntelHex`
 
 #### Usage:
-Run `main.py`, then open url in your web browser: http://localhost:8910
+Run `main.py`, then open the following URL in your web browser: http://localhost:8910
 
-The underlying protocol for Serial Port is CDBUS, which uses the following frame format:  
+The underlying protocol for serial port is CDBUS, which uses the following frame format:  
 `src, dst, len, [payload], crc_l, crc_h`
 
 Each frame includes a 3-byte header, a variable-length payload, and a 2-byte CRC (identical to Modbus CRC).  
@@ -25,71 +27,64 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 
 
 ### Index Page
- - "Available" lists all the serial ports of your computer, just paste any sub string of them and fill in the first input box of "Serial". The advantage of this is that if the port changes, you can still open the correct serial port. Or you can select the serial port that is plugged into the specified USB port.
- - The serial port supports automatic reconnection.
- - "Devices" is mainly to choose which slave to debug, supports debugging multiple devices at the same time, the number of devices is unlimited.
- - "Logs" is the message printed by all devices on the bus, while each device's respective page prints only its own debug message.  
+ - "Serial": The first field accepts a port name or matching string (e.g., `ACM0`, `Bridge`, `2E3C:5740`), with wildcard support.  
+   The second field is the baud rate.
+ - "Available": Lists all serial ports on the computer.
+ - "Devices": Quickly open the debug page for each device (list expands automatically).
+ - "Logs": Aggregates logs from all devices.  
    (Pressing `Enter` inserts a blank line; Holding `Alt` or `Ctrl + Alt` allows block selection.)
- - Printing supports color (ANSI), just like the terminal under Linux, so it is easy to locate errors quickly in many logs.
- - The Logs window can be resized at will.
- - Edited data is automatically saved.
+ - Auto-reconnect supported for serial ports.
+ - Modified settings are saved automatically.
+ - Supports ANSI color codes.
 
 <img src="doc/p1.avif">  
 
 
 ### Device Page
-The following is the debug window for a specific device, starting with the data list read and write (commonly known as registers).
- - Mouse over the register name and data, it will prompt the register description, and the default data respectively (the default data is also read from the device).
- - The reading and writing of registers is done by group, which can ensure the consistency of a group of data.
- - Groups can be edited at will.
- - Tapping R on a group will read all the data in that group, and W will write a group of data. Tapping Read All and Write All at the top reads and writes each group in turn.
- - The list is configured by the json file of different devices, where the register list is printed out automatically when the device is powered on, just copy and paste it into the json template.
- - Arrays and multiple data formats are supported, and can be set to display in hexadecimal (data box with H flag) or as uint8_t arrays (with B flag).
- - Inside the same group, there are some with a small notch, indicating a hole between two registers. The group is read back before the first write to avoid modifying the data in the hole, which may be empty or any reserved vendor register(s).
+ - Displays registers for reading and writing.
+ - Hover over a register to view its description, type, and default value.
+ - Registers are grouped for consistent read/write; groups can be edited freely.
+ - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
+ - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
+ - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
 
 <img src="doc/p2.avif">  
 
 <img src="doc/p3.avif">  
 
- - Below is the waveform window, which also supports selecting different window sizes.
+#### Waveform Plots:
+ - Supports real-time display and long data recording, including FFT visualization.
+ - Supports multiple windows with adjustable sizes.
+ - If some serial data packets are lost, placeholders are inserted to prevent later waveform data from connecting to previous segments.
+ - Mouse wheel with `Shift` or `Ctrl` scales the `X` or `Y` axis; by default, both axes scale together.
+ - Touchscreen zoom and independent `X`/`Y` scaling are supported.
+ - Double-click to reset the view (zoom to fit). Hold the left or middle mouse button to pan.
+ - Individual channels can be toggled on or off for clarity.
+ - Multiple plots can be started or stopped simultaneously via the `dbg_raw_msk` register.
+ - Supports formula-based waveforms (e.g., `u_cal` below). Click `Re-Calc` to refresh the plot after modifying or adding formulas.
 
 <img src="doc/p4.avif">  
-
-
-#### Waveform windows:
- - The value of the currently selected data is indicated below each window, which is convenient and accurate.
- - You can turn on and off a certain curve at will, so it is not easy to mess up when there are many curves. (tc_speed is off in the figure, but the value is still displayed.)
- - The mouse wheel can be used with shift or ctrl to scale the x and y axes respectively, and the default is to scale both axes together.
- - Touch screen zooming is supported, as well as different scaling of x and y axes.
- - Double-click to restore the default diagram (zoom to fit). Hold down left (or middle) mouse button to pan (touchpad is also possible).
- - Data depth can be set and old data is automatically deleted to facilitate dynamic data display (oscilloscope effect).
- - The number of waveform windows is not limited.
- - You can start and stop multiple plots at the same time by directly setting the `dbg_raw_msk` register.
 
 <img src="doc/p5.avif">  
 
 
-#### Picture preview:
- - Preview jpeg images sent from device, e.g: MCU. (Visit: https://github.com/dukelec/cdcam)
-
-(Tips: You can string multiple cameras, multiple servo motors and other devices on a single RS-485 bus, simplifying costs and wiring.)
+#### Picture Preview:
+ - Preview images (e.g., JPEG files) sent from the device.
 
 <img src="doc/p6.avif">  
 
 
-#### The last are IAP and data export and import:
- - IAP supports overall readback validation, device side calculation of crc for validation, and no validation.
- - IAP supports intel hex file with multiple segments.
- - When the register format is changed, it can be migrated by exporting and importing.
- - Waveform data and log printing will be exported at the same time.
+#### IAP and Data Import/Export:
+ - IAP supports readback verification, device-side CRC validation, or no validation.
+ - IAP supports Intel HEX files with multiple segments.
+ - Register data, log outputs, and waveform data can be exported and imported together (in MessagePack format).
 
 
 ### JSON Format
-Finally, there is the json configuration:
- - The top "reg" is printed out when the device is powered up (it is also automatically generated on the mcu side, so you don't have to fill in the address, size and data type yourself, and it is not error-prone).
- - For easy reading, there are hexadecimal numbers and comments, so the json5 format is used.
- - The "fmt" string with "[]" is an array, which displays all data in one edit box.
- - The ones with "{}" are also arrays, each group occupies one edit box, and each box supports multiple data, which is convenient for struct arrays.
+ - The register list can be auto-generated by the MCU (printed when it powers up).
+ - Uses JSON5 format, supporting hexadecimal values and comments.
+ - The "fmt" string with "[]" is an array, which displays all data in one text box.
+ - "{}" denotes struct arrays; each array element has its own text box containing multiple members of the struct.
 
 **E.g.** `cdstep-v6.json`
 ```json5
@@ -135,12 +130,12 @@ Finally, there is the json configuration:
         
         // button groups
         "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
-                  ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
+                  ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
                   ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
                   ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
         "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
                   ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],
-                  ["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw_th"],["dbg_raw[0]","dbg_raw[1]"],
+                  ["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],
                   ["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],
                   ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
         "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
@@ -172,19 +167,17 @@ Finally, there is the json configuration:
 }
 ```
 
- - "reg_r" and "reg_w" are the default register group config, you can left them empty and edit on the UI.
- - The "fmt" of the "plot" data corresponds to two packet formats: "x1 a1 b1 a2 b2 ..." and "x1 a1 b1 x2 a2 b2 ...".
- - The former is an x-axis data shared between multiple groups of data in each packet. The first character "I" of fmt is the format of x, which represents uint32_t, generally a count variable in mcu, with 1 added to each loop and a fixed loop period. The number after "I" represents the delta between x1 and x2, thus recovering x2 x3 ...
- - The latter is the one without a number after "I", where each set of data inside a package has an x value, suitable for scenarios where the loop period changes.
-
-(Notes: The "reg_r", "reg_w", "less_r" and "less_w" will be printed in the console when the editing is finished.)
+ - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way).
+ - The "fmt" of "plot" data corresponds to two packet formats:
+   * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "I" denotes a uint32_t counter, incremented each loop; a number after "I" gives the delta to recover subsequent x values.
+   * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.
 
 
 ### More Info
-As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilitates the use of strings to represent different addresses and is defined as follows.
+As a side note, `CDNET Address` refers to the IPv6 concept, allowing strings to represent different addresses, defined as follows.
 
 ```
-/* CDNET address string formats:
+/* CDNET Address string formats:
 *
 *            localhost      local link     unique local    multicast
 *             10:00:00
@@ -196,9 +189,10 @@ As a side note, `cdnet ip` is a reference to the concept of ipv6, which facilita
 */
 ```
 
- - Broadcast and multicast can also use the "local link" format, there is no need to use the "multicast" format for simple occasions.
- - "unique local" is used only when cross-segment, for example, there are multiple network segments, each subnet has multiple devices.
+ - Broadcast and multicast can also use the "link-local" format; the "multicast" format is generally not needed for simple cases.
+ - "Unique local" is used only across network segments — for example, when multiple subnets each contain multiple devices.
 
-Serial CDNET packets can be directly mapped to UDP packets, allowing multiple software applications to access the same serial device. Please refer to:
+Serial CDNET packets can be directly mapped to UDP packets, enabling multiple software applications to access the same serial device. Please refer to:
 https://github.com/dukelec/cdnet_tun
 
+To access a serial device via UDP, run the `main_udp.py` program instead.

@@ -131,19 +131,33 @@ async function dbg_raw_service() {
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, f);
-                for (let i = 0; i < grp_vals.length; i++)
+                let last_x = csa.plot.dat[idx][0].at(-1);
+                let cur_x = grp_vals[0] + csa.plot.x_ofs[idx];
+                if (last_x && cur_x <= last_x) {
+                    let type_mod = Math.pow(256, fmt_size(f[0]));
+                    cur_x += type_mod;
+                    csa.plot.x_ofs[idx] += type_mod;
+                }
+                csa.plot.dat[idx][0].push(cur_x);
+                for (let i = 1; i < grp_vals.length; i++)
                     csa.plot.dat[idx][i].push(grp_vals[i]);
                 ofs += grp_size;
                 append_cal_val(idx, grp_vals.length);
             }
         
         } else { // x, d1,d2,d3, d1,d2,d3
-            let cnt_start = dv_fmt_read(dv, ofs, f[0])[0];
+            let last_x = csa.plot.dat[idx][0].at(-1);
+            let cnt_start = dv_fmt_read(dv, ofs, f[0])[0] + csa.plot.x_ofs[idx];
             ofs += fmt_size(f[0]);
             let grp_fmt = f.split('.')[1];
             let grp_size = fmt_size(grp_fmt);
             let cnt_inc = parseInt(f.split('.')[0].slice(1));
             let loop = 0;
+            if (last_x && cnt_start <= last_x) {
+                let type_mod = Math.pow(256, fmt_size(f[0]));
+                cnt_start += type_mod;
+                csa.plot.x_ofs[idx] += type_mod;
+            }
             
             while (ofs < dat.length) {
                 let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
@@ -376,6 +390,7 @@ async function init_plot() {
     csa.plot.plot_less_en = [];
     csa.plot.plot_fft_en = [];
     csa.plot.plot_fft = [];
+    csa.plot.x_ofs = [];
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         csa.plot.plot_max_len.push(max_len);
@@ -383,6 +398,7 @@ async function init_plot() {
         csa.plot.plot_less_en.push(true);
         csa.plot.plot_fft_en.push(false);
         csa.plot.plot_fft.push({});
+        csa.plot.x_ofs.push(0);
         await plot_fft_init(i);
         
         let html = `
@@ -408,9 +424,9 @@ async function init_plot() {
             let elm = document.getElementById(`plot${i}`);
             let title_height = elm.querySelector('.u-title').offsetHeight;
             let legend_height = elm.querySelector('.u-legend').offsetHeight;
-            let height = elm.clientHeight - title_height - legend_height;
-            //console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
-            csa.plot.plots[i].setSize({width: elm.clientWidth, height});
+            let height = elm.offsetHeight - title_height - legend_height;
+            //console.log(`plot${i} fit: width: ${elm.offsetWidth}, height: ${height} (${elm.offsetHeight})`);
+            csa.plot.plots[i].setSize({width: elm.offsetWidth, height});
         });
         observer.observe(document.getElementById(`plot${i}`));
         
@@ -434,6 +450,7 @@ async function init_plot() {
             for (let s = 0; s < csa.plot.dat[i].length; s++)
                 csa.plot.dat[i][s] = [];
             csa.plot.plots[i].setData(csa.plot.dat[i]);
+            csa.plot.x_ofs[i] = 0;
         };
         document.getElementById(`plot${i}_re_cal`).onclick = async () => {
             document.getElementById(`plot${i}_re_cal`).disabled = true;

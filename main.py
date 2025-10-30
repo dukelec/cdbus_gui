@@ -66,11 +66,13 @@ logger = logging.getLogger(f'cdgui')
 async def proxy_rx_rpt(rx):
     src, dst, dat = rx
     logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
-    if dst[1] == 0x9:
+    if dst[1] == 0x9 or src[1] == 0x1:
         time_str = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3].encode()
         # dbg and dev_info msg also send to index.html 
         dat4idx = re.sub(b'\n(?!$)', b'\n' + b' ' * 25, dat) # except the end '\n'
         dat4idx = time_str + b' [' + src[0].encode() + b']' + b': ' + dat4idx
+        if src[1] == 0x1:
+            dat4idx += b'\n'
         await csa['proxy'].sendto({'src': src, 'dat': dat4idx}, (f'/', 0x9))
         dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
         dat = time_str + b': ' + dat

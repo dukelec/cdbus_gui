@@ -74,8 +74,9 @@ async def proxy_rx_rpt(rx):
         if src[1] == 0x1:
             dat4idx += b'\n'
         await csa['proxy'].sendto({'src': src, 'dat': dat4idx}, (f'/', 0x9))
-        dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
-        dat = time_str + b': ' + dat
+        if dst[1] == 0x9:
+            dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
+            dat = time_str + b': ' + dat
     ret = await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/{src[0]}', dst[1]))
     if ret:
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst[1]}, {dat}')

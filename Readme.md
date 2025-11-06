@@ -28,7 +28,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 
 ### Index Page
  - "Serial": The first field accepts a port name or matching string (e.g., `ACM0`, `Bridge`, `2E3C:5740`), with wildcard support.  
-   The second field is the baud rate.
+   The second field is the baud rate, supporting arbitrary values.
  - "Available": Lists all serial ports on the computer.
  - "Devices": Quickly open the debug page for each device (list expands automatically).
  - "Logs": Aggregates logs from all devices.  
@@ -43,7 +43,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 ### Device Page
  - Displays registers for reading and writing.
  - Hover over a register to view its description, type, and default value.
- - Registers are grouped for consistent read/write; groups can be edited freely.
+ - Registers are grouped for atomic R/W; groups can be edited freely.
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
  - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
@@ -55,7 +55,6 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 #### Waveform Plots:
  - Supports real-time display and long data recording, including FFT visualization.
  - Supports multiple windows with adjustable sizes.
- - If some serial data packets are lost, placeholders are inserted to prevent later waveform data from connecting to previous segments.
  - Mouse wheel with `Shift` or `Ctrl` scales the `X` or `Y` axis; by default, both axes scale together.
  - Touchscreen zoom and independent `X`/`Y` scaling are supported.
  - Double-click to reset the view (zoom to fit). Hold the left or middle mouse button to pan.
@@ -147,7 +146,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
         "plots": [
             {
                 // "color": ["black", "red", "green", ...]
-                "fmt": "I1.iBiiff",
+                "fmt": "H1.iBiiff",
                 "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
                 "cal": {
                     "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
@@ -157,7 +156,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
                     "size": 4096
                 }
             }, {
-                "fmt": "I1.ifif",
+                "fmt": "H1.ifif",
                 "label": ["N", "pid target", "i_term", "last_in", "cal_speed"]
             }
         ]
@@ -169,7 +168,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 
  - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way).
  - The "fmt" of "plot" data corresponds to two packet formats:
-   * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "I" denotes a uint32_t counter, incremented each loop; a number after "I" gives the delta to recover subsequent x values.
+   * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.
 
 

@@ -47,7 +47,6 @@ function reg2str(dat, ofs, fmt, show) {
             let c_len = 1;
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default:
                 let c_hdr = dat[ofs];
                 if ((c_hdr & 0b11100000) === 0b11000000)
@@ -64,7 +63,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'b':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt8(ofs, true), 2, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+1), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt8(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
@@ -80,7 +78,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'h':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt16(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
@@ -88,7 +85,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'H':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getUint16(ofs, true), 4, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+2), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint16(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
@@ -96,7 +92,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'i':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getInt32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getInt32(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
@@ -104,7 +99,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'I':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getUint32(ofs, true), 8, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getUint32(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
@@ -112,7 +106,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'q':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getBigInt64(ofs, true), 16, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+8), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getBigInt64(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
@@ -120,7 +113,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'Q':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getBigUint64(ofs, true), 16, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+8), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${dv.getBigUint64(ofs, true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
@@ -128,7 +120,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'f':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getFloat32(ofs, true), 8, true, false, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+4), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${readable_float(dv.getFloat32(ofs, true))}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
@@ -136,7 +127,6 @@ function reg2str(dat, ofs, fmt, show) {
         case 'd':
             switch (show) {
             case 1:  ret = [ret, `${val2hex(dv.getFloat64(ofs, true), 16, true, false, true)}`].filter(Boolean).join(' '); break;
-            case 2:  ret = [ret, `${dat2hex(dat.slice(ofs,ofs+8), ' ')}`].filter(Boolean).join(' '); break;
             default: ret = [ret, `${readable_float(dv.getFloat64(ofs, true), true)}`].filter(Boolean).join(' ');
             }
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
@@ -249,7 +239,6 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
         case 'c':
             switch (show) {
             case 1:  dv.setInt8(ofs, parseInt(str_a[s_idx]), true); break;
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
             default:
                 let str_dat = str2dat(str); // handle utf8
                 let str_idx = str_dat.slice(s_idx,s_idx+1);
@@ -260,10 +249,7 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'b':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
-            default: dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
-            }
+            dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'B':
@@ -274,51 +260,32 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'h':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
-            default: dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
-            }
+            dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
             break;
         case 'H':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,2), ofs); break;
-            default: dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
-            }
+            dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
             break;
         case 'i':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
-            default: dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
-            }
+            dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
             break;
         case 'I':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
-            default: dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
-            }
+            dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
             break;
         case 'q':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,8), ofs); break;
-            default: dv.setBigInt64(ofs, parse_bigint(str_a[s_idx]), true);
-            }
+            dv.setBigInt64(ofs, parse_bigint(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
             break;
         case 'Q':
-            switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,8), ofs); break;
-            default: dv.setBigUint64(ofs, parse_bigint(str_a[s_idx]), true);
-            }
+            dv.setBigUint64(ofs, parse_bigint(str_a[s_idx]), true);
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
             break;
         case 'f':
             switch (show) {
             case 1:  dv.setFloat32(ofs, hex2float(str_a[s_idx]), true); break;
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,4), ofs); break;
             default: dv.setFloat32(ofs, parseFloat(str_a[s_idx]), true);
             }
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
@@ -326,7 +293,6 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
         case 'd':
             switch (show) {
             case 1:  dv.setFloat64(ofs, hex2float(str_a[s_idx]), true); break;
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,8), ofs); break;
             default: dv.setFloat64(ofs, parseFloat(str_a[s_idx]), true);
             }
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);

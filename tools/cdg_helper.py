@@ -110,8 +110,6 @@ def reg2str(dat, ofs, fmt, show):
             c_len = 1
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<b', dat[ofs:ofs+1])[0], 2, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+1], ' ')}"]))
             else:
                 c_hdr = dat[ofs];
                 if (c_hdr & 0b11100000) == 0b11000000:
@@ -127,8 +125,6 @@ def reg2str(dat, ofs, fmt, show):
         elif f[i] == 'b':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<b', dat[ofs:ofs+1])[0], 2, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+1], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<b', dat[ofs:ofs+1])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 1
@@ -143,64 +139,48 @@ def reg2str(dat, ofs, fmt, show):
         elif f[i] == 'h':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<h', dat[ofs:ofs+2])[0], 4, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+2], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<h', dat[ofs:ofs+2])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 2
         elif f[i] == 'H':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<H', dat[ofs:ofs+2])[0], 4, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+2], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<H', dat[ofs:ofs+2])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 2
         elif f[i] == 'i':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<i', dat[ofs:ofs+4])[0], 8, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+4], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<i', dat[ofs:ofs+4])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'I':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<I', dat[ofs:ofs+4])[0], 8, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+4], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<I', dat[ofs:ofs+4])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'q':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<q', dat[ofs:ofs+8])[0], 16, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<q', dat[ofs:ofs+8])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'Q':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<Q', dat[ofs:ofs+8])[0], 16, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{struct.unpack('<Q', dat[ofs:ofs+8])[0]}"]))
             ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'f':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<f', dat[ofs:ofs+4])[0], 8, True, False, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+4], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{readable_float(struct.unpack('<f', dat[ofs:ofs+4])[0])}"]))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'd':
             if show == 1:
                 ret = ' '.join(filter(None, [ret, f"{val2hex(struct.unpack('<d', dat[ofs:ofs+8])[0], 16, True, False, True)}"]))
-            elif show == 2:
-                ret = ' '.join(filter(None, [ret, f"{dat2hex(dat[ofs:ofs+8], ' ')}"]))
             else:
                 ret = ' '.join(filter(None, [ret, f"{readable_float(struct.unpack('<d', dat[ofs:ofs+8])[0], True)}"]))
             ofs += int(fnext) if fnext.isdigit() else 8
@@ -218,17 +198,12 @@ def str2reg(dat, ofs, fmt, show, str_, s_idx):
         if f[i] == 'c':
             if show == 1:
                 dat[ofs:ofs+1] = struct.pack('<b', int(str_a[s_idx], 0))
-            elif show == 2:
-                dat[ofs:ofs+1] = hex2dat(str_a[s_idx])[0:1]
             else:
                 str_b = str_.encode()
                 dat[ofs:ofs+1] = bytes([str_b[s_idx]]) if s_idx < len(str_b) else b'\x00'
             ofs += int(fnext) if fnext.isdigit() else 1
         elif f[i] == 'b':
-            if show == 2:
-                dat[ofs:ofs+1] = hex2dat(str_a[s_idx])[0:1]
-            else:
-                dat[ofs:ofs+1] = struct.pack('<b', int(str_a[s_idx], 0))
+            dat[ofs:ofs+1] = struct.pack('<b', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 1
         elif f[i] == 'B':
             if show == 2:
@@ -237,54 +212,32 @@ def str2reg(dat, ofs, fmt, show, str_, s_idx):
                 dat[ofs:ofs+1] = struct.pack('<B', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 1
         elif f[i] == 'h':
-            if show == 2:
-                dat[ofs:ofs+2] = hex2dat(str_a[s_idx])[0:2]
-            else:
-                dat[ofs:ofs+2] = struct.pack('<h', int(str_a[s_idx], 0))
+            dat[ofs:ofs+2] = struct.pack('<h', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 2
         elif f[i] == 'H':
-            if show == 2:
-                dat[ofs:ofs+2] = hex2dat(str_a[s_idx])[0:2]
-            else:
-                dat[ofs:ofs+2] = struct.pack('<H', int(str_a[s_idx], 0))
+            dat[ofs:ofs+2] = struct.pack('<H', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 2
         elif f[i] == 'i':
-            if show == 2:
-                dat[ofs:ofs+4] = hex2dat(str_a[s_idx])[0:4]
-            else:
-                dat[ofs:ofs+4] = struct.pack('<i', int(str_a[s_idx], 0))
+            dat[ofs:ofs+4] = struct.pack('<i', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'I':
-            if show == 2:
-                dat[ofs:ofs+4] = hex2dat(str_a[s_idx])[0:4]
-            else:
-                dat[ofs:ofs+4] = struct.pack('<I', int(str_a[s_idx], 0))
+            dat[ofs:ofs+4] = struct.pack('<I', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'q':
-            if show == 2:
-                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
-            else:
-                dat[ofs:ofs+8] = struct.pack('<q', int(str_a[s_idx], 0))
+            dat[ofs:ofs+8] = struct.pack('<q', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'Q':
-            if show == 2:
-                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
-            else:
-                dat[ofs:ofs+8] = struct.pack('<Q', int(str_a[s_idx], 0))
+            dat[ofs:ofs+8] = struct.pack('<Q', int(str_a[s_idx], 0))
             ofs += int(fnext) if fnext.isdigit() else 8
         elif f[i] == 'f':
             if show == 1:
                 dat[ofs:ofs+4] = struct.pack('<f', hex2float(str_a[s_idx]))
-            elif show == 2:
-                dat[ofs:ofs+4] = hex2dat(str_a[s_idx])[0:4]
             else:
                 dat[ofs:ofs+4] = struct.pack('<f', float(str_a[s_idx]))
             ofs += int(fnext) if fnext.isdigit() else 4
         elif f[i] == 'd':
             if show == 1:
                 dat[ofs:ofs+8] = struct.pack('<d', hex2float(str_a[s_idx]))
-            elif show == 2:
-                dat[ofs:ofs+8] = hex2dat(str_a[s_idx])[0:8]
             else:
                 dat[ofs:ofs+8] = struct.pack('<d', float(str_a[s_idx]))
             ofs += int(fnext) if fnext.isdigit() else 8

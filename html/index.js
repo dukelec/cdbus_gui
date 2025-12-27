@@ -164,7 +164,12 @@ document.getElementById('btn_dev_get').onclick = async function() {
         document.getElementById('dev_ctrl_hide').style.display = 'none';
         return;
     }
-    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${dat[0].online ? L('Online') : L('Offline')} ` +
+    let online_str = L('Offline');
+    if (dat[0].online == 1)
+        online_str = L('Online');
+    else if (dat[0].online == 2)
+        online_str = L('Connecting...');
+    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${online_str} ` +
                        `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
     list.innerHTML = '';
     let ports = dat[0].ports;

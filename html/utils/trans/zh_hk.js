@@ -27,6 +27,7 @@ let trans_zh_hk = {
     
     'Online': '在綫',
     'Offline': '離線',
+    'Connecting...': '連接中...',
     'Open Window': '打開頁面',
     
     // ctrl

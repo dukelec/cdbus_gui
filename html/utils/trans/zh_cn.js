@@ -28,6 +28,7 @@ let trans_zh_cn = {
     
     'Online': '在线',
     'Offline': '离线',
+    'Connecting...': '连接中...',
     'Open Window': '打开页面',
     
     // ctrl

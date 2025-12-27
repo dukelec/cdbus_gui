@@ -139,17 +139,14 @@ async def dev_service(): # cdbus tty setup
         if dat['action'] == 'get':
             ports = get_ports()
             if csa['dev']:
-                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': csa['dev'].online, 'net': csa['net'], 'mac': csa['mac']}, src)
+                online_st = 1 if csa['dev'].online else 2
+                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': online_st, 'net': csa['net'], 'mac': csa['mac']}, src)
             else:
-                await sock.sendto({'ports': ports, 'port': None, 'online': False, 'net': csa['net'], 'mac': csa['mac']}, src)
+                await sock.sendto({'ports': ports, 'port': None, 'online': 0, 'net': csa['net'], 'mac': csa['mac']}, src)
         
         elif dat['action'] == 'open' and not csa['dev']:
-            try:
-                csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
-                await sock.sendto('successed', src)
-            except Exception as err:
-                logger.warning(f'open dev err: {err}')
-                await sock.sendto(f'err: {err}', src)
+            csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
+            await sock.sendto('successed', src)
         
         elif dat['action'] == 'close' and csa['dev']:
             logger.info('stop dev')

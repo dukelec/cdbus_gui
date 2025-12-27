@@ -52,10 +52,18 @@
     
     "plot": {
         "mask": "dbg_raw_msk",
+        "reg_overlay": [
+            // addr, ofs, len, type, name
+            //[0x1234, 8, 4, "f", "name"],
+            ["pid_pressure_ki", 20, 4, "f", "pid target"],
+            ["pid_pressure_ki", 24, 4, "f", "i_term"],
+            ["pid_pressure_ki", 28, 4, "f", "last_in"]
+        ],
         "plots": [
             {
                 // "color": ["black", "red", "green"]
-                "fmt": "B1.fffH",
+                "cfg_reg": "dbg_raw[0]",
+                "x_fmt": "B1",
                 "label": ["N", "pid target", "i_term", "last_in", "cur_pwm"],
                 "cal": {
                     "err": "_d[3].at(-1) - _d[1].at(-1)", // data3 - data1

@@ -143,11 +143,19 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
     
     "plot": {
         "mask": "dbg_raw_msk",
+        "reg_overlay": [
+            // addr, ofs, len, type, name
+            //[0x1234, 8, 4, "f", "name"],
+            ["pid_pos_ki", 20, 4, "i", "pid target"],
+            ["pid_pos_ki", 24, 4, "f", "i_term"],
+            ["pid_pos_ki", 28, 4, "i", "last_in"]
+        ],
         "plots": [
             {
-                // "color": ["black", "red", "green", ...]
-                "fmt": "H1.iBiiff",
-                "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
+                // "color": ["black", "red", "green"]
+                "cfg_reg": "dbg_raw[0]",
+                "x_fmt": "H1",
+                "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_ac"],
                 "cal": {
                     "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
                 },
@@ -156,7 +164,8 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
                     "size": 4096
                 }
             }, {
-                "fmt": "H1.ifif",
+                "cfg_reg": "dbg_raw[1]",
+                "x_fmt": "H1",
                 "label": ["N", "pid target", "i_term", "last_in", "cal_speed"]
             }
         ]
@@ -167,7 +176,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 ```
 
  - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way).
- - The "fmt" of "plot" data corresponds to two packet formats:
+ - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.
 

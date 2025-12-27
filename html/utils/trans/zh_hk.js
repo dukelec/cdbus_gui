@@ -69,8 +69,9 @@ let trans_zh_hk = {
     'Export Data': '導出數據',
     'Import Data': '導入數據',
     
-    'Serial disconnected': '串口斷開連接'
-    
+    'Serial disconnected': '串口斷開連接',
+    'Insufficient registers!': '超出寄存器數量！',
+    'Config Regs': '配置寄存器'
 };
 
 export { trans_zh_hk };

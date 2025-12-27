@@ -70,8 +70,9 @@ let trans_zh_cn = {
     'Export Data': '导出数据',
     'Import Data': '导入数据',
     
-    'Serial disconnected': '串口断开连接'
-    
+    'Serial disconnected': '串口断开连接',
+    'Insufficient registers!': '超出寄存器数量！',
+    'Config Regs': '配置寄存器'
 };
 
 export { trans_zh_cn };

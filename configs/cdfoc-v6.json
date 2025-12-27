@@ -130,11 +130,23 @@
     
     "plot": {
         "mask": "dbg_raw_msk",
+        "reg_overlay": [
+            // addr, ofs, len, type, name
+            //[0x1234, 8, 4, "f", "name"],
+            ["pid_i_sq_ki", 20, 4, "f", "sq tgt"],
+            ["pid_i_sq_ki", 24, 4, "f", "sq i_term"],
+            ["pid_i_sd_ki", 24, 4, "f", "sd i_term"],
+            ["pid_speed_ki", 20, 4, "f", "speed tgt"],
+            ["pid_speed_ki", 24, 4, "f", "speed i_term"],
+            ["pid_pos_ki", 20, 4, "i", "pos tgt"],
+            ["pid_pos_ki", 24, 4, "f", "pos i_term"],
+        ],
         "plots": [
             {
                 // "color": ["black", "red", "green"]
-                "fmt": "H1.fffffffH",
-                "label": ["N", "sq in", "sd in", "sq tgt", "sq i_term", "sd i_term", "sq cal", "sd cal", "sen_encoder"],
+                "cfg_reg": "dbg_raw[0]",
+                "x_fmt": "H1",
+                "label": ["N", "sen_i_sq", "sen_i_sd", "sq tgt", "sq i_term", "sd i_term", "cal_v_sq", "cal_v_sd", "sen_encoder"],
                 "cal": {
                     "sq_err": "_d[1].at(-1) - _d[3].at(-1)", // data1 - data3
                     "sq_err_avg": "                  \
@@ -154,23 +166,26 @@
                     "size": 4096
                 }
             }, {
-                "fmt": "H5.fffiHf",
-                "label": ["N", "sen_speed", "speed target", "i_term", "cal_current", "sen_encoder", "sen_speed_avg"],
+                "cfg_reg": "dbg_raw[1]",
+                "x_fmt": "H5",
+                "label": ["N", "sen_speed", "speed tgt", "speed i_term", "cal_current", "sen_encoder", "sen_speed_avg"],
                 "cal": {
                     "speed_err2i": "_d[2].at(-1) - _d[1].at(-1)",
                     "speed_err2p": "_d[2].at(-1) - _d[6].at(-1)",
                     "p term": "_d[4].at(-1) - _d[3].at(-1)"
                 }
             }, {
-                "fmt": "H25.iiffff",
-                "label": ["N", "pos_cur", "pos target", "i_term", "cal_speed", "tc_vc_avg", "sen_speed_avg"],
+                "cfg_reg": "dbg_raw[2]",
+                "x_fmt": "H25",
+                "label": ["N", "sen_pos", "pos tgt", "pos i_term", "cal_speed", "tc_vc_avg", "sen_speed_avg"],
                 "cal": {
                     "pos_err": "_d[2].at(-1) - _d[1].at(-1)",
                     "p term": "_d[7].at(-1) * 50"
                 }
             }, {
-                "fmt": "H25.Biiff",
-                "label": ["N", "tc_state", "tc_poc", "cal_pos", "tc_vc", "tc_ac"],
+                "cfg_reg": "dbg_raw[3]",
+                "x_fmt": "H25",
+                "label": ["N", "tc_state", "tc_pos", "cal_pos", "tc_vc", "tc_ac"],
             }
         ]
     },

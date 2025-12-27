@@ -11,6 +11,7 @@ import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa, alloc_port } from '../common.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
 import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js';
+import { plot_reg_w_init, plot_reg_w } from './plot_reg_w.js';
 import { reg_idx_by_name } from './reg.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
@@ -124,7 +125,7 @@ async function dbg_raw_service() {
         }
         
         let ofs = 0;
-        let f = csa.cfg.plot.plots[idx].fmt;
+        let f = csa.plot.fmt[idx];
 
         if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
             let grp_size = fmt_size(f);
@@ -285,8 +286,8 @@ function is_float(n) {
 }
 
 function plot_init_series(idx) {
-    let f_fmt = csa.cfg.plot.plots[idx].fmt;
-    let f_label = csa.cfg.plot.plots[idx].label;
+    let f_fmt = csa.plot.fmt[idx];
+    let f_label = csa.plot.label[idx];
     let series_num = f_fmt.split('.')[1].length + 1;
     f_label = f_label.slice(0, series_num);
     if (f_label.length < series_num)
@@ -336,7 +337,7 @@ async function plot_cal_update(idx) {
     
     let dat_bk = csa.plot.dat[idx];
     let series = plot_init_series(idx);
-    let f_fmt = csa.cfg.plot.plots[idx].fmt;
+    let f_fmt = csa.plot.fmt[idx];
     let f_num = f_fmt.split('.')[1].length + 1;
     for (let i = 0; i < dat_bk[0].length; i++) {
         for (let n = 0; n < f_num; n++)
@@ -391,6 +392,9 @@ async function init_plot() {
     csa.plot.plot_fft_en = [];
     csa.plot.plot_fft = [];
     csa.plot.x_ofs = [];
+    csa.plot.fmt = [];
+    csa.plot.label = [];
+    csa.plot.reg_val = [];
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         csa.plot.plot_max_len.push(max_len);
@@ -399,7 +403,11 @@ async function init_plot() {
         csa.plot.plot_fft_en.push(false);
         csa.plot.plot_fft.push({});
         csa.plot.x_ofs.push(0);
+        csa.plot.fmt.push('');
+        csa.plot.label.push([]);
+        csa.plot.reg_val.push(null);
         await plot_fft_init(i);
+        plot_reg_w_init(i);
         
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
@@ -410,6 +418,7 @@ async function init_plot() {
                 FFT <input type="checkbox" id="plot${i}_fft">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
                 <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
+                <button class="button is-small" id="plot${i}_w_reg">${L('Config Regs')}</button>
             </div>
             <div id="plot${i}" class="resizable"></div>
         `;
@@ -456,6 +465,11 @@ async function init_plot() {
             document.getElementById(`plot${i}_re_cal`).disabled = true;
             await plot_cal_update(i);
             document.getElementById(`plot${i}_re_cal`).disabled = false;
+        };
+        document.getElementById(`plot${i}_w_reg`).onclick = () => {
+            document.getElementById(`plot${i}_w_reg`).disabled = true;
+            plot_reg_w(i);
+            document.getElementById(`plot${i}_w_reg`).disabled = false;
         };
     }
     

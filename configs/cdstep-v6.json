@@ -78,11 +78,19 @@
     
     "plot": {
         "mask": "dbg_raw_msk",
+        "reg_overlay": [
+            // addr, ofs, len, type, name
+            //[0x1234, 8, 4, "f", "name"],
+            ["pid_pos_ki", 20, 4, "i", "pid target"],
+            ["pid_pos_ki", 24, 4, "f", "i_term"],
+            ["pid_pos_ki", 28, 4, "i", "last_in"]
+        ],
         "plots": [
             {
                 // "color": ["black", "red", "green"]
-                "fmt": "H1.iBiiff",
-                "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_va"],
+                "cfg_reg": "dbg_raw[0]",
+                "x_fmt": "H1",
+                "label": ["N", "tc_pos", "tc_state", "cal_pos", "cur_pos", "tc_vc", "tc_ac"],
                 "cal": {
                     "pos_err": "_d[4].at(-1) - _d[3].at(-1)" // data4 - data3
                 },
@@ -91,7 +99,8 @@
                     "size": 4096
                 }
             }, {
-                "fmt": "H1.ifif",
+                "cfg_reg": "dbg_raw[1]",
+                "x_fmt": "H1",
                 "label": ["N", "pid target", "i_term", "last_in", "cal_speed"]
             }
         ]

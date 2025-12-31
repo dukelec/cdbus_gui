@@ -57,39 +57,51 @@ async function flash_erase(addr, len) {
     }
 }
 
-async function flash_write_blk(addr, dat) {
+async function flash_write_blk(addr, dat, not_reply) {
     let d = new Uint8Array(5 + dat.length);
     let dv = new DataView(d.buffer);
-    d[0] = 0x20;
+    d[0] = not_reply ? 0xa0 : 0x20;
     dv.setUint32(1, addr, true);
     d.set(dat, 5);
-    
-    csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
-    console.log(`flash_write_blk wait ret, addr: ${val2hex(addr)}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(1000);
-    console.log('flash_write_blk ret', ret);
-    if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
-        return 0
-    } else {
-        console.log('flash_write_blk err');
-        return -1;
-    }
 }
 
-async function flash_write(addr, dat, blk_size=128) {
+async function flash_write(addr, dat, blk_size=128, group_size=0) {
     let cur = addr;
     let iap_progress_elm = document.getElementById('iap_progress');
+    let pend_ret_max = group_size ? 2 : 1;
+    let pend_ret = 0;
+    group_size = Math.max(group_size, 1);
+    csa.iap.proxy_sock.flush();
+    
     while (!csa.iap.stop) {
-        let size = Math.min(blk_size, dat.length - (cur - addr));
-        if (size == 0)
+        let has_more = cur - addr < dat.length;
+        if (pend_ret < pend_ret_max && has_more) {
+            for (let i = 0; i < group_size; i++) {
+                if (cur - addr >= dat.length)
+                    break;
+                let not_reply = i + 1 < group_size && cur - addr + blk_size < dat.length;
+                let size = Math.min(blk_size, dat.length - (cur - addr));
+                let wdat = dat.slice(cur-addr, cur-addr+size);
+                console.log(`flash_write_blk i: ${i}, reply: ${!not_reply}, pend: ${pend_ret}, cur: ${val2hex(cur)}, size: ${size}`);
+                await flash_write_blk(cur, wdat, not_reply);
+                cur += size;
+                iap_progress_elm.innerText = `Write ${Math.round((cur - addr) / dat.length * 100)}%`;
+            }
+            pend_ret++;
+        } else if (pend_ret) {
+            let ret = await csa.iap.proxy_sock.recvfrom(1000);
+            if (ret && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0) {
+                pend_ret--;
+                console.log(`flash_write_blk ret ok, pend: ${pend_ret}`, ret);
+            } else {
+                console.log(`flash_write_blk ret err, pend: ${pend_ret}`, ret);
+                return -1;
+            }
+        } else {
+            console.log("flash_write completed");
             return 0;
-        let wdat = dat.slice(cur-addr, cur-addr+size);
-        let ret = await flash_write_blk(cur, wdat);
-        if (ret)
-            return -1;
-        cur += size;
-        iap_progress_elm.innerText = `Write ${Math.round((cur - addr) / dat.length * 100)}%`;
+        }
     }
     return -2;
 }
@@ -142,7 +154,7 @@ async function flash_read_crc(addr, len) {
     csa.iap.proxy_sock.flush();
     await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x8], 'dat': d}, ['server', 'proxy']);
     console.log(`flash_read_crc ret, addr: ${val2hex(addr)}, len: ${val2hex(len)}`);
-    let ret = await csa.iap.proxy_sock.recvfrom(1000);
+    let ret = await csa.iap.proxy_sock.recvfrom(3000);
     console.log('flash_read_crc', ret);
     if (ret && (ret[0].dat[0] & 0xf) == 0) {
         let ret_dv = new DataView(ret[0].dat.slice(1).buffer);
@@ -199,6 +211,13 @@ async function do_iap() {
     document.getElementById('iap_stop').disabled = csa.iap.stop = false;
     document.getElementById('iap_epoch').innerText = '';
     document.getElementById('iap_progress').innerText = '--';
+    let blk_size = 128;
+    let batch_pkts = 0;
+    if (csa.cfg.iap.batch_pkts)
+        batch_pkts = csa.cfg.iap.batch_pkts;
+    if (csa.cfg.iap.blk_size)
+        blk_size = csa.cfg.iap.blk_size;
+    console.log(`iap: blk_size: ${blk_size}, batch_pkts: ${batch_pkts}`);
     
     let path = document.getElementById('iap_path').value;
     let check = document.getElementById('iap_check').value;
@@ -302,7 +321,7 @@ async function do_iap() {
         let crc_ori = crc16(dat);
         document.getElementById('iap_epoch').innerText = `[${idx+1}/${msg[0].length}]`;
         
-        if (await flash_write(addr, dat)) {
+        if (await flash_write(addr, dat, blk_size, batch_pkts)) {
             document.getElementById('iap_progress').innerText = `Write failed`;
             stop_iap();
             return;
@@ -322,7 +341,7 @@ async function do_iap() {
             document.getElementById('iap_progress').innerText = 'Succeeded with crc check.';
         
         } else if (check == "read") {
-            let buf = await flash_read(addr, len);
+            let buf = await flash_read(addr, len, blk_size);
             if (!buf) {
                 document.getElementById('iap_progress').innerText = 'Read back failed.';
                 stop_iap();

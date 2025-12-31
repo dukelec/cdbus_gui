@@ -171,7 +171,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
         ]
     },
     
-    "iap": { "reboot": 0x0005, "keep_bl": 0x0006 }
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006, "batch_pkts": 3 }
 }
 ```
 

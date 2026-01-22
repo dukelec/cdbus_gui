@@ -19,7 +19,7 @@ import { init_export } from './plugins/export.js';
 
 
 function init_ws() {
-    let ws_url = `ws://${window.location.hostname}:8910/${csa.arg.tgt}`;
+    let ws_url = `ws://${window.location.hostname}:${window.location.port}/${csa.arg.tgt}`;
     let ws = new WebSocket(ws_url);
     
     ws.onopen = async function(evt) {

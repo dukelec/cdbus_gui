@@ -1,0 +1,83 @@
+{
+    // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
+    // show: 0: normal, 1: hex, 2: bytes
+    "reg": {
+        "list": [
+            [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
+            [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
+            [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
+            [ 0x0005, 1, "B", 0, "do_reboot", "Write 1 to reboot" ],
+            [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+
+            [ 0x0008, 1, "B", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
+
+            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
+            [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
+            [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
+            [ 0x0018, 2, "[B]", 1, "bus_cfg_filter_m", "Multicast address" ],
+            [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Traditional, 1: Arbitration, 2: Break Sync" ],
+            [ 0x001c, 2, "H", 0, "bus_cfg_tx_permit_len", "Allow send wait time" ],
+            [ 0x001e, 2, "H", 0, "bus_cfg_max_idle_len", "Max idle wait time for BS mode" ],
+            [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", "Active TX_EN before TX" ],
+
+            [ 0x0080, 1, "B", 1, "p_mac", "Predefined remote rs485 address" ],
+            [ 0x008d, 1, "b", 0, "k_en_ble", "Key enable" ],
+            [ 0x008e, 24, "[c]", 0, "k_pwd", "Key string" ],
+
+            [ 0x00a6, 1, "B", 0, "ble_itvl_min", "" ],
+            [ 0x00a7, 1, "B", 0, "ble_itvl_max", "" ],
+            [ 0x00a8, 32, "[c]", 0, "wifi_ssid", "" ],
+            [ 0x00c8, 64, "[c]", 0, "wifi_pwd", "" ],
+            [ 0x0108, 1, "B", 0, "wifi_conf", "0: turn off, 1: station mode" ],
+
+            [ 0x0109, 1, "B", 0, "proxy_sel", "1: ble, 2: wifi" ],
+            [ 0x010a, 1, "b", 0, "ble_stop", "1: stop advertisement" ],
+            [ 0x0118, 1, "b", 0, "k_st_ble", "Key verify status" ],
+            [ 0x011c, 4, "I", 1, "k_random", "" ],
+            [ 0x0120, 2, "H", 1, "k_cnt_rx_ble", "" ],
+            [ 0x0122, 2, "H", 1, "k_cnt_tx_ble", "" ],
+            [ 0x0124, 2, "H", 1, "k_cnt_rx_udp", "" ],
+            [ 0x0126, 2, "H", 1, "k_cnt_tx_udp", "" ],
+
+            [ 0x0132, 2, "H", 0, "ble_mtu_cur", "" ],
+            [ 0x0134, 1, "B", 0, "ble_itvl_cur", "" ],
+
+            [ 0x0148, 1, "B", 1, "wifi_state", "{disabled, 2'd0, connecting, 2'd0, connected, scan}" ],
+            [ 0x0149, 16, "[B]", 2, "remote_ip", "Client ip, starts with ffff: empty" ],
+            [ 0x015a, 2, "H", 0, "remote_port", "Client udp port, 0xffff: empty" ],
+            [ 0x015c, 16, "[B]", 2, "local_ip[0]", "" ],
+            [ 0x016c, 16, "[B]", 2, "local_ip[1]", "" ],
+            [ 0x017c, 16, "[B]", 2, "local_ip[2]", "" ],
+            [ 0x018c, 16, "[B]", 2, "local_ip[3]", "" ],
+            [ 0x019c, 1, "B", 0, "scan_start", "Write 1 to start wifi scan" ],
+            [ 0x019d, 20, "[B]", 0, "scan_auth", "0: open, 1: wep, 2: wpa_psk, 3: wpa2_psk, 4: wpa_wpa2_psk ..." ],
+            [ 0x01b1, 20, "[b]", 0, "scan_rssi", "" ],
+            [ 0x01c5, 32, "[c]", 0, "scan_ssid[0]", "" ],
+            [ 0x01e5, 32, "[c]", 0, "scan_ssid[1]", "" ],
+            [ 0x0205, 32, "[c]", 0, "scan_ssid[2]", "" ],
+            [ 0x0225, 32, "[c]", 0, "scan_ssid[3]", "" ],
+            [ 0x0245, 32, "[c]", 0, "scan_ssid[4]", "" ],
+            [ 0x0265, 32, "[c]", 0, "scan_ssid[5]", "" ],
+            [ 0x0285, 32, "[c]", 0, "scan_ssid[6]", "" ],
+            [ 0x02a5, 32, "[c]", 0, "scan_ssid[7]", "" ],
+            [ 0x02c5, 32, "[c]", 0, "scan_ssid[8]", "" ],
+            [ 0x02e5, 32, "[c]", 0, "scan_ssid[9]", "" ],
+            [ 0x0305, 32, "[c]", 0, "scan_ssid[10]", "" ],
+            [ 0x0325, 32, "[c]", 0, "scan_ssid[11]", "" ],
+            [ 0x0345, 32, "[c]", 0, "scan_ssid[12]", "" ],
+            [ 0x0365, 32, "[c]", 0, "scan_ssid[13]", "" ],
+            [ 0x0385, 32, "[c]", 0, "scan_ssid[14]", "" ],
+            [ 0x03a5, 32, "[c]", 0, "scan_ssid[15]", "" ],
+            [ 0x03c5, 32, "[c]", 0, "scan_ssid[16]", "" ],
+            [ 0x03e5, 32, "[c]", 0, "scan_ssid[17]", "" ],
+            [ 0x0405, 32, "[c]", 0, "scan_ssid[18]", "" ],
+            [ 0x0425, 32, "[c]", 0, "scan_ssid[19]", "" ]
+        ],
+    
+        // button groups
+        "reg_r": [["magic_code"],["conf_ver"],["conf_from"],["do_reboot","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["k_en_ble","k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf","ble_stop"],["k_st_ble","k_random"],["k_cnt_rx_ble","k_cnt_tx_udp"],["ble_mtu_cur","ble_itvl_cur"],["wifi_state"],["remote_ip","remote_port"],["local_ip[0]","local_ip[3]"],["scan_start"],["scan_auth","scan_rssi"],["scan_ssid[0]","scan_ssid[3]"],["scan_ssid[4]","scan_ssid[7]"],["scan_ssid[8]","scan_ssid[11]"],["scan_ssid[12]","scan_ssid[15]"],["scan_ssid[16]","scan_ssid[19]"]],
+        "reg_w": [["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["k_en_ble"],["k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf"],["proxy_sel"],["ble_stop"],["remote_ip","remote_port"],["scan_start"]]
+    },
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006, "batch_pkts": 3 } // iap related register address
+}
+

@@ -13,10 +13,10 @@
             [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
             [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
             [ 0x0018, 2, "[B]", 1, "bus_cfg_filter_m", "Multicast address" ],
-            [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Arbitration, 1: Break Sync" ],
+            [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Traditional, 1: Arbitration, 2: Break Sync" ],
             [ 0x001c, 2, "H", 0, "bus_cfg_tx_permit_len", "Allow send wait time" ],
             [ 0x001e, 2, "H", 0, "bus_cfg_max_idle_len", "Max idle wait time for BS mode" ],
-            [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", " Active TX_EN before TX" ],
+            [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", "Active TX_EN before TX" ],
 
             [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
 

@@ -109,7 +109,7 @@ async function init_cfg_list() {
 
 
 function init_ws() {
-    let ws_url = 'ws://' + window.location.hostname + ':8910';
+    let ws_url = `ws://${window.location.hostname}:${window.location.port}`;
     let ws = new WebSocket(ws_url);
     
     ws.onopen = async function(evt) {

@@ -13,7 +13,8 @@ Args:
   --local-net LOCAL_NET # default: 0
   --local-mac LOCAL_MAC # default: 0
   --ip6-prefix PREFIX   # default: fdcd::
-  --port-base  BASE     # default: 0xcd00
+  --port-base BASE      # default: 0xcd00
+  --http-port HTTP_PORT # default: 8910
 """
 
 import os, sys, re
@@ -52,6 +53,7 @@ csa['net'] = int(args.get("--local-net", dft="0x00"), 0)
 csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
 udp_ip_prefix = args.get("--ip6-prefix", dft="fdcd::")
 udp_port_base = int(args.get("--port-base", dft="0xcd00"), 0)
+http_port = int(args.get("--http-port", dft="8910"), 0)
 
 cdnet_local_addr = [
     f"00:{csa['net']:02x}:{csa['mac']:02x}",
@@ -258,9 +260,9 @@ async def port_service(): # alloc ports
 
 
 async def open_brower():
-    proc = await asyncio.create_subprocess_shell('/opt/google/chrome/chrome --app=http://localhost:8910')
+    proc = await asyncio.create_subprocess_shell(f'/opt/google/chrome/chrome --app=http://localhost:{http_port}')
     await proc.communicate()
-    #proc = await asyncio.create_subprocess_shell('chromium --app=http://localhost:8910')
+    #proc = await asyncio.create_subprocess_shell(f'chromium --app=http://localhost:{http_port}')
     #await proc.communicate()
     logger.info('open brower done.')
 
@@ -269,7 +271,7 @@ if __name__ == "__main__":
     csa['async_loop'] = asyncio.new_event_loop()
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
-    csa['async_loop'].create_task(start_web())
+    csa['async_loop'].create_task(start_web(port=http_port))
     csa['async_loop'].create_task(cfgs_service())
     csa['async_loop'].create_task(dev_service())
     csa['async_loop'].create_task(port_service())
@@ -279,6 +281,6 @@ if __name__ == "__main__":
     iap_init(csa)
     
     #csa['async_loop'].create_task(open_brower())
-    logger.info('Please open url: http://localhost:8910')
+    logger.info(f'Please open url: http://localhost:{http_port}')
     csa['async_loop'].run_forever()
 

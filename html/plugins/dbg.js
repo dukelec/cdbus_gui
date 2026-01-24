@@ -91,6 +91,7 @@ async function dbg_service() {
     });
     
     document.getElementById('dbg_clear').onclick = () => {
+        term.scrollToBottom(); // workaround for auto-scroll fails after clear
         term.clear();
         term.select(0, 0, 0);
     };

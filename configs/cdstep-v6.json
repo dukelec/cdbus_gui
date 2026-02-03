@@ -46,7 +46,6 @@
 
             [ 0x00d4, 4, "f", 0, "pid_pos_kp", "" ],
             [ 0x00d8, 4, "f", 0, "pid_pos_ki", "" ],
-            [ 0x00dc, 4, "f", 0, "pid_pos_kd", "" ],
             [ 0x0100, 4, "i", 0, "cal_pos", "PID input position" ],
             [ 0x0104, 4, "f", 0, "cal_speed", "PID output speed" ],
 
@@ -65,13 +64,13 @@
         // button groups
         "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],
                   ["force_trigger_en / rpt_en"],["force_rpt_dst_addr (r)","force_threshold (z)"],["dbg_raw_msk"],
-                  ["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],
+                  ["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_ki"],
                   ["cal_pos","cal_speed"],["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
         "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
                   ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
                   ["qxchg_set","qxchg_ret"],["force_trigger_en / rpt_en"],["force_rpt_dst_addr (r)","force_threshold (z)"],["dbg_raw_msk"],
                   ["dbg_raw[0]","dbg_raw[1]"],["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],
-                  ["tc_speed","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
+                  ["tc_speed","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_ki"],["state"],["string_test"]],
         "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
         "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]
     },
@@ -82,8 +81,7 @@
             // addr, ofs, len, type, name
             //[0x1234, 8, 4, "f", "name"],
             ["pid_pos_ki", 20, 4, "i", "pid target"],
-            ["pid_pos_ki", 24, 4, "f", "i_term"],
-            ["pid_pos_ki", 28, 4, "i", "last_in"]
+            ["pid_pos_ki", 24, 4, "f", "i_term"]
         ],
         "plots": [
             {
@@ -101,7 +99,7 @@
             }, {
                 "cfg_reg": "dbg_raw[1]",
                 "x_fmt": "H1",
-                "label": ["N", "pid target", "i_term", "last_in", "cal_speed"]
+                "label": ["N", "pid target", "i_term", "cur_pos", "cal_speed"]
             }
         ]
     },

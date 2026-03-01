@@ -21,7 +21,6 @@
             [ 0x0024, 1, "b", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
 
             [ 0x002c, 4, "f", 0, "pid_pos_kp", "" ],
-            [ 0x0030, 4, "f", 0, "pid_pos_ki", "" ],
             [ 0x0038, 4, "f", 0, "pid_pos_out_min", "" ],
             [ 0x003c, 4, "f", 0, "pid_pos_out_max", "" ],
 
@@ -57,20 +56,22 @@
             [ 0x01c8, 24, "{H,B2}", 1, "dbg_raw[2]", "Config raw debug for position loop" ],
             [ 0x01e0, 24, "{H,B2}", 1, "dbg_raw[3]", "Config raw debug for position plan" ],
 
-            [ 0x01f8, 4, "i", 1, "tc_pos", "Set target position" ],
-            [ 0x01fc, 4, "I", 1, "tc_speed", "Set target speed" ],
-            [ 0x0200, 4, "I", 1, "tc_accel", "Set target accel" ],
+            [ 0x01f8, 4, "i", 1, "tp_pos", "Set target position" ],
+            [ 0x01fc, 4, "I", 1, "tp_speed", "Set target speed" ],
+            [ 0x0200, 4, "I", 1, "tp_accel", "Set target accel" ],
 
             [ 0x020c, 4, "f", 0, "cali_angle_elec", "Calibration mode angle" ],
             [ 0x0210, 4, "f", 0, "cali_current", "Calibration mode current" ],
             [ 0x0214, 4, "f", 0, "cali_angle_speed_tgt", "Calibration mode speed" ],
             [ 0x0218, 1, "B", 0, "cali_run", "0: stopped, write 1 start calibration" ],
 
-            [ 0x0219, 1, "b", 0, "cali_encoder_en", "" ],
-            [ 0x021a, 1, "b", 0, "anticogging_en", "" ],
-            [ 0x021c, 8, "[f]", 0, "anticogging_max_val", "" ],
+            [ 0x0219, 1, "b", 0, "encoder_linearizer_en", "" ],
+            [ 0x021a, 2, "h", 0, "encoder_linearizer_max", "" ],
+            [ 0x021c, 1, "b", 0, "anticog_en", "" ],
+            [ 0x021e, 2, "h", 0, "anticog_max_iq", "" ],
+            [ 0x0220, 2, "h", 0, "anticog_ratio_vq", "" ],
             [ 0x0224, 4, "f", 0, "nominal_voltage", "" ],
-            [ 0x0228, 2, "H", 0, "tc_max_err", "Limit position error" ],
+            [ 0x0228, 2, "H", 0, "tp_max_err", "Limit position error" ],
             [ 0x022a, 2, "H", 0, "ntc_b", "" ],
             [ 0x022c, 4, "I", 0, "ntc_r25", "" ],
             [ 0x0230, 1, "B", 0, "temperature_warn", "" ],
@@ -109,44 +110,42 @@
             [ 0x0354, 4, "f", 0, "cal_v_sd", "v_sd info" ],
 
             [ 0x0358, 2, "H", 1, "ori_encoder", "Origin encoder value" ],
-            [ 0x035c, 4, "i", 1, "ori_pos", "sen_pos before add offset" ],
 
-            [ 0x0360, 4, "f", 1, "delta_encoder", "Encoder value delta" ],
-            [ 0x0364, 2, "H", 1, "nob_encoder", "Encoder value before add bias" ],
-            [ 0x0366, 2, "H", 1, "sen_encoder", "Encoder value filtered" ],
+            [ 0x035a, 2, "H", 1, "nob_encoder", "Encoder value before add bias" ],
+            [ 0x035c, 4, "i", 1, "nob_pos", "sen_pos before add offset" ],
+            [ 0x0360, 2, "H", 1, "sen_encoder", "Encoder value filtered" ],
+            [ 0x0364, 4, "f", 1, "sen_speed", "delta_encoder filtered" ],
             [ 0x0368, 4, "i", 1, "sen_pos", "multiturn + sen_encoder data" ],
-            [ 0x036c, 4, "f", 1, "sen_speed", "delta_encoder filtered" ],
-            [ 0x0370, 4, "f", 0, "sen_i_sq", "i_sq from adc" ],
-            [ 0x0374, 4, "f", 0, "sen_i_sd", "i_sd from adc" ],
-            [ 0x0378, 4, "f", 0, "sen_angle_elec", "Get electric angle from sen_encoder" ],
+            [ 0x036c, 4, "f", 0, "sen_speed_avg", "" ],
+            [ 0x0370, 4, "f", 0, "sen_rpm_avg", "" ],
+            [ 0x0374, 4, "f", 0, "sen_i_sq", "i_sq from adc" ],
+            [ 0x0378, 4, "f", 0, "sen_i_sd", "i_sd from adc" ],
+            [ 0x037c, 4, "f", 0, "sen_angle_elec", "Get electric angle from sen_encoder" ],
 
-            [ 0x037c, 4, "I", 0, "loop_cnt", "Increase at current loop, for raw dbg" ],
+            [ 0x0380, 4, "I", 0, "loop_cnt", "Increase at current loop, for raw dbg" ],
 
              //--------------- Follows are not writable: -------------------
-            [ 0x0384, 1, "B", 0, "tc_state", "t_curve: 0: stop, 1: run, 2: tailer" ],
-            [ 0x0388, 4, "f", 0, "tc_vc", "Motor current speed" ],
-            [ 0x038c, 4, "f", 0, "tc_ac", "Motor current accel" ],
+            [ 0x0388, 1, "b", 0, "tp_state", "trap_planner: -1: disable, 0: idle, 1: planning" ],
+            [ 0x038c, 4, "f", 0, "tp_vel_out", "Current planned velocity" ],
+            [ 0x0390, 4, "f", 0, "tp_acc_brake", "Required braking acceleration" ],
 
-            [ 0x0390, 1, "B", 0, "adc_sel", "" ],
-            [ 0x0392, 6, "[h]", 0, "sen_i", "" ],
-            [ 0x0398, 6, "[h]", 0, "pwm_dbg0", "" ],
-            [ 0x039e, 6, "[h]", 0, "pwm_dbg1", "" ],
-            [ 0x03a4, 6, "[h]", 0, "pwm_uvw", "" ],
+            [ 0x0394, 1, "B", 0, "adc_sel", "" ],
+            [ 0x0396, 6, "[h]", 0, "sen_i", "" ],
+            [ 0x039c, 6, "[h]", 0, "pwm_dbg0", "" ],
+            [ 0x03a2, 6, "[h]", 0, "pwm_dbg1", "" ],
+            [ 0x03a8, 6, "[h]", 0, "pwm_uvw", "" ],
 
-            [ 0x03ac, 4, "f", 0, "sen_i_sq_avg", "" ],
-            [ 0x03b0, 4, "f", 0, "cal_v_sq_avg", "" ],
-            [ 0x03bc, 4, "f", 0, "sen_speed_avg", "" ],
-            [ 0x03c0, 4, "f", 0, "sen_rpm_avg", "" ],
-            [ 0x03c4, 4, "f", 0, "bus_voltage", "" ],
-            [ 0x03c8, 4, "f", 0, "temperature", "" ],
-            [ 0x03cc, 4, "f", 0, "tc_vc_avg", "" ],
-            [ 0x03d0, 4, "f", 0, "cali_angle_speed", "" ]
+            [ 0x03b0, 4, "f", 0, "sen_i_sq_avg", "" ],
+            [ 0x03b4, 4, "f", 0, "cal_v_sq_avg", "" ],
+            [ 0x03c0, 4, "f", 0, "bus_voltage", "" ],
+            [ 0x03c4, 4, "f", 0, "temperature", "" ],
+            [ 0x03c8, 4, "f", 0, "cali_angle_speed", "" ]
         ],
         
-        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp","pid_pos_ki"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp"],["pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk"],["dbg_raw_msk","dbg_raw[3]"],["tc_pos","tc_accel"],["cali_angle_elec","cali_run"],["cali_encoder_en","anticogging_max_val"],["nominal_voltage","tc_max_err"],["ntc_b","ntc_r25"],["temperature_warn","voltage_max"],["smo_v_alpha_real","smo_e_beta"],["smo_l","smo_eps"],["pll_theta","pll_i_term"],["pll_kp","pll_ki"],["pll__atan2"],["sl_start","sl_state"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_i_sq","sen_angle_elec"],["loop_cnt","tc_ac"],["adc_sel"],["sen_i","pwm_uvw"],["sen_i_sq_avg","cal_v_sq_avg"],["sen_speed_avg","sen_rpm_avg"],["bus_voltage","temperature"],["tc_vc_avg","cali_angle_speed"]],
-        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp","pid_pos_ki"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp"],["pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["motor_wire_swap"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk"],["dbg_raw_msk"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tc_pos"],["tc_speed","tc_accel"],["cali_angle_elec"],["cali_current"],["cali_angle_speed_tgt"],["cali_run"],["cali_encoder_en","anticogging_en"],["anticogging_max_val"],["nominal_voltage"],["tc_max_err"],["ntc_b","ntc_r25"],["temperature_warn","voltage_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["sl_start"],["state"],["err_flag"],["cal_pos"],["cal_speed"],["cal_current"]],
-        "less_r": [["tc_pos"],["tc_speed","tc_accel"],["sl_start","sl_state"],["state","cal_current"]],
-        "less_w": [["tc_pos"],["tc_speed","tc_accel"],["sl_start"],["state"],["cal_speed"],["cal_current"]]
+        "reg_r": [["magic_code"],["conf_ver","save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles","bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk"],["dbg_raw_msk","dbg_raw[3]"],["tp_pos","tp_accel"],["cali_angle_elec","cali_run"],["encoder_linearizer_en","encoder_linearizer_max"],["anticog_en","anticog_ratio_vq"],["nominal_voltage","tp_max_err"],["ntc_b","ntc_r25"],["temperature_warn","voltage_max"],["smo_v_alpha_real","smo_e_beta"],["smo_l","smo_eps"],["pll_theta","pll_i_term"],["pll_kp","pll_ki"],["pll__atan2"],["sl_start","sl_state"],["state","cal_current"],["cal_v_sq","cal_v_sd"],["ori_encoder","sen_speed"],["sen_pos","sen_rpm_avg"],["sen_i_sq","sen_angle_elec"],["loop_cnt"],["tp_state","tp_acc_brake"],["adc_sel"],["sen_i","pwm_uvw"],["sen_i_sq_avg","cal_v_sq_avg"],["bus_voltage","cali_angle_speed"]],
+        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_tx_pre_len"],["dbg_en"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_i_sq_kp","pid_i_sq_ki"],["pid_i_sq_out_min","pid_i_sq_out_max"],["pid_i_sd_kp","pid_i_sd_ki"],["pid_i_sd_out_min","pid_i_sd_out_max"],["motor_poles"],["motor_wire_swap"],["bias_encoder"],["bias_pos"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_str_msk"],["dbg_raw_msk"],["dbg_raw[0]"],["dbg_raw[1]"],["dbg_raw[2]"],["dbg_raw[3]"],["tp_pos","tp_accel"],["cali_angle_elec"],["cali_current"],["cali_angle_speed_tgt"],["cali_run"],["encoder_linearizer_en","encoder_linearizer_max"],["anticog_en","anticog_ratio_vq"],["nominal_voltage","tp_max_err"],["ntc_b","ntc_r25"],["temperature_warn","voltage_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["sl_start"],["state"],["err_flag"],["cal_pos"],["cal_speed"],["cal_current"]],
+        "less_r": [["tp_pos"],["tp_speed","tp_accel"],["sl_start","sl_state"],["state","cal_current"]],
+        "less_w": [["tp_pos"],["tp_speed","tp_accel"],["sl_start"],["state"],["cal_speed"],["cal_current"]]
     },
     
     "plot": {
@@ -159,8 +158,7 @@
             ["pid_i_sd_ki", 24, 4, "f", "sd i_term"],
             ["pid_speed_ki", 20, 4, "f", "speed tgt"],
             ["pid_speed_ki", 24, 4, "f", "speed i_term"],
-            ["pid_pos_ki", 20, 4, "i", "pos tgt"],
-            ["pid_pos_ki", 24, 4, "f", "pos i_term"],
+            ["pid_pos_kp", 24, 4, "i", "pos tgt"],
         ],
         "plots": [
             {
@@ -200,15 +198,14 @@
             }, {
                 "cfg_reg": "dbg_raw[2]",
                 "x_fmt": "H25",
-                "label": ["N", "sen_pos", "pos tgt", "pos i_term", "cal_speed", "tc_vc_avg", "sen_speed_avg"],
+                "label": ["N", "sen_pos", "pos tgt", "cal_speed", "tp_vel_out", "sen_speed_avg"],
                 "cal": {
-                    "pos_err": "_d[2].at(-1) - _d[1].at(-1)",
-                    "p term": "_d[7].at(-1) * 50"
+                    "pos_err": "_d[2].at(-1) - _d[1].at(-1)"
                 }
             }, {
                 "cfg_reg": "dbg_raw[3]",
                 "x_fmt": "H25",
-                "label": ["N", "tc_state", "tc_pos", "cal_pos", "tc_vc", "tc_ac"],
+                "label": ["N", "tp_state", "tp_pos", "cal_pos", "tp_vel_out", "tp_acc_brake"],
             }
         ]
     },

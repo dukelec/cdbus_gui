@@ -30,17 +30,20 @@
             [ 0x0044, 2, "H", 0, "exposure", "Exposure (AEC)" ],
             [ 0x0046, 1, "B", 0, "agc", "AGC" ],
 
-            [ 0x005f, 1, "B", 0, "capture", "1: one-shot, 2: capture-and-wait, 255: continuous" ],
+            [ 0x005f, 1, "B", 0, "capture_ctrl", "80: cancel, 01: one-shot, 02: capture-and-wait, 0f: continuous" ],
+            [ 0x0060, 1, "B", 0, "capture_state", "00: idle, 01: one-shot, 02: wait, 0f: continuous" ],
             [ 0x0069, 1, "B", 0, "led_en", "Enable/disable LED" ],
+            [ 0x0071, 1, "B", 0, "hdr_cnt", "Img header cnt" ],
             [ 0x0074, 4, "I", 0, "img_len", "Captured img length" ],
             [ 0x0078, 8, "[I]", 0, "img_read", "Read offset and length" ]
         ],
         
-        "reg_r": [["conf_ver","do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","agc"],["capture","led_en"],["img_len","img_read"]],
+        "reg_r": [["conf_ver","do_reboot"],["save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","agc"],["capture_ctrl","led_en"],["hdr_cnt","img_read"]],
         "reg_w": [["conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],
-                  ["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","cam_dst_port"],["width","agc"],["capture"],["led_en"],["img_len","img_read"]],
-        "less_r": [["capture"]],
-        "less_w": [["capture"]]
+                  ["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","cam_dst_port"],["width","agc"],["capture_ctrl"],["led_en"],
+                  ["hdr_cnt"],["img_len","img_read"]],
+        "less_r": [["capture_ctrl", "capture_state"]],
+        "less_w": [["capture_ctrl"]]
     },
     
     "pic": { "fmt": "jpeg", "port": 0x10 },

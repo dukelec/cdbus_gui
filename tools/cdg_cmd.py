@@ -233,6 +233,8 @@ def read_reg(name):
         while i < round(reg['len']/fmt_len):
             cur_ofs = reg['addr'] - grp[0] + fmt_len * i
             r_, ofs = reg2str(dat[1:], reg['addr'] - grp[0] + fmt_len * i, reg['fmt'], reg['show'])
+            if join == '' and len(r_) == 0: # stop parsing at '\0'
+                break
             ret.append(r_)
             i += round((ofs - cur_ofs) / fmt_len);
         return join.join(ret)

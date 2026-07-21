@@ -63,6 +63,7 @@ let trans_zh_hk = {
     
     'Start': '開始',
     'Stop': '停止',
+    'Browse': '瀏覽',
     'Progress': '進度',
     
     'Export': '導出',

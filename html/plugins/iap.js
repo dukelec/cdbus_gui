@@ -17,6 +17,7 @@ let html = `
         <h2 class="title is-size-4">IAP</h2>
         <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
             <input type="text" size="80" placeholder="Full path of intel hex file on system" id="iap_path">
+            <button class="button is-small" id="iap_browse">${L('Browse')}</button>
             <select id="iap_action" value="bl_full">
                 <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
                 <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
@@ -387,13 +388,30 @@ async function init_iap() {
         check.value = iap_cfg.check;
         action.value = iap_cfg.action;
     }
-    
-    path.onchange = check.onchange = action.onchange = async () => {
+    let save_cfg = async () => {
         await csa.db.set('tmp', `${csa.arg.name}/iap.cfg`, {
             path: path.value,
             check: check.value,
             action: action.value
         });
+    };
+    path.onchange = save_cfg;
+    check.onchange = action.onchange = save_cfg;
+
+    document.getElementById('iap_browse').onclick = async () => {
+        let button = document.getElementById('iap_browse');
+        button.disabled = true;
+        try {
+            csa.cmd_sock.flush();
+            await csa.cmd_sock.sendto({'action': 'select_ihex'}, ['server', 'iap']);
+            let msg = await csa.cmd_sock.recvfrom();
+            if (msg && msg[0]) {
+                path.value = msg[0];
+                await save_cfg();
+            }
+        } finally {
+            button.disabled = false;
+        }
     };
     
     document.getElementById('iap_start').onclick = do_iap;
@@ -402,4 +420,3 @@ async function init_iap() {
 
 
 export { init_iap };
-

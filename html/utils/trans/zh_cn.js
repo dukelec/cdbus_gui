@@ -64,6 +64,7 @@ let trans_zh_cn = {
     
     'Start': '开始',
     'Stop': '停止',
+    'Browse': '浏览',
     'Progress': '进度',
     
     'Export': '导出',

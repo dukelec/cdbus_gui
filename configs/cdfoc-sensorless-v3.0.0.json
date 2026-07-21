@@ -1,0 +1,171 @@
+{
+    "reg": {
+        // fmt: [c]: string, b: int8_t, B: uint8_t, h: int16_t, H: uint16_t, i: int32_t, I: uint32_t, f: float
+        // show: 0: normal, 1: hex, 2: bytes
+        "list": [
+            [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
+            [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
+            [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
+            [ 0x0005, 1, "B", 0, "do_reboot", "1: reboot to bl, 2: reboot to app" ],
+            [ 0x0006, 1, "b", 0, "keep_bl", "Keep running in bootloader" ],
+            [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+
+            [ 0x000f, 1, "B", 1, "mac", "RS-485 port id, range: 0~254" ],
+            [ 0x0010, 4, "I", 0, "baud_rate_l", "RS-485 low baud rate" ],
+            [ 0x0014, 4, "I", 0, "baud_rate_h", "RS-485 high baud rate" ],
+            [ 0x0018, 2, "[B]", 1, "bus_filter_m", "Multicast address" ],
+            [ 0x001c, 1, "B", 0, "bus_mode", "0: Traditional, 1: Arbitration, 2: Break Sync" ],
+            [ 0x001d, 1, "B", 0, "bus_idle_wait_len", "Idle wait time" ],
+            [ 0x001e, 2, "H", 0, "bus_tx_permit_len", "Allow send wait time" ],
+            [ 0x0020, 2, "H", 0, "bus_max_idle_len", "Max idle wait time for BS mode" ],
+            [ 0x0022, 1, "B", 0, "bus_tx_pre_len", "Active TX_EN before TX" ],
+
+            [ 0x0030, 1, "B", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
+            [ 0x0031, 1, "B", 0, "dbg_raw_en", "1: current, 2: speed, 4: position loop" ],
+            [ 0x0032, 24, "{H,B2}", 1, "dbg_raw", "Config raw debug data sources" ],
+            [ 0x0060, 4, "H,B2", 1, "qxchg_mcast", "Quick-exchange multicast offset and size" ],
+            [ 0x0064, 16, "{H,B2}", 1, "qxchg_set", "Quick-exchange write data components" ],
+            [ 0x0074, 20, "{H,B2}", 1, "qxchg_ret", "Quick-exchange return data components" ],
+
+            [ 0x00a0, 2, "H", 0, "nominal_voltage", "Nominal voltage, 0.1 V" ],
+            [ 0x00d0, 1, "B", 0, "enc_linear_en", "" ],
+            [ 0x00d2, 2, "h", 0, "enc_linear_max", "" ],
+            [ 0x00e0, 1, "B", 0, "anticog_en", "" ],
+            [ 0x00e2, 2, "h", 0, "anticog_max_iq", "" ],
+            [ 0x00e4, 2, "h", 0, "anticog_ratio_vq", "" ],
+            [ 0x00ee, 1, "B", 0, "motor_wire_swap", "Software swaps motor wiring" ],
+            [ 0x00ef, 1, "B", 0, "motor_poles", "Motor poles" ],
+            [ 0x00f2, 2, "H", 1, "bias_encoder", "Offset for encoder value" ],
+            [ 0x00f4, 4, "i", 0, "bias_pos", "Offset for position value" ],
+            [ 0x0104, 2, "H", 0, "cali_voltage", "Encoder calibration voltage, counts" ],
+            [ 0x0106, 2, "H", 0, "ntc_b", "" ],
+            [ 0x0108, 4, "I", 0, "ntc_r25", "" ],
+            [ 0x0126, 2, "H", 0, "voltage_min", "Undervoltage threshold, 0.1 V" ],
+            [ 0x0128, 2, "H", 0, "voltage_max", "Overvoltage threshold, 0.1 V" ],
+            [ 0x0130, 2, "H", 0, "temp_err", "Overtemperature threshold, 0.1 C" ],
+            [ 0x0132, 2, "H", 0, "temp_warn", "Temperature warning threshold, 0.1 C" ],
+            [ 0x0150, 4, "i", 1, "tp_pos", "Set target position" ],
+            [ 0x0154, 4, "I", 1, "tp_speed", "Set target speed" ],
+            [ 0x0158, 4, "I", 1, "tp_accel", "Set target accel" ],
+            [ 0x0160, 4, "I", 0, "tp_max_err", "Limit position error" ],
+            [ 0x017f, 1, "b", 0, "tp_state", "Trap planner state" ],
+            [ 0x0180, 4, "i", 0, "tp_vel_out", "Current planned velocity" ],
+
+            [ 0x01b0, 4, "f", 0, "pid_pos_kp", "" ],
+            [ 0x01bc, 4, "i", 0, "pid_pos_out_min", "" ],
+            [ 0x01c0, 4, "i", 0, "pid_pos_out_max", "" ],
+            [ 0x01e0, 4, "f", 0, "pid_speed_kp", "" ],
+            [ 0x01e4, 4, "f", 0, "pid_speed_ki", "" ],
+            [ 0x01ec, 2, "h", 0, "pid_speed_out_min", "" ],
+            [ 0x01ee, 2, "h", 0, "pid_speed_out_max", "" ],
+            [ 0x0210, 4, "f", 0, "pid_iq_kp", "" ],
+            [ 0x0214, 4, "f", 0, "pid_iq_ki", "" ],
+            [ 0x021c, 2, "h", 0, "pid_iq_out_min", "" ],
+            [ 0x021e, 2, "h", 0, "pid_iq_out_max", "" ],
+            [ 0x0240, 4, "f", 0, "pid_id_kp", "" ],
+            [ 0x0244, 4, "f", 0, "pid_id_ki", "" ],
+            [ 0x024c, 2, "h", 0, "pid_id_out_min", "" ],
+            [ 0x024e, 2, "h", 0, "pid_id_out_max", "" ],
+            [ 0x0290, 4, "f", 0, "smo_l", "Winding inductance [H]" ],
+            [ 0x0294, 4, "f", 0, "smo_r", "Winding resistance [Ohm]" ],
+            [ 0x0298, 4, "f", 0, "smo_gamma", "SMO gain" ],
+            [ 0x029c, 4, "f", 0, "smo_eps", "SMO boundary layer" ],
+            [ 0x02a0, 4, "f", 0, "pll_kp", "PLL proportional gain" ],
+            [ 0x02a4, 4, "f", 0, "pll_ki", "PLL integral gain" ],
+            [ 0x0370, 4, "f", 0, "smo_v_alpha_real", "Motor alpha voltage [V]" ],
+            [ 0x0374, 4, "f", 0, "smo_v_beta_real", "Motor beta voltage [V]" ],
+            [ 0x0378, 4, "f", 0, "smo_i_alpha_real", "Measured alpha current [A]" ],
+            [ 0x037c, 4, "f", 0, "smo_i_beta_real", "Measured beta current [A]" ],
+            [ 0x0380, 4, "f", 0, "smo_i_alpha", "Estimated alpha current [A]" ],
+            [ 0x0384, 4, "f", 0, "smo_i_beta", "Estimated beta current [A]" ],
+            [ 0x0388, 4, "f", 0, "smo_e_alpha", "Estimated alpha back-EMF [V]" ],
+            [ 0x038c, 4, "f", 0, "smo_e_beta", "Estimated beta back-EMF [V]" ],
+            [ 0x03b0, 4, "f", 0, "pll_theta", "PLL angle [rad]" ],
+            [ 0x03b4, 4, "f", 0, "pll_omega", "PLL speed [rad/s]" ],
+            [ 0x03b8, 4, "f", 0, "pll_i_term", "PLL integral term" ],
+            [ 0x03bc, 4, "f", 0, "pll_atan2", "Back-EMF angle [rad]" ],
+            [ 0x03df, 1, "b", 0, "sl_start", "0: idle, 1: cw, -1: ccw" ],
+            [ 0x03e0, 1, "b", 0, "sl_state", "0: idle, 1: speed up, 2: current down, 3: closed loop, -1: error" ],
+            [ 0x03fe, 1, "B", 0, "enc_cali", "Write 1 to calibrate encoder" ],
+            [ 0x0400, 1, "B", 0, "state", "0: stop, 1: voltage, 2: current, 3: speed, 4: position, 5: trap planner" ],
+            [ 0x0401, 1, "B", 1, "error_flag", "" ],
+            [ 0x0403, 1, "B", 1, "warn_flag", "" ],
+            [ 0x0440, 4, "i", 1, "tgt_pos", "Position target" ],
+            [ 0x0444, 4, "i", 1, "tgt_speed", "Speed target" ],
+            [ 0x0448, 2, "h", 0, "tgt_iq", "Iq target" ],
+            [ 0x044a, 2, "h", 0, "tgt_id", "Id target" ],
+            [ 0x044c, 2, "h", 0, "tgt_vq", "Vq target" ],
+            [ 0x044e, 2, "h", 0, "tgt_vd", "Vd target" ],
+            [ 0x0490, 2, "H", 1, "meas_encoder", "Encoder value" ],
+            [ 0x0492, 2, "h", 0, "meas_elec_angle", "Measured electrical angle" ],
+            [ 0x0494, 4, "i", 1, "meas_pos", "Measured position" ],
+            [ 0x0498, 4, "i", 1, "meas_speed", "Measured speed" ],
+            [ 0x049c, 2, "h", 0, "meas_iq", "Measured Iq" ],
+            [ 0x049e, 2, "h", 0, "meas_id", "Measured Id" ],
+            [ 0x04a2, 2, "h", 0, "bus_voltage", "Bus voltage, 0.1 V" ],
+            [ 0x04a4, 2, "h", 0, "motor_temp", "Motor temperature, 0.1 C" ],
+            [ 0x04b4, 2, "H", 1, "ori_encoder", "Origin encoder value" ],
+            [ 0x04c8, 4, "i", 0, "meas_speed_avg", "" ],
+            [ 0x04cc, 2, "h", 0, "meas_iq_avg", "" ],
+            [ 0x04ce, 2, "h", 0, "tgt_vq_avg", "" ],
+            [ 0x04e0, 4, "I", 0, "loop_cnt", "Increase at current loop, for raw debug" ],
+            [ 0x04e4, 1, "B", 0, "adc_sel", "" ],
+            [ 0x04e6, 6, "[h]", 0, "meas_i", "" ],
+            [ 0x04ec, 6, "[h]", 0, "pwm_dbg0", "" ],
+            [ 0x04f2, 6, "[h]", 0, "pwm_dbg1", "" ],
+            [ 0x04f8, 6, "[h]", 0, "pwm_uvw", "" ]
+        ],
+        
+        "reg_r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["smo_v_alpha_real","smo_e_beta"],["pll_theta","sl_state"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_vd"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"]],
+        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["sl_start"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"]],
+        "less_r": [["tp_pos"],["tp_speed","tp_accel"],["state","tgt_iq"]],
+        "less_w": [["tp_pos"],["tp_speed","tp_accel"],["state"],["tgt_speed"],["tgt_iq"]]
+    },
+    
+    "plot": {
+        "mask": "dbg_raw_en",
+        "reg_overlay": [
+            // addr, ofs, len, type, name
+            //[0x1234, 8, 4, "f", "name"],
+            //["pid_i_sq_ki", 20, 4, "f", "sq tgt"]
+        ],
+        "plots": [
+            {
+                // "color": ["black", "red", "green"]
+                "cfg_reg": "dbg_raw",
+                "x_fmt": "H1",
+                "label": ["N", "smo_v_alpha_real", "smo_v_beta_real", "smo_i_alpha_real", "smo_i_beta_real", "smo_i_alpha", "smo_i_beta",
+                               "smo_e_alpha", "smo_e_beta", "pll_atan2", "meas_elec_angle"],
+                "cal": {
+                    "meas_elec_angle_f": "                          \
+                        let a = _d[10].at(-1) / 32768 * 3.1415926;  \
+                        if (a < 0)                                  \
+                            a += 3.1415926 * 2;                     \
+                        return a;                                   \
+                    "
+                },
+                "fft": {
+                    "sample_rate": 20751.953,
+                    "size": 4096
+                }
+            }, {
+                "cfg_reg": "dbg_raw",
+                "x_fmt": "H5",
+                "label": ["N", "meas_speed", "tgt_speed", "tgt_iq", "meas_encoder", "meas_speed_avg"],
+                "cal": {
+                    "speed_err2i": "_d[2].at(-1) - _d[1].at(-1)",
+                    "speed_err2p": "_d[2].at(-1) - _d[5].at(-1)"
+                }
+            }, {
+                "cfg_reg": "dbg_raw",
+                "x_fmt": "H25",
+                "label": ["N", "meas_pos", "tgt_pos", "tgt_speed", "tp_vel_out", "meas_speed_avg"],
+                "cal": {
+                    "pos_err": "_d[2].at(-1) - _d[1].at(-1)"
+                }
+            }
+        ]
+    },
+    
+    "iap": { "reboot": 0x0005, "keep_bl": 0x0006, "batch_pkts": 3 }
+}

@@ -15,22 +15,23 @@ import { csa, alloc_port } from '../common.js';
 let html = `
     <div class="container">
         <h2 class="title is-size-4">IAP</h2>
-        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-            <input type="text" size="80" placeholder="Full path of intel hex file on system" id="iap_path">
-            <button class="button is-small" id="iap_browse">${L('Browse')}</button>
-            <select id="iap_action" value="bl_full">
+        <div class="is-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; width: 100%;">
+            <input type="text" size="80" placeholder="Full path of intel hex file on system" id="iap_path"
+                   style="flex: 1 1 40rem; width: 0; min-width: 16rem;">
+            <button class="button is-small" id="iap_browse" style="flex: none;">${L('Browse')}</button>
+            <select id="iap_action" value="bl_full" style="flex: 0 1 auto; min-width: 10rem;">
                 <option value="bl_full">${L('Reboot')} -> BL -> ${L('Flash')} -> ${L('Reboot')}</option>
                 <option value="bl_flash">${L('Reboot')} -> BL -> ${L('Flash')}</option>
                 <option value="bl">${L('Reboot')} -> BL (${L('Enter')} BootLoader)</option>
                 <option value="flash">${L('Flash Only')}</option>
             </select>
-            <select id="iap_check" value="none">
+            <select id="iap_check" value="none" style="flex: 0 1 auto; min-width: 8rem;">
                 <option value="none">${L('No Check')}</option>
                 <option value="read">${L('Read Back Check')}</option>
                 <option value="crc">${L('Read CRC Check')}</option>
             </select>
-            <button class="button is-small" id="iap_start">${L('Start')}</button>
-            <button class="button is-small" id="iap_stop" disabled>${L('Stop')}</button>
+            <button class="button is-small" id="iap_start" style="flex: none;">${L('Start')}</button>
+            <button class="button is-small" id="iap_stop" style="flex: none;" disabled>${L('Stop')}</button>
         </div>
         <br>
         <span>${L('Progress')}</span>: <span id="iap_epoch"></span> <span id="iap_progress">--</span>

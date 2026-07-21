@@ -72,8 +72,7 @@ let trans_zh_hk = {
     
     'Serial disconnected': '串口斷開連接',
     'Insufficient registers!': '超出寄存器數量！',
-    'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的數據無法解析，已忽略。後續同類錯誤不會重複提示。',
-    'Config Regs': '配置寄存器'
+    'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的數據無法解析，已忽略。後續同類錯誤不會重複提示。'
 };
 
 export { trans_zh_hk };

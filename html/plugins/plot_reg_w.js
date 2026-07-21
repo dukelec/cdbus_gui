@@ -10,7 +10,7 @@ import { fmt_size, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.j
 import { val2hex } from '../utils/helper.js';
 
 
-function plot_reg_w(idx) {
+async function plot_reg_w(idx) {
     let reg_val = csa.plot.reg_val[idx];
     let reg_name = csa.cfg.plot.plots[idx].cfg_reg;
     for (let i = 0; true; i++) {
@@ -25,10 +25,10 @@ function plot_reg_w(idx) {
         } else {
             console.warn(`reg.${reg_name}.${i} not exist`);
             alert(L('Insufficient registers!'));
-            return;
+            return -1;
         }
     }
-    document.getElementById(`reg_btn_w.${reg_name}`).onclick();
+    return await document.getElementById(`reg_btn_w.${reg_name}`).onclick();
 }
 
 

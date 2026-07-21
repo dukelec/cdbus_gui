@@ -469,7 +469,6 @@ async function init_plot() {
                 FFT <input type="checkbox" id="plot${i}_fft">
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
                 <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
-                <button class="button is-small" id="plot${i}_w_reg">${L('Config Regs')}</button>
             </div>
             <div class="notification is-warning is-light" id="plot${i}_parse_error" style="display: none; padding: 0.75rem;">
                 <button class="delete" aria-label="close"></button>
@@ -482,7 +481,25 @@ async function init_plot() {
         document.querySelector(`#plot${i}_parse_error .delete`).onclick = () => {
             document.getElementById(`plot${i}_parse_error`).style.display = 'none';
         };
-        document.getElementById(`plot${i}_en`).onchange = async () => await plot_set_en();
+        document.getElementById(`plot${i}_en`).onchange = async () => {
+            let checkbox = document.getElementById(`plot${i}_en`);
+            checkbox.disabled = true;
+            try {
+                if (checkbox.checked) {
+                    let ret = await plot_reg_w(i);
+                    if (ret) {
+                        checkbox.checked = false;
+                        return;
+                    }
+                }
+                await plot_set_en();
+            } catch (err) {
+                checkbox.checked = false;
+                console.error(`Plot${i}: config regs failed`, err);
+            } finally {
+                checkbox.disabled = false;
+            }
+        };
         let series = plot_init_series(i);
         let u = make_chart(i, `Plot${i}`, series);
         csa.plot.plots.push(u);
@@ -523,11 +540,6 @@ async function init_plot() {
             document.getElementById(`plot${i}_re_cal`).disabled = true;
             await plot_cal_update(i);
             document.getElementById(`plot${i}_re_cal`).disabled = false;
-        };
-        document.getElementById(`plot${i}_w_reg`).onclick = () => {
-            document.getElementById(`plot${i}_w_reg`).disabled = true;
-            plot_reg_w(i);
-            document.getElementById(`plot${i}_w_reg`).disabled = false;
         };
     }
     

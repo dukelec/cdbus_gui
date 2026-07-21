@@ -136,7 +136,7 @@ function update_reg_rw_btn(rw='r') {
                             await write_reg_val(rw_idx);
                     };
                 }
-                btn.onclick = async () => { await write_reg_val(rw_idx); };
+                btn.onclick = async () => await write_reg_val(rw_idx);
             } else {
                 btn.onclick = async () => { await read_reg_val(rw_idx); };
             }
@@ -594,4 +594,3 @@ async function init_reg() {
 
 
 export { init_reg, cal_reg_rw, reg_idx_by_name };
-

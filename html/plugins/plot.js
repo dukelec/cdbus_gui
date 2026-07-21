@@ -108,6 +108,87 @@ function dv_fmt_read(dv, ofs, fmt) {
     return ret;
 }
 
+function report_parse_error(idx, err) {
+    if (csa.plot.parse_error_reported[idx])
+        return;
+    csa.plot.parse_error_reported[idx] = true;
+
+    console.warn(`Plot${idx}: invalid incoming data ignored`, err);
+    let notice = document.getElementById(`plot${idx}_parse_error`);
+    if (notice)
+        notice.style.display = '';
+}
+
+function validate_raw_dat(fmt, dat_len) {
+    if (typeof fmt !== 'string' || !fmt.includes('.'))
+        throw new Error(`invalid format: ${fmt}`);
+
+    if (fmt[1] == '.') {
+        let grp_size = fmt_size(fmt);
+        if (!grp_size || dat_len % grp_size)
+            throw new Error(`data length ${dat_len} does not match group size ${grp_size}`);
+        return;
+    }
+
+    let cnt_size = fmt_size(fmt[0]);
+    let grp_size = fmt_size(fmt.split('.')[1]);
+    let cnt_inc = Number(fmt.split('.')[0].slice(1));
+    if (!cnt_size || !grp_size || !Number.isFinite(cnt_inc) ||
+            dat_len < cnt_size || (dat_len - cnt_size) % grp_size)
+        throw new Error(`data length ${dat_len} does not match format ${fmt}`);
+}
+
+function parse_raw_dat(idx, dat) {
+    let dv = new DataView(dat.buffer, dat.byteOffset, dat.byteLength);
+    let ofs = 0;
+    let f = csa.plot.fmt[idx];
+    validate_raw_dat(f, dat.length);
+
+    if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
+        let grp_size = fmt_size(f);
+
+        while (ofs < dat.length) {
+            let grp_vals = dv_fmt_read(dv, ofs, f);
+            let last_x = csa.plot.dat[idx][0].at(-1);
+            let cur_x = grp_vals[0] + csa.plot.x_ofs[idx];
+            if (last_x && cur_x <= last_x) {
+                let type_mod = Math.pow(256, fmt_size(f[0]));
+                cur_x += type_mod;
+                csa.plot.x_ofs[idx] += type_mod;
+            }
+            csa.plot.dat[idx][0].push(cur_x);
+            for (let i = 1; i < grp_vals.length; i++)
+                csa.plot.dat[idx][i].push(grp_vals[i]);
+            ofs += grp_size;
+            append_cal_val(idx, grp_vals.length);
+        }
+
+    } else { // x, d1,d2,d3, d1,d2,d3
+        let last_x = csa.plot.dat[idx][0].at(-1);
+        let cnt_start = dv_fmt_read(dv, ofs, f[0])[0] + csa.plot.x_ofs[idx];
+        ofs += fmt_size(f[0]);
+        let grp_fmt = f.split('.')[1];
+        let grp_size = fmt_size(grp_fmt);
+        let cnt_inc = parseInt(f.split('.')[0].slice(1));
+        let loop = 0;
+        if (last_x && cnt_start <= last_x) {
+            let type_mod = Math.pow(256, fmt_size(f[0]));
+            cnt_start += type_mod;
+            csa.plot.x_ofs[idx] += type_mod;
+        }
+
+        while (ofs < dat.length) {
+            let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
+            csa.plot.dat[idx][0].push(cnt_start + cnt_inc * loop);
+            for (let i = 0; i < grp_vals.length; i++)
+                csa.plot.dat[idx][i+1].push(grp_vals[i]);
+            loop += 1;
+            ofs += grp_size;
+            append_cal_val(idx, grp_vals.length + 1);
+        }
+    }
+}
+
 async function dbg_raw_service() {
     let timer_pending = false;
     
@@ -115,7 +196,6 @@ async function dbg_raw_service() {
         let msg = await csa.plot.dbg_raw_sock.recvfrom();
         let dat = msg[0].dat;
         let src_port = msg[0].src[1];
-        let dv = new DataView(dat.buffer, dat.byteOffset, dat.byteLength);
         //console.log('dbg_raw get', dat2hex(dat, ' '));
         
         let idx = src_port & 0xf;
@@ -124,51 +204,18 @@ async function dbg_raw_service() {
             continue;
         }
         
-        let ofs = 0;
-        let f = csa.plot.fmt[idx];
-
-        if (f[1] == '.') { // x,d1,d2,d3, x,d1,d2,d3
-            let grp_size = fmt_size(f);
-            
-            while (ofs < dat.length) {
-                let grp_vals = dv_fmt_read(dv, ofs, f);
-                let last_x = csa.plot.dat[idx][0].at(-1);
-                let cur_x = grp_vals[0] + csa.plot.x_ofs[idx];
-                if (last_x && cur_x <= last_x) {
-                    let type_mod = Math.pow(256, fmt_size(f[0]));
-                    cur_x += type_mod;
-                    csa.plot.x_ofs[idx] += type_mod;
-                }
-                csa.plot.dat[idx][0].push(cur_x);
-                for (let i = 1; i < grp_vals.length; i++)
-                    csa.plot.dat[idx][i].push(grp_vals[i]);
-                ofs += grp_size;
-                append_cal_val(idx, grp_vals.length);
-            }
-        
-        } else { // x, d1,d2,d3, d1,d2,d3
-            let last_x = csa.plot.dat[idx][0].at(-1);
-            let cnt_start = dv_fmt_read(dv, ofs, f[0])[0] + csa.plot.x_ofs[idx];
-            ofs += fmt_size(f[0]);
-            let grp_fmt = f.split('.')[1];
-            let grp_size = fmt_size(grp_fmt);
-            let cnt_inc = parseInt(f.split('.')[0].slice(1));
-            let loop = 0;
-            if (last_x && cnt_start <= last_x) {
-                let type_mod = Math.pow(256, fmt_size(f[0]));
-                cnt_start += type_mod;
-                csa.plot.x_ofs[idx] += type_mod;
-            }
-            
-            while (ofs < dat.length) {
-                let grp_vals = dv_fmt_read(dv, ofs, grp_fmt);
-                csa.plot.dat[idx][0].push(cnt_start + cnt_inc * loop);
-                for (let i = 0; i < grp_vals.length; i++)
-                    csa.plot.dat[idx][i+1].push(grp_vals[i]);
-                loop += 1;
-                ofs += grp_size;
-                append_cal_val(idx, grp_vals.length + 1);
-            }
+        let dat_len_bk = csa.plot.parse_dat_len_bk[idx];
+        for (let i = 0; i < csa.plot.dat[idx].length; i++)
+            dat_len_bk[i] = csa.plot.dat[idx][i].length;
+        let x_ofs_bk = csa.plot.x_ofs[idx];
+        try {
+            parse_raw_dat(idx, dat);
+        } catch (err) {
+            for (let i = 0; i < csa.plot.dat[idx].length; i++)
+                csa.plot.dat[idx][i].length = dat_len_bk[i];
+            csa.plot.x_ofs[idx] = x_ofs_bk;
+            report_parse_error(idx, err);
+            continue;
         }
         
         if (!timer_pending) {
@@ -395,6 +442,8 @@ async function init_plot() {
     csa.plot.fmt = [];
     csa.plot.label = [];
     csa.plot.reg_val = [];
+    csa.plot.parse_error_reported = [];
+    csa.plot.parse_dat_len_bk = [];
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         csa.plot.plot_max_len.push(max_len);
@@ -406,6 +455,8 @@ async function init_plot() {
         csa.plot.fmt.push('');
         csa.plot.label.push([]);
         csa.plot.reg_val.push(null);
+        csa.plot.parse_error_reported.push(false);
+        csa.plot.parse_dat_len_bk.push([]);
         await plot_fft_init(i);
         plot_reg_w_init(i);
         
@@ -420,10 +471,17 @@ async function init_plot() {
                 <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
                 <button class="button is-small" id="plot${i}_w_reg">${L('Config Regs')}</button>
             </div>
+            <div class="notification is-warning is-light" id="plot${i}_parse_error" style="display: none; padding: 0.75rem;">
+                <button class="delete" aria-label="close"></button>
+                Plot${i}: ${L('Invalid incoming data was ignored. Further errors will not be shown repeatedly.')}
+            </div>
             <div id="plot${i}" class="resizable"></div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
+        document.querySelector(`#plot${i}_parse_error .delete`).onclick = () => {
+            document.getElementById(`plot${i}_parse_error`).style.display = 'none';
+        };
         document.getElementById(`plot${i}_en`).onchange = async () => await plot_set_en();
         let series = plot_init_series(i);
         let u = make_chart(i, `Plot${i}`, series);
@@ -487,4 +545,3 @@ async function init_plot() {
 
 
 export { init_plot };
-

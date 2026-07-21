@@ -73,6 +73,7 @@ let trans_zh_cn = {
     
     'Serial disconnected': '串口断开连接',
     'Insufficient registers!': '超出寄存器数量！',
+    'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的数据无法解析，已忽略。后续同类错误不会重复提示。',
     'Config Regs': '配置寄存器'
 };
 

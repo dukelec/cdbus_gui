@@ -62,7 +62,7 @@ async function init_serial_cfg() {
 
 async function init_cfg_list() {
     let sel_ops = '<option value="">--</option>';
-    for (let op of cfgs)
+    for (let op of [...cfgs].sort((a, b) => a.localeCompare(b)))
         sel_ops += `<option value="${op}">${op}</option>`;
     let list = document.getElementById('cfg_list');
     

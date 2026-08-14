@@ -77,6 +77,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - IAP supports readback verification, device-side CRC validation, or no validation.
  - IAP supports Intel HEX files with multiple segments.
  - Register data, log outputs, and waveform data can be exported and imported together (in MessagePack format).
+ - Waveform data can also be exported as CSV for AI analysis, with selectable plot, series, X range, decimation step, and significant digits to save tokens.
 
 
 ### JSON Format

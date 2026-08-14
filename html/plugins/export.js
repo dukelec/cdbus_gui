@@ -107,6 +107,16 @@ function import_data() {
 }
 
 
+let csv_sel = []; // per-plot series selections, restored when the dialog re-opens
+
+async function csv_save_cfg() {
+    await csa.db.set('tmp', `${csa.arg.name}/csv.cfg`, {
+        sel: csv_sel,
+        step: document.getElementById('csv_step').value,
+        digits: document.getElementById('csv_digits').value
+    });
+}
+
 function csv_field(s) {
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
@@ -151,10 +161,11 @@ function csv_update_hint() {
 function csv_refresh() {
     let idx = Number(document.getElementById('csv_plot').value);
     let series = csa.plot.plots[idx].series;
+    let sel = csv_sel[idx] ? csv_sel[idx] : (csv_sel[idx] = []);
     let html = `${L('Series')}: `;
     for (let s = 0; s < series.length; s++) {
         html += `<label class="checkbox" style="margin-right: 0.5rem;">
-                   <input type="checkbox" id="csv_s${s}">
+                   <input type="checkbox" id="csv_s${s}" ${sel[s] ? 'checked' : ''}>
                    ${escape_html(series[s].label)}</label>`;
     }
     document.getElementById('csv_series').innerHTML = html;
@@ -195,7 +206,7 @@ function export_csv() {
     download(lines.join('\n'), `${name}_plot${idx}.csv`, 'text/csv');
 }
 
-function init_export_csv() {
+async function init_export_csv() {
     if (!csa.plot)
         return;
     document.getElementById('export_csv_btn').style.display = '';
@@ -203,6 +214,13 @@ function init_export_csv() {
     let sel = document.getElementById('csv_plot');
     for (let i = 0; i < csa.plot.plots.length; i++)
         sel.insertAdjacentHTML('beforeend', `<option value="${i}">Plot${i}</option>`);
+
+    let csv_cfg = await csa.db.get('tmp', `${csa.arg.name}/csv.cfg`);
+    if (csv_cfg) {
+        csv_sel = csv_cfg.sel;
+        document.getElementById('csv_step').value = csv_cfg.step;
+        document.getElementById('csv_digits').value = csv_cfg.digits;
+    }
 
     document.getElementById('export_csv_btn').onclick = () => {
         csv_refresh();
@@ -213,10 +231,20 @@ function init_export_csv() {
     document.getElementById('csv_modal_bg').onclick = close;
 
     sel.onchange = csv_refresh;
-    document.getElementById('csv_series').onchange = csv_update_hint;
+    document.getElementById('csv_series').onchange = async () => {
+        let idx = Number(document.getElementById('csv_plot').value);
+        let series = csa.plot.plots[idx].series;
+        let sel = csv_sel[idx] ? csv_sel[idx] : (csv_sel[idx] = []);
+        for (let s = 0; s < series.length; s++)
+            sel[s] = document.getElementById(`csv_s${s}`).checked;
+        csv_update_hint();
+        await csv_save_cfg();
+    };
     document.getElementById('csv_x_min').oninput = csv_update_hint;
     document.getElementById('csv_x_max').oninput = csv_update_hint;
     document.getElementById('csv_step').oninput = csv_update_hint;
+    document.getElementById('csv_step').onchange = csv_save_cfg;
+    document.getElementById('csv_digits').onchange = csv_save_cfg;
     document.getElementById('csv_download').onclick = export_csv;
 }
 
@@ -228,7 +256,7 @@ async function init_export() {
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     document.getElementById(`export_btn`).onclick = export_data;
     document.getElementById(`import_btn`).onclick = import_data;
-    init_export_csv();
+    await init_export_csv();
 }
 
 export { init_export };

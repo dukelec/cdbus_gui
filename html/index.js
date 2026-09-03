@@ -9,7 +9,7 @@ import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
-import { csa, alloc_port } from './common.js';
+import { csa, alloc_port, show_banner, ws_closed, init_sys } from './common.js';
 import { init_dbg } from './plugins/dbg.js';
 
 
@@ -58,6 +58,7 @@ async function init_serial_cfg() {
             baud: baud.value
         });
     };
+    baud.oninput = update_baud_hint;
 }
 
 async function init_cfg_list() {
@@ -120,8 +121,14 @@ function init_ws() {
         await csa.cmd_sock.sendto({'action': 'get_cfgs'}, ['server', 'cfgs']);
         let dat = await csa.cmd_sock.recvfrom(2000);
         console.log('get_cfgs ret', dat);
+        if (!dat) {
+            if ('server' in csa.ws_ns.connections)
+                show_banner('ws_banner', `<b>${L('No reply from backend, please check the backend log and reload the page.')}</b>`);
+            return;
+        }
         cfgs = dat[0];
         
+        await init_sys();
         await alloc_port('clr_all');
         await init_dbg();
         
@@ -133,8 +140,12 @@ function init_ws() {
         let dat = await blob2dat(evt.data);
         var msg = msgpack.deserialize(dat);
         //console.log("Received dat", msg);
-        var sock = csa.ws_ns.sockets[msg['dst'][1]];
-        sock.recv_q.put([msg['dat'], msg['src']]);
+        if (msg['dst'][1] in csa.ws_ns.sockets) {
+            let sock = csa.ws_ns.sockets[msg['dst'][1]];
+            sock.recv_q.put([msg['dat'], msg['src']]);
+        } else {
+            console.log("ws drop msg:", msg);
+        }
     }
     ws.onerror = function(evt) {
         console.log("ws onerror: ", evt);
@@ -142,8 +153,22 @@ function init_ws() {
     }
     ws.onclose = function(evt) {
         delete csa.ws_ns.connections['server'];
-        console.log('ws disconnected');
-        document.body.style.backgroundColor = "gray";
+        console.log('ws disconnected', evt.code, evt.reason);
+        ws_closed(evt);
+    }
+}
+
+// warn if the baud rate input differs from the one in use
+function update_baud_hint() {
+    let hint = document.getElementById('dev_baud_hint');
+    if (!hint)
+        return;
+    let baud = parseInt(document.getElementById('dev_baud').value);
+    if (csa.dev_baud && baud && baud != csa.dev_baud) {
+        hint.innerText = ' ' + L('(input differs, close and re-open to apply)');
+        hint.style.color = '#c00';
+    } else {
+        hint.innerText = '';
     }
 }
 
@@ -159,6 +184,12 @@ document.getElementById('btn_dev_get').onclick = async function() {
     await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_get ret', dat);
+    if (!dat) {
+        status.innerHTML = `<span style="color: #c00">${L('Reply timeout, please Refresh again. If it persists, check the backend log.')}</span>`;
+        status.style.background = list.style.background = '';
+        document.getElementById('btn_dev_get').disabled = false;
+        return;
+    }
     if (dat[0] == 'udp') {
         console.log('udp mode!');
         document.getElementById('dev_ctrl_hide').style.display = 'none';
@@ -169,8 +200,14 @@ document.getElementById('btn_dev_get').onclick = async function() {
         online_str = L('Online');
     else if (dat[0].online == 2)
         online_str = L('Connecting...');
-    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'} | ${online_str} ` +
-                       `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})`;
+    else if (dat[0].online == 3)
+        online_str = `<span style="color: #c00">${L('Device thread dead, please re-open')}</span>`;
+    csa.dev_baud = dat[0].baud;
+    let baud_str = dat[0].baud ? ` @ ${dat[0].baud}` : '';
+    status.innerHTML = `${dat[0].port ? dat[0].port : 'None'}${baud_str} | ${online_str} ` +
+                       `(local net: 0x${val2hex(dat[0].net,2)} mac: 0x${val2hex(dat[0].mac,2)})` +
+                       `<span id="dev_baud_hint"></span>`;
+    update_baud_hint();
     list.innerHTML = '';
     let ports = dat[0].ports;
 
@@ -200,6 +237,8 @@ document.getElementById('btn_dev_open').onclick = async function() {
     await csa.cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud}, ['server', 'dev']);
     let dat = await csa.cmd_sock.recvfrom(1000);
     console.log('btn_dev_open ret', dat);
+    if (dat && typeof dat[0] == 'string' && dat[0].startsWith('err'))
+        alert(L('Serial port already opened, please close it first, then open again to apply new settings.'));
     await document.getElementById('btn_dev_get').onclick();
     document.getElementById('btn_dev_open').disabled = false;
 };

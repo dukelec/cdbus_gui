@@ -16,7 +16,6 @@ Args:
 """
 
 import os, sys, re
-import _thread
 import time, datetime
 import copy, json5
 import asyncio, aiohttp
@@ -24,6 +23,7 @@ import websockets
 from time import sleep
 from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web
+import cd_watch
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -101,9 +101,11 @@ def proxy_rx():
                     logger.log(logging.VERBOSE, f'proxy_rx l0: {frame}')
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
         except Exception as err:
-            logger.warning(f'proxy_rx: err: {err}', frame)
+            logger.warning(f'proxy_rx: err: {err}, frame: {frame}')
 
-_thread.start_new_thread(proxy_rx, ())
+def dev_check(): # called by watchdog every second
+    if csa['dev'] and not csa['dev'].is_alive():
+        cd_watch.report_fault('serial', f'device thread of {csa["dev"].port} is dead, please re-open the port')
 
 # proxy to dev, ('/x0:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
 async def cdbus_proxy_service():
@@ -142,13 +144,20 @@ async def dev_service(): # cdbus tty setup
             ports = get_ports()
             if csa['dev']:
                 online_st = 1 if csa['dev'].online else 2
-                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'online': online_st, 'net': csa['net'], 'mac': csa['mac']}, src)
+                if not csa['dev'].is_alive():
+                    online_st = 3 # device thread dead
+                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'baud': csa['dev'].baud, 'online': online_st,
+                                   'net': csa['net'], 'mac': csa['mac']}, src)
             else:
-                await sock.sendto({'ports': ports, 'port': None, 'online': 0, 'net': csa['net'], 'mac': csa['mac']}, src)
+                await sock.sendto({'ports': ports, 'port': None, 'baud': None, 'online': 0, 'net': csa['net'], 'mac': csa['mac']}, src)
         
-        elif dat['action'] == 'open' and not csa['dev']:
-            csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
-            await sock.sendto('successed', src)
+        elif dat['action'] == 'open':
+            if csa['dev']:
+                await sock.sendto('err: dev: already opened, close it first to apply new settings', src)
+            else:
+                cd_watch.clear_fault('serial')
+                csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
+                await sock.sendto('successed', src)
         
         elif dat['action'] == 'close' and csa['dev']:
             logger.info('stop dev')
@@ -233,11 +242,14 @@ if __name__ == "__main__":
     csa['async_loop'] = asyncio.new_event_loop()
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
-    csa['async_loop'].create_task(start_web(port=http_port))
-    csa['async_loop'].create_task(cfgs_service())
-    csa['async_loop'].create_task(dev_service())
-    csa['async_loop'].create_task(port_service())
-    csa['async_loop'].create_task(cdbus_proxy_service())
+    cd_watch.init(csa['async_loop'])
+    cd_watch.start_thread(proxy_rx, 'proxy_rx')
+    cd_watch.create_task(start_web(port=http_port), 'web_server', fatal=True)
+    cd_watch.create_task(cfgs_service(), 'cfgs_service')
+    cd_watch.create_task(dev_service(), 'dev_service')
+    cd_watch.create_task(port_service(), 'port_service')
+    cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
+    cd_watch.create_task(cd_watch.watch_service(dev_check), 'watch_service')
     
     from plugins.iap import iap_init
     iap_init(csa)
@@ -245,4 +257,5 @@ if __name__ == "__main__":
     #csa['async_loop'].create_task(open_brower())
     logger.info(f'Please open url: http://localhost:{http_port}')
     csa['async_loop'].run_forever()
+    sys.exit(cd_watch.exit_code)
 

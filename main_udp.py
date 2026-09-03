@@ -18,7 +18,6 @@ Args:
 """
 
 import os, sys, re
-import _thread
 import socket, select, ipaddress
 import time, datetime
 import copy, json5
@@ -26,6 +25,7 @@ import asyncio, aiohttp
 import websockets
 from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web
+import cd_watch
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -158,8 +158,6 @@ def proxy_rx():
         except Exception as err:
             logger.warning(f'proxy_rx: err: {err}')
 
-_thread.start_new_thread(proxy_rx, ())
-
 # proxy to dev, ('/x0:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
 async def cdbus_proxy_service():
     while True:
@@ -271,11 +269,14 @@ if __name__ == "__main__":
     csa['async_loop'] = asyncio.new_event_loop()
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
-    csa['async_loop'].create_task(start_web(port=http_port))
-    csa['async_loop'].create_task(cfgs_service())
-    csa['async_loop'].create_task(dev_service())
-    csa['async_loop'].create_task(port_service())
-    csa['async_loop'].create_task(cdbus_proxy_service())
+    cd_watch.init(csa['async_loop'])
+    cd_watch.start_thread(proxy_rx, 'proxy_rx')
+    cd_watch.create_task(start_web(port=http_port), 'web_server', fatal=True)
+    cd_watch.create_task(cfgs_service(), 'cfgs_service')
+    cd_watch.create_task(dev_service(), 'dev_service')
+    cd_watch.create_task(port_service(), 'port_service')
+    cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
+    cd_watch.create_task(cd_watch.watch_service(), 'watch_service')
     
     from plugins.iap import iap_init
     iap_init(csa)
@@ -283,4 +284,5 @@ if __name__ == "__main__":
     #csa['async_loop'].create_task(open_brower())
     logger.info(f'Please open url: http://localhost:{http_port}')
     csa['async_loop'].run_forever()
+    sys.exit(cd_watch.exit_code)
 

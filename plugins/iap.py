@@ -8,6 +8,7 @@ from intelhex import IntelHex
 import asyncio
 from cd_ws import CDWebSocket
 from web_serve import ws_ns
+import cd_watch
 from cdnet.utils.log import *
 
 
@@ -92,4 +93,4 @@ async def iap_service(): # config r/w
             await sock.sendto('err: iap: unknown cmd', src)
 
 def iap_init(csa):
-    csa['async_loop'].create_task(iap_service())
+    cd_watch.create_task(iap_service(), 'iap_service')

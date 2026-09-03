@@ -9,7 +9,7 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
 import { Idb } from './utils/idb.js';
-import { csa, alloc_port } from './common.js';
+import { csa, alloc_port, show_banner, ws_closed, init_sys } from './common.js';
 import { init_reg } from './plugins/reg.js';
 import { init_plot } from './plugins/plot.js';
 import { init_dbg } from './plugins/dbg.js';
@@ -29,9 +29,15 @@ function init_ws() {
         csa.cmd_sock.flush();
         await csa.cmd_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'cfgs']);
         let dat = await csa.cmd_sock.recvfrom(2000);
+        if (!dat) {
+            if ('server' in csa.ws_ns.connections)
+                show_banner('ws_banner', `<b>${L('No reply from backend, please check the backend log and reload the page.')}</b>`);
+            return;
+        }
         console.log('get_cfg ret', dat[0]);
         csa.cfg = dat[0];
         
+        await init_sys();
         await alloc_port('clr_all');
         await init_reg();
         await init_dbg();
@@ -61,8 +67,8 @@ function init_ws() {
     }
     ws.onclose = function(evt) {
         delete csa.ws_ns.connections['server'];
-        console.log('ws disconnected');
-        document.body.style.backgroundColor = "gray";
+        console.log('ws disconnected', evt.code, evt.reason);
+        ws_closed(evt);
     }
 }
 
@@ -82,6 +88,10 @@ document.getElementById('dev_read_info').onclick = async function() {
     } else if (dat[0] != 'udp' && !dat[0].online) {
         elem.style.background = '#F5B7B180';
         elem.innerText = L('Serial disconnected');
+        return;
+    } else if (dat[0] != 'udp' && dat[0].online == 3) {
+        elem.style.background = '#F5B7B180';
+        elem.innerText = L('Device thread dead, please re-open');
         return;
     }
     

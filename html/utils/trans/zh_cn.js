@@ -81,6 +81,17 @@ let trans_zh_cn = {
     'No data': '无数据',
     
     'Serial disconnected': '串口断开连接',
+    'Device thread dead, please re-open': '串口线程已退出，请重新打开',
+    '(input differs, close and re-open to apply)': '（输入框与当前不一致，需关闭后重新打开才生效）',
+    'Serial port already opened, please close it first, then open again to apply new settings.': '串口已打开，请先关闭再打开，新设置才会生效。',
+    'A page for device address %s is already opened in another window, only one page per device address is allowed.': '设备地址 %s 的页面已在其他窗口打开中，同一设备地址只能打开一个页面。',
+    'The index page is already opened in another window, only one index page is allowed.': '首页已在其他窗口打开中，首页只能打开一个。',
+    'Close this window and use the existing one. (If the existing one was just closed, wait a few seconds and reload.)': '请关闭本窗口，使用已打开的窗口。（如果已打开的窗口刚刚关闭，请等几秒后刷新本页。）',
+    'WebSocket disconnected': 'WebSocket 已断开',
+    'The backend may have exited or the connection was lost, please check the backend log and reload the page.': '后台程序可能已退出或连接已断开，请检查后台日志后刷新页面。',
+    'No reply from backend, please check the backend log and reload the page.': '后台程序无回复，请检查后台日志后刷新页面。',
+    'Reply timeout, please Refresh again. If it persists, check the backend log.': '回复超时，请再点一次刷新。如果持续超时，请检查后台日志。',
+    'Backend fault, communication may be broken. Please check the backend log and restart it.': '后台程序出现故障，通讯可能已中断，请检查后台日志并重启后台程序。',
     'Insufficient registers!': '超出寄存器数量！',
     'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的数据无法解析，已忽略。后续同类错误不会重复提示。'
 };

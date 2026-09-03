@@ -18,6 +18,8 @@ from cd_ws import CDWebSocket, CDWebSocketNS
 ws_ns = CDWebSocketNS('server')
 logger = logging.getLogger(f'cdgui.web')
 
+WS_CLOSE_DUPLICATE = 4001 # close code: the same page is already opened in another window
+
 
 async def http_file_server(path, request):
     if "upgrade" in request.get("Connection", "").lower():
@@ -53,6 +55,7 @@ async def ws_handler(ws, path):
         logger.info(f'ws: connect, path: {path}')
         if path in ws_ns.connections:
             logger.warning(f'ws: only allow one connection for: {path}')
+            await ws.close(WS_CLOSE_DUPLICATE, 'duplicate connection')
             return
         ws_ns.connections[path] = ws
         while True:

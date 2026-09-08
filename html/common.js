@@ -43,7 +43,9 @@ function show_banner(id, html, cls='is-danger') {
     if (!elem) {
         elem = document.createElement('div');
         elem.id = id;
-        elem.style.cssText = 'position: sticky; top: 0; z-index: 100; margin: 0; border-radius: 0; white-space: pre-wrap;';
+        elem.style.cssText = 'position: sticky; top: 0; z-index: 100; margin: 0; border-radius: 0; white-space: pre-wrap; ' +
+                             'background-color: #F5B7B180; backdrop-filter: blur(8px); ' +
+                             '-webkit-backdrop-filter: blur(8px);';
         document.body.prepend(elem);
     }
     elem.className = `notification ${cls}`;
@@ -53,7 +55,6 @@ function show_banner(id, html, cls='is-danger') {
 
 // called on websocket close: tell the user why the page is dead
 function ws_closed(evt) {
-    document.body.style.backgroundColor = 'gray';
     if (evt && evt.code == WS_CLOSE_DUPLICATE) {
         let title;
         if (csa.arg.tgt)

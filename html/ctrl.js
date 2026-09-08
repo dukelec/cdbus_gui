@@ -63,7 +63,6 @@ function init_ws() {
     }
     ws.onerror = function(evt) {
         console.log("ws onerror: ", evt);
-        document.body.style.backgroundColor = "gray";
     }
     ws.onclose = function(evt) {
         delete csa.ws_ns.connections['server'];

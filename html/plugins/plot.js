@@ -8,7 +8,7 @@ import { L } from '../utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_float,
          read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
-import { csa, alloc_port } from '../common.js';
+import { csa, alloc_port, show_cfg_error } from '../common.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
 import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js';
 import { plot_reg_w_init, plot_reg_w } from './plot_reg_w.js';
@@ -408,6 +408,12 @@ async function init_plot() {
         console.info(`skip init_plot`);
         return;
     }
+    if (!csa.cfg.plot.plots || !csa.cfg.plot.plots.length) {
+        show_cfg_error(L('Plot list is empty.'));
+        return;
+    }
+    if (reg_idx_by_name(csa.cfg.plot.mask) == null)
+        show_cfg_error(L('Plot mask register not found: %s').replace('%s', `${csa.cfg.plot.mask}`));
     csa.plot = {};
     csa.plugins.push('plot');
 

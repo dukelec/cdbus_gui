@@ -10,8 +10,26 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { csa, alloc_port } from '../common.js';
+import { csa, alloc_port, show_cfg_error } from '../common.js';
 
+
+// the whole page assumes the reg list is sorted by address and has no overlap
+function check_reg_list() {
+    let list = csa.cfg.reg ? csa.cfg.reg.list : null;
+    if (!list || !list.length) {
+        show_cfg_error(L('Register list is empty.'));
+        return;
+    }
+    let bad = [];
+    for (let i = 1; i < list.length; i++) {
+        let pre = list[i-1];
+        let cur = list[i];
+        if (cur[R_ADDR] < pre[R_ADDR] + pre[R_LEN])
+            bad.push(`${pre[R_ID]} 0x${val2hex(pre[R_ADDR])}+${pre[R_LEN]} -> ${cur[R_ID]} 0x${val2hex(cur[R_ADDR])}`);
+    }
+    if (bad.length)
+        show_cfg_error(L('Register list is out of order, addresses must ascend without overlap: %s').replace('%s', bad.join(', ')));
+}
 
 function init_reg_list() {
     let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
@@ -516,6 +534,7 @@ async function init_reg() {
     `;
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     
+    check_reg_list();
     init_reg_list();
     await init_reg_rw();
     

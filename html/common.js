@@ -70,6 +70,18 @@ function ws_closed(evt) {
     }
 }
 
+let cfg_errors = [];
+
+// report a device config file problem, all problems share one banner
+function show_cfg_error(msg) {
+    console.error('cfg error:', msg);
+    if (cfg_errors.includes(msg))
+        return;
+    cfg_errors.push(msg);
+    let list = cfg_errors.map(e => escape_html(e)).join('\n');
+    show_banner('cfg_banner', `<b>${L('Config file error, related functions may not work:')}</b>\n${list}`);
+}
+
 function show_faults(faults) {
     if (!faults || !faults.length) {
         show_banner('fault_banner', '');
@@ -96,4 +108,4 @@ async function init_sys() {
     })();
 }
 
-export { csa, alloc_port, show_banner, ws_closed, show_faults, init_sys };
+export { csa, alloc_port, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };

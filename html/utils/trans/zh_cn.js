@@ -93,7 +93,17 @@ let trans_zh_cn = {
     'Reply timeout, please Refresh again. If it persists, check the backend log.': '回复超时，请再点一次刷新。如果持续超时，请检查后台日志。',
     'Backend fault, communication may be broken. Please check the backend log and restart it.': '后台程序出现故障，通讯可能已中断，请检查后台日志并重启后台程序。',
     'Insufficient registers!': '超出寄存器数量！',
-    'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的数据无法解析，已忽略。后续同类错误不会重复提示。'
+    'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的数据无法解析，已忽略。后续同类错误不会重复提示。',
+    
+    'Config file error, related functions may not work:': '配置文件有误，相关功能可能无法使用：',
+    'Register list is empty.': '寄存器列表为空。',
+    'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表顺序有误，地址必须递增且不重叠：%s',
+    'Plot list is empty.': '波形列表为空。',
+    'Plot mask register not found: %s': '波形使能寄存器不存在：%s',
+    'label list is empty.': '曲线列表为空。',
+    'data register not found: %s': '数据寄存器不存在：%s',
+    'config register not found: %s': '配置寄存器不存在：%s',
+    'config register has too few slots: %s': '配置寄存器条目数量不足：%s'
 };
 
 export { trans_zh_cn };

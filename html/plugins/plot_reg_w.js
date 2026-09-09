@@ -5,7 +5,7 @@
  */
 
 import { L } from '../utils/lang.js'
-import { csa } from '../common.js';
+import { csa, show_cfg_error } from '../common.js';
 import { fmt_size, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
 import { val2hex } from '../utils/helper.js';
 
@@ -165,14 +165,29 @@ function get_reg_ofs_len(name) {
 }
 
 
+// count of the input slots provided by the plot config register
+function cfg_reg_slots(name) {
+    for (let r of csa.cfg.reg.list) {
+        if (r[R_ID] == name)
+            return r[R_FMT][0] == '{' ? Math.trunc(r[R_LEN] / fmt_size(r[R_FMT])) : 0;
+    }
+    return null;
+}
+
+
 function plot_reg_w_init(idx) {
     let list = [];
     console.log(`plot_reg_w_init ${idx}`);
     const label = csa.cfg.plot.plots[idx].label;
+    if (!label || label.length < 2) {
+        show_cfg_error(`Plot${idx}: ` + L('label list is empty.'));
+        return;
+    }
     for (let i = 1; i < label.length; i++) {
         let ret = get_reg_ofs_len(label[i]);
         if (!ret) {
             console.warn(`plot label not found: ${label[i]}`);
+            show_cfg_error(`Plot${idx}: ` + L('data register not found: %s').replace('%s', `${label[i]}`));
             return;
         }
         if (ret[2].length == 1) {
@@ -213,6 +228,14 @@ function plot_reg_w_init(idx) {
     
     console.log(`fmt: ${csa.plot.fmt[idx]}`);
     console.log(`label:`, csa.plot.label[idx]);
+    
+    const cfg_reg = csa.cfg.plot.plots[idx].cfg_reg;
+    const slots = cfg_reg_slots(cfg_reg);
+    if (slots == null)
+        show_cfg_error(`Plot${idx}: ` + L('config register not found: %s').replace('%s', `${cfg_reg}`));
+    else if (slots < result.length)
+        show_cfg_error(`Plot${idx}: ` + L('config register has too few slots: %s')
+                       .replace('%s', `${cfg_reg}, ${slots} < ${result.length}`));
     csa.plot.reg_val[idx] = result;
 }
 

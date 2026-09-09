@@ -136,6 +136,10 @@ function reg2str(dat, ofs, fmt, show) {
     return [ret, ofs];
 }
 
+function in_editing(elem) { // skip update the input box being edited during periodic read
+    return document.getElementById('keep_read')?.checked && document.activeElement === elem;
+}
+
 async function read_reg_val(r_idx, read_dft=false) {
     set_input_bg('r', r_idx, '#D5F5E3');
     let addr = csa.reg.reg_r[r_idx][0];
@@ -181,7 +185,8 @@ async function read_reg_val(r_idx, read_dft=false) {
                         elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
                     } else {
                         let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
-                        elem.value = str;
+                        if (!in_editing(elem))
+                            elem.value = str;
                     }
                 }
             } else if (r[R_FMT][0] == '[') {
@@ -198,10 +203,13 @@ async function read_reg_val(r_idx, read_dft=false) {
                     n += Math.trunc((ofs - cur_ofs) / one_size);
                 }
                 
-                if (read_dft)
+                if (read_dft) {
                     csa.reg.elm[`reg_dft.${r[R_ID]}`].setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}`);
-                else
-                    csa.reg.elm[`reg.${r[R_ID]}`].value = val;
+                } else {
+                    let elem = csa.reg.elm[`reg.${r[R_ID]}`];
+                    if (!in_editing(elem))
+                        elem.value = val;
+                }
                 
             } else {
                 let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
@@ -210,7 +218,8 @@ async function read_reg_val(r_idx, read_dft=false) {
                     elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
                 } else {
                     let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-                    elem.value = str;
+                    if (!in_editing(elem))
+                        elem.value = str;
                 }
             }
             
@@ -407,6 +416,7 @@ async function write_reg_val(w_idx) {
 
 
 function set_input_bg(rw='r', idx, bg) {
+    let skip_edit = rw == 'r' && bg != ''; // don't highlight the input box being edited
     let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
     let addr = reg_rw[idx][0];
     let len = reg_rw[idx][1];
@@ -430,10 +440,15 @@ function set_input_bg(rw='r', idx, bg) {
         if (r[R_FMT][0] == '{') {
             let one_size = fmt_size(r[R_FMT]);
             let count = Math.trunc(r[R_LEN] / one_size);
-            for (let n = 0; n < count; n++)
-                csa.reg.elm[`reg.${r[R_ID]}.${n}`].style.background = bg;
+            for (let n = 0; n < count; n++) {
+                let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
+                if (!skip_edit || !in_editing(elem))
+                    elem.style.background = bg;
+            }
         } else {
-            csa.reg.elm[`reg.${r[R_ID]}`].style.background = bg;
+            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
+            if (!skip_edit || !in_editing(elem))
+                elem.style.background = bg;
         }
     }
 }

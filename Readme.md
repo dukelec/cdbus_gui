@@ -9,7 +9,7 @@ CDBUS GUI is an open-source, cross-platform serial debugging tool supporting reg
 
 #### Dependence:
 Python version >= 3.8  
-`pip3 install pythoncrc json5 websockets pyserial u-msgpack-python aiohttp IntelHex`
+`pip3 install json5 websockets pyserial u-msgpack-python aiohttp IntelHex`
 
 #### Usage:
 Run `main.py`, then open the following URL in your web browser: http://localhost:8910

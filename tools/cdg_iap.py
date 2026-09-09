@@ -33,7 +33,7 @@ import re
 from time import sleep
 from intelhex import IntelHex
 from cdg_cmd import *
-from cdnet.dev.cdbus_serial import modbus_crc
+from cdnet.utils.crc import modbus_crc
 
 
 def compare_dat(a, b):

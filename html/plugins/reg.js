@@ -510,7 +510,7 @@ async function init_reg() {
                 |
                 <label class="checkbox"><input type="checkbox" id="less_reg"> <span>${L('Less')}</span></label>
                 <label class="checkbox"><input type="checkbox" id="keep_read"> <span>${L('Read per')}</span></label>
-                <input type="text" size="5" placeholder="500" id="read_period" value="500"> ms
+                <input type="text" size="5" placeholder="200" id="read_period" value="200"> ms
                 |
                 <button class="button is-small" id="button_edit">${L('Button Edit')}</button>
                 <div id="button_subs" style="display: none;">

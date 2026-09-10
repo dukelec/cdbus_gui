@@ -322,26 +322,16 @@ function csv_field(s) {
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function brief(v, max=60) {
-    let s = typeof v == 'string' ? v : JSON.stringify(v);
-    if (s == null)
-        return '';
-    return s.length > max ? s.slice(0, max) + '...' : s;
-}
-
-
 async function handle(dat, src) {
     let rep = { id: dat.id, err: null, ret: null };
     let args = dat.args || {};
     try {
         if (!(dat.cmd in cmds))
             throw new Error(`unknown cmd: ${dat.cmd}`);
-        csa.dbg.api_log(`${dat.cmd} ${brief(args)}`);
-        rep.ret = await cmds[dat.cmd](args);
+        rep.ret = await cmds[dat.cmd](args); // the backend prints it in the log
     } catch (err) {
         rep.err = `${err.message || err}`;
         console.error('api:', dat.cmd, err);
-        csa.dbg.api_log(`${dat.cmd} err: ${rep.err}`, true);
     }
     await csa.api.sock.sendto(rep, src);
 }

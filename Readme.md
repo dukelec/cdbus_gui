@@ -95,8 +95,9 @@ run an IAP upgrade.
 Requests are relayed to the device page in the browser, and the page does the
 real work, the same way it does when you click a button. So a script and the
 user share one state: the waveform keeps being drawn, register boxes update,
-and every API call is printed in the page log window next to the device's own
-output, which makes it easy to watch what a script is doing.
+and every API call is printed in the device page log window next to the
+device's own output, and in the aggregated log on the index page, which makes
+it easy to watch what a script is doing.
 
 The page for the device must be opened in the browser. The server listens on
 `localhost:8911` by default, use `--api-port` to change it, `--api-port 0` to

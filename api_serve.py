@@ -16,6 +16,7 @@
 # Only one page is allowed per device address, so "the page" is unambiguous.
 
 import asyncio
+import datetime
 import json
 import logging
 from aiohttp import web
@@ -54,11 +55,29 @@ def find_page(dev):
     return None
 
 
+def brief(v, n=100):
+    s = v if isinstance(v, str) else json.dumps(v, ensure_ascii=False, default=str)
+    return s if len(s) <= n else s[:n] + '...'
+
+
+async def api_log(path, text, err=False):
+    """Print what the api is doing into the device page log and into the index
+    page log, the same two places a device debug message goes."""
+    ts = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    addr = path.lstrip('/')
+    body = f'\x1b[0;{"31" if err else "36"}m[api] {text}\x1b[0m\n'
+    src = (addr, 'api')
+    await api['sock'].sendto({'src': src, 'dat': f'{ts}: {body}'.encode()}, (path, 9))
+    await api['sock'].sendto({'src': src, 'dat': f'{ts} [{addr}]: {body}'.encode()}, ('/', 9))
+
+
 async def call(dev, cmd, args=None, timeout=20):
     path = find_page(dev)
     if not path:
         opened = [i.get('name') or i.get('tgt') for i in list_pages().values()]
         raise web.HTTPNotFound(text=f'err: no page opened for device "{dev}", opened: {opened}\n')
+
+    await api_log(path, f'{cmd} {brief(args or {})}')
 
     api['id'] = (api['id'] + 1) & 0xffffff
     rid = api['id']
@@ -75,6 +94,7 @@ async def call(dev, cmd, args=None, timeout=20):
         api['waits'].pop(rid, None)
 
     if rep.get('err'):
+        await api_log(path, f'{cmd} err: {rep["err"]}', True)
         raise web.HTTPBadRequest(text=f'err: {rep["err"]}\n')
     return rep.get('ret')
 

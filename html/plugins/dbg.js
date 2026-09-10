@@ -5,7 +5,7 @@
  */
 
 import { L } from '../utils/lang.js'
-import { timestamp, dat2str } from '../utils/helper.js';
+import { dat2str } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa, alloc_port } from '../common.js';
 import { Terminal } from '../libs/xterm-5.6.0-beta.129.js';
@@ -147,11 +147,6 @@ async function init_dbg() {
         term.clear();
         term.select(0, 0, 0);
     };
-    // show what the external API is doing, mixed into the device log by time
-    csa.dbg.api_log = (txt, is_err=false) => {
-        write_log(`\x1b[0;${is_err ? '31' : '36'}m${timestamp()} [api]: ${txt}\x1b[0m\n`);
-    };
-
     csa.dbg.dat_export = () => { return origin_log.join(''); };
     csa.dbg.dat_import = (dat) => {
         term.write(dat);

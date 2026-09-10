@@ -226,7 +226,9 @@ async function do_iap() {
     let action = document.getElementById('iap_action').value;
     
     if (!path && action != 'bl') {
-        alert('path empty');
+        // report in the progress field, not an alert: an alert would block
+        // the page, and the external api starts iap without a user watching
+        document.getElementById('iap_progress').innerText = 'Path is empty.';
         stop_iap();
         return;
     }
@@ -237,7 +239,7 @@ async function do_iap() {
         await csa.cmd_sock.sendto({'action': 'get_ihex', 'path': path}, ['server', 'iap']);
         msg = await csa.cmd_sock.recvfrom(20000);
         if (!msg || !msg[0].length) {
-            alert('invalid ihex file');
+            document.getElementById('iap_progress').innerText = 'Invalid intel hex file.';
             stop_iap();
             return;
         }
@@ -417,6 +419,21 @@ async function init_iap() {
     
     document.getElementById('iap_start').onclick = do_iap;
     document.getElementById('iap_stop').onclick = stop_iap;
+
+    // for the external API: same as filling the form and clicking Start,
+    // runs in background, poll csa.iap.status() for the result
+    csa.iap.start = (path, action, check) => {
+        document.getElementById('iap_path').value = path;
+        document.getElementById('iap_action').value = action;
+        document.getElementById('iap_check').value = check;
+        do_iap();
+    };
+    csa.iap.stop_now = stop_iap;
+    csa.iap.status = () => ({
+        running: !csa.iap.stop,
+        epoch: document.getElementById('iap_epoch').innerText,
+        progress: document.getElementById('iap_progress').innerText
+    });
 }
 
 

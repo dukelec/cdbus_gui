@@ -129,6 +129,29 @@ async function init_dbg() {
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     dbg_service();
     
+    // for the external API: read back buffered log by cursor
+    csa.dbg.log_read = (since=0, max_len=0) => {
+        if (!(since >= 0) || since > origin_log.length)
+            since = 0;
+        let text = origin_log.slice(since).join('');
+        let cut = 0;
+        if (max_len > 0 && text.length > max_len) {
+            cut = text.length - max_len;
+            text = text.slice(cut);
+        }
+        return { since, next: origin_log.length, cut, text };
+    };
+    csa.dbg.log_clear = () => {
+        origin_log = [];
+        term.scrollToBottom(); // workaround for auto-scroll fails after clear
+        term.clear();
+        term.select(0, 0, 0);
+    };
+    // show what the external API is doing, mixed into the device log by time
+    csa.dbg.api_log = (txt, is_err=false) => {
+        write_log(`\x1b[0;${is_err ? '31' : '36'}m${timestamp()} [api]: ${txt}\x1b[0m\n`);
+    };
+
     csa.dbg.dat_export = () => { return origin_log.join(''); };
     csa.dbg.dat_import = (dat) => {
         term.write(dat);

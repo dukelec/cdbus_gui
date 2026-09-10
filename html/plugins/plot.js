@@ -328,6 +328,43 @@ async function plot_set_en() {
 }
 
 
+// apply the current checkbox state of plot `i` to the device
+async function plot_apply_en(i) {
+    let checkbox = document.getElementById(`plot${i}_en`);
+    checkbox.disabled = true;
+    try {
+        if (checkbox.checked) {
+            let ret = await plot_reg_w(i);
+            if (ret) {
+                checkbox.checked = false;
+                return -1;
+            }
+        }
+        await plot_set_en();
+        return 0;
+    } catch (err) {
+        checkbox.checked = false;
+        console.error(`Plot${i}: config regs failed`, err);
+        return -1;
+    } finally {
+        checkbox.disabled = false;
+    }
+}
+
+// same as clicking the checkbox / the clear button, also used by the api plugin
+async function plot_set_one_en(i, en) {
+    document.getElementById(`plot${i}_en`).checked = !!en;
+    return await plot_apply_en(i);
+}
+
+function plot_clear_dat(i) {
+    for (let s = 0; s < csa.plot.dat[i].length; s++)
+        csa.plot.dat[i][s] = [];
+    csa.plot.plots[i].setData(csa.plot.dat[i]);
+    csa.plot.x_ofs[i] = 0;
+}
+
+
 function is_float(n) {
     return typeof n === 'number' && !Number.isInteger(n);
 }
@@ -487,25 +524,7 @@ async function init_plot() {
         document.querySelector(`#plot${i}_parse_error .delete`).onclick = () => {
             document.getElementById(`plot${i}_parse_error`).style.display = 'none';
         };
-        document.getElementById(`plot${i}_en`).onchange = async () => {
-            let checkbox = document.getElementById(`plot${i}_en`);
-            checkbox.disabled = true;
-            try {
-                if (checkbox.checked) {
-                    let ret = await plot_reg_w(i);
-                    if (ret) {
-                        checkbox.checked = false;
-                        return;
-                    }
-                }
-                await plot_set_en();
-            } catch (err) {
-                checkbox.checked = false;
-                console.error(`Plot${i}: config regs failed`, err);
-            } finally {
-                checkbox.disabled = false;
-            }
-        };
+        document.getElementById(`plot${i}_en`).onchange = async () => { await plot_apply_en(i); };
         let series = plot_init_series(i);
         let u = make_chart(i, `Plot${i}`, series);
         csa.plot.plots.push(u);
@@ -536,12 +555,7 @@ async function init_plot() {
             csa.plot.plot_fft_en[i] = document.getElementById(`plot${i}_fft`).checked;
             await plot_update(i);
         };
-        document.getElementById(`plot${i}_clear`).onclick = async () => {
-            for (let s = 0; s < csa.plot.dat[i].length; s++)
-                csa.plot.dat[i][s] = [];
-            csa.plot.plots[i].setData(csa.plot.dat[i]);
-            csa.plot.x_ofs[i] = 0;
-        };
+        document.getElementById(`plot${i}_clear`).onclick = async () => { plot_clear_dat(i); };
         document.getElementById(`plot${i}_re_cal`).onclick = async () => {
             document.getElementById(`plot${i}_re_cal`).disabled = true;
             await plot_cal_update(i);
@@ -551,6 +565,9 @@ async function init_plot() {
     
     dbg_raw_service();
     
+    csa.plot.set_en = plot_set_one_en;
+    csa.plot.clear = plot_clear_dat;
+
     csa.plot.dat_export = () => { return csa.plot.dat; };
     csa.plot.dat_import = (dat) => {
         for (let i = 0; i < csa.plot.plots.length; i++) {

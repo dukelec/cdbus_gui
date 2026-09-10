@@ -16,6 +16,7 @@ import { init_dbg } from './plugins/dbg.js';
 import { init_pic } from './plugins/pic.js';
 import { init_iap } from './plugins/iap.js';
 import { init_export } from './plugins/export.js';
+import { init_api } from './plugins/api.js';
 
 
 function init_ws() {
@@ -45,6 +46,7 @@ function init_ws() {
         await init_pic();
         await init_iap();
         await init_export();
+        await init_api();
         
         let port = await alloc_port();
         csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, port);

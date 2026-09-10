@@ -136,6 +136,25 @@ function reg2str(dat, ofs, fmt, show) {
     return [ret, ofs];
 }
 
+// Serialize reg transactions. The r/w sockets are each shared by the periodic
+// read, the R/W buttons and the external api, so a concurrent transaction
+// would mix the replies up. One lock for both, they talk to the same device.
+let reg_lock = Promise.resolve();
+
+async function reg_xfer(sock, dat, timeout=1000) {
+    let unlock;
+    let prev = reg_lock;
+    reg_lock = new Promise(resolve => unlock = resolve);
+    await prev;
+    try {
+        sock.flush();
+        await sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
+        return await sock.recvfrom(timeout);
+    } finally {
+        unlock();
+    }
+}
+
 function in_editing(elem) { // skip update the input box being edited during periodic read
     return document.getElementById('keep_read')?.checked && document.activeElement === elem;
 }
@@ -149,10 +168,8 @@ async function read_reg_val(r_idx, read_dft=false) {
     let dv = new DataView(dat.buffer);
     dv.setUint16(1, addr, true);
 
-    csa.reg.proxy_sock_regr.flush();
-    await csa.reg.proxy_sock_regr.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('read reg wait ret');
-    let ret = await csa.reg.proxy_sock_regr.recvfrom(1000);
+    let ret = await reg_xfer(csa.reg.proxy_sock_regr, dat);
     console.log('read reg ret', ret);
     if (ret && (ret[0].dat[0] & 0xf) == 0) {
         if (read_dft)
@@ -324,10 +341,8 @@ async function write_reg_val(w_idx) {
         let dv = new DataView(dat.buffer);
         dv.setUint16(1, addr, true);
         
-        csa.reg.proxy_sock_regw.flush();
-        await csa.reg.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
         console.log('read-before-write wait ret');
-        let ret = await csa.reg.proxy_sock_regw.recvfrom(1000);
+        let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
         console.log('read-before-write ret', ret);
         if (ret && (ret[0].dat[0] & 0xf) == 0) {
             csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1);
@@ -397,10 +412,8 @@ async function write_reg_val(w_idx) {
     }
     
     console.info('write reg:', dat2hex(dat, ' '));
-    csa.reg.proxy_sock_regw.flush();
-    await csa.reg.proxy_sock_regw.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
     console.log('write reg wait ret');
-    let ret = await csa.reg.proxy_sock_regw.recvfrom(1000);
+    let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
     console.log('write reg ret', ret);
     if (ret && (ret[0].dat[0] & 0xf) == 0) {
         console.log('write reg succeeded');

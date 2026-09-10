@@ -15,6 +15,8 @@ Args:
   --ip6-prefix PREFIX   # default: fdcd::
   --port-base BASE      # default: 0xcd00
   --http-port HTTP_PORT # default: 8910
+  --api-port API_PORT   # external api, default: 8911, 0: disable
+  --api-iap             # allow the external api to start iap
 """
 
 import os, sys, re
@@ -54,6 +56,8 @@ csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
 udp_ip_prefix = args.get("--ip6-prefix", dft="fdcd::")
 udp_port_base = int(args.get("--port-base", dft="0xcd00"), 0)
 http_port = int(args.get("--http-port", dft="8910"), 0)
+api_port = int(args.get("--api-port", dft="8911"), 0)
+api_iap = args.get("--api-iap") != None
 
 cdnet_local_addr = [
     f"00:{csa['net']:02x}:{csa['mac']:02x}",
@@ -280,6 +284,10 @@ if __name__ == "__main__":
     
     from plugins.iap import iap_init
     iap_init(csa)
+    
+    if api_port:
+        from api_serve import api_init
+        api_init(csa, port=api_port, allow_iap=api_iap)
     
     #csa['async_loop'].create_task(open_brower())
     logger.info(f'Please open url: http://localhost:{http_port}')

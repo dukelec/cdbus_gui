@@ -13,6 +13,8 @@ Args:
   --local-net LOCAL_NET # default: 0
   --local-mac LOCAL_MAC # default: 0
   --http-port HTTP_PORT # default: 8910
+  --api-port API_PORT   # external api, default: 8911, 0: disable
+  --api-iap             # allow the external api to start iap
 """
 
 import os, sys, re
@@ -52,6 +54,8 @@ if args.get("--help", "-h") != None:
 csa['net'] = int(args.get("--local-net", dft="0x00"), 0)
 csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
 http_port = int(args.get("--http-port", dft="8910"), 0)
+api_port = int(args.get("--api-port", dft="8911"), 0)
+api_iap = args.get("--api-iap") != None
 
 if args.get("--verbose", "-v") != None:
     logger_init(logging.VERBOSE)
@@ -253,6 +257,10 @@ if __name__ == "__main__":
     
     from plugins.iap import iap_init
     iap_init(csa)
+    
+    if api_port:
+        from api_serve import api_init
+        api_init(csa, port=api_port, allow_iap=api_iap)
     
     #csa['async_loop'].create_task(open_brower())
     logger.info(f'Please open url: http://localhost:{http_port}')

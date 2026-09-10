@@ -37,6 +37,22 @@ async function alloc_port(port=null) {
     }
 }
 
+// write a few values back into the device's json5 config file, in place:
+// only the spans that belong to these keys change, comments inside them are lost
+async function save_cfg_file(vals) {
+    if (!vals.length)
+        return 0;
+    csa.cmd_sock.flush();
+    await csa.cmd_sock.sendto({'action': 'set_cfg', 'cfg': csa.arg.cfg, 'vals': vals},
+                              ['server', 'cfgs']);
+    let ret = await csa.cmd_sock.recvfrom(5000);
+    if (!ret)
+        throw new Error(L('No reply from backend, please check the backend log and reload the page.'));
+    if (ret[0] != 'successed')
+        throw new Error(`${ret[0]}`);
+    return vals.length;
+}
+
 // show a sticky notification at the top of the page, same id replaces the previous one
 function show_banner(id, html, cls='is-danger') {
     let elem = document.getElementById(id);
@@ -108,4 +124,4 @@ async function init_sys() {
     })();
 }
 
-export { csa, alloc_port, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };
+export { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };

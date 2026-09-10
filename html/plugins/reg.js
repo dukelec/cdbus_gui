@@ -10,7 +10,7 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
 import { CDWebSocket } from '../utils/cd_ws.js';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { csa, alloc_port, show_cfg_error } from '../common.js';
+import { csa, alloc_port, save_cfg_file, show_cfg_error } from '../common.js';
 
 
 // the whole page assumes the reg list is sorted by address and has no overlap
@@ -302,15 +302,10 @@ async function button_edit() {
         document.getElementById('button_subs').style.display = 'none';
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
-        // save to idb
+        // save to idb, only what differs from the config file
         let less = document.getElementById('less_reg').checked;
-        if (less) {
-            await csa.db.set('tmp', `${csa.arg.name}/reg.less_r`, reg_rw2reg_cfg(csa.reg.reg_r));
-            await csa.db.set('tmp', `${csa.arg.name}/reg.less_w`, reg_rw2reg_cfg(csa.reg.reg_w));
-        } else {
-            await csa.db.set('tmp', `${csa.arg.name}/reg.reg_r`, reg_rw2reg_cfg(csa.reg.reg_r));
-            await csa.db.set('tmp', `${csa.arg.name}/reg.reg_w`, reg_rw2reg_cfg(csa.reg.reg_w));
-        }
+        await save_reg_db(less ? 'less_r' : 'reg_r', reg_rw2reg_cfg(csa.reg.reg_r));
+        await save_reg_db(less ? 'less_w' : 'reg_w', reg_rw2reg_cfg(csa.reg.reg_w));
         console.log(less ? 'new less_r values:' : 'new reg_r values:');
         console.log(JSON.stringify(csa.reg.reg_r));
         console.log(JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
@@ -445,6 +440,49 @@ async function button_def() {
     alert('Load default succeeded.');
 }
 
+async function save_reg_db(name, val) {
+    let same = JSON.stringify(val) == JSON.stringify(csa.cfg.reg[name]);
+    await csa.db.set('tmp', `${csa.arg.name}/reg.${name}`, same ? null : val);
+}
+
+// push the edited button groups back into the json5 config file, so they
+// become the default for every browser instead of only this one
+async function reg_save_file() {
+    let less = document.getElementById('less_reg').checked;
+    let cur = {};
+    cur[less ? 'less_r' : 'reg_r'] = reg_rw2reg_cfg(csa.reg.reg_r);
+    cur[less ? 'less_w' : 'reg_w'] = reg_rw2reg_cfg(csa.reg.reg_w);
+    for (let n of less ? ['reg_r', 'reg_w'] : ['less_r', 'less_w']) {
+        let v = await csa.db.get('tmp', `${csa.arg.name}/reg.${n}`);
+        if (v)
+            cur[n] = v;
+    }
+    let vals = [];
+    for (let n in cur) {
+        if (JSON.stringify(cur[n]) != JSON.stringify(csa.cfg.reg[n]))
+            vals.push({ path: ['reg', n], val: cur[n] });
+    }
+    if (!vals.length) {
+        alert(L('The config file already matches, nothing to save.'));
+        return;
+    }
+    let btn = document.getElementById('save_reg_file');
+    btn.disabled = true;
+    try {
+        await save_cfg_file(vals);
+        for (let v of vals) { // the file is the default now, drop the local copy
+            csa.cfg.reg[v.path[1]] = v.val;
+            await csa.db.set('tmp', `${csa.arg.name}/reg.${v.path[1]}`, null);
+        }
+        alert(L('Saved to %s, the previous version is kept as a .bak file.')
+              .replace('%s', csa.arg.cfg));
+    } catch (err) {
+        alert(`${err.message || err}`);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
 async function init_reg_rw() {
     let less = document.getElementById('less_reg').checked;
     let reg_r = await csa.db.get('tmp', `${csa.arg.name}/reg.reg_r`);
@@ -520,6 +558,7 @@ async function init_reg() {
                 <button class="button is-small" id="enable_off">${L('Disable')}</button>
                 <button class="button is-small" id="button_all">${L('Select All')}</button>
                 <button class="button is-small" id="button_def">${L('Load Default')}</button>
+                <button class="button is-small" id="save_reg_file">${L('Update Config File')}</button>
                 </div>
             </div>
         
@@ -546,6 +585,7 @@ async function init_reg() {
     document.getElementById(`button_all`).onclick = button_all;
     document.getElementById(`button_def`).onclick = () => { button_none(); button_def(); };
     document.getElementById(`less_reg`).onchange = init_reg_rw;
+    document.getElementById(`save_reg_file`).onclick = reg_save_file;
     
     document.getElementById('dev_read_all').onclick = async function() {
         document.getElementById('dev_read_all').disabled = true;

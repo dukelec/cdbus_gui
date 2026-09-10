@@ -26,6 +26,7 @@ from time import sleep
 from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web
 import cd_watch
+import cfg_edit
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -191,6 +192,16 @@ async def cfgs_service(): # read configs
             with open(os.path.join('configs', dat['cfg'])) as c_file:
                 c = json5.load(c_file)
                 await sock.sendto(c, src)
+        
+        elif dat['action'] == 'set_cfg':
+            # write the values edited on the web page back into the json5 file
+            try:
+                done = cfg_edit.update_cfg('configs', dat['cfg'], dat['vals'])
+                logger.info(f'cfgs: {dat["cfg"]}: updated {done}')
+                await sock.sendto('successed', src)
+            except Exception as err:
+                logger.warning(f'cfgs: set_cfg {dat.get("cfg")}: {err}')
+                await sock.sendto(f'err: {err}', src)
         
         else:
             await sock.sendto('err: cfgs: unknown cmd', src)

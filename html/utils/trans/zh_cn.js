@@ -47,6 +47,7 @@ let trans_zh_cn = {
     'Disable': '禁用',
     'Select All': '选择全部',
     'Load Default': '加载默认',
+    'Update Config File': '更新配置文件',
     
     'Device Info': '设备信息',
     'Depth': '深度',
@@ -55,11 +56,18 @@ let trans_zh_cn = {
     'Channels': '通道',
     'Formulas': '公式',
     'Overlays': '叠加项',
+    '// _d[1] is the first channel, _d[0] the x axis, at(-1) its newest sample':
+        '// _d[1] 是第一个通道，_d[0] 是 X 轴，at(-1) 取该通道最新的一个点',
+    '// indent to carry one formula on to the next line': '// 缩进表示同一条公式续行',
+    '// base is a reg name or an address, ofs and len are bytes':
+        '// 基址可以是寄存器名或地址，偏移和长度的单位是字节',
+    '// commas in fmt cover several values: pid_dbg[0], pid_dbg[1] ...':
+        '// 类型带逗号表示一段里有多个值：pid_dbg[0]、pid_dbg[1] 各是一个通道',
     'Apply': '应用',
     'Slots': '条目',
     'modified': '已修改',
     'one per line, the first is the x axis': '每行一个，第一行是 X 轴',
-    'one per line, "name: expression"': '每行一个，格式 "名称: 表达式"',
+    'one per line, "name": expression': '每行一个，格式 "名称": 表达式',
     
     'Reboot': '重启',
     'Flash': '烧录',
@@ -112,11 +120,15 @@ let trans_zh_cn = {
     'data register not found: %s': '数据寄存器不存在：%s',
     'config register not found: %s': '配置寄存器不存在：%s',
     'config register has too few slots: %s': '配置寄存器条目数量不足：%s',
-    'a formula line must be "name: expression": %s': '公式每行须为 "名称: 表达式"：%s',
-    'an overlay line must be "name: base, ofs, len, fmt": %s':
-        '叠加项每行须为 "名称: 基址, 偏移, 长度, 类型"：%s',
-    'shared by all plots, "name: base, ofs, len, fmt"':
-        '所有波形共用，格式 "名称: 基址, 偏移, 长度, 类型"',
+    'a formula line must be "name": expression, got: %s': '公式每行须为 "名称": 表达式，收到：%s',
+    'formula "%s" has no expression': '公式 "%s" 没有内容',
+    'an overlay line must be "name": base, ofs, len, fmt, got: %s':
+        '叠加项每行须为 "名称": 基址, 偏移, 长度, 类型，收到：%s',
+    'shared by all plots, "name": base, ofs, len, fmt':
+        '所有波形共用，格式 "名称": 基址, 偏移, 长度, 类型',
+    'The config file already matches, nothing to save.': '配置文件已经一致，无需写入。',
+    'Saved to %s, the previous version is kept as a .bak file.':
+        '已写入 %s，原文件已备份为同名的 .bak 文件。',
     'Restore the channels of all plots and the overlay list from the config file?':
         '把所有波形的通道和叠加项恢复为配置文件中的默认值？',
     'Saved plot channels no longer fit the config file, the default was restored.':

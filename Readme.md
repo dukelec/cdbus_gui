@@ -47,6 +47,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
  - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
+ - `Update Config File` writes the edited button groups back into the config file.
 
 <img src="doc/p2.avif">  
 
@@ -63,6 +64,9 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Supports formula-based waveforms (e.g., `u_cal` below). Click `Re-Calc` to refresh the plot after modifying or adding formulas.
  - `Channels` opens a dialog to pick which registers the plot samples, the formulas derived from them, and the `reg_overlay` list shared by all plots. The dialog shows how many config register slots the current choice takes.
  - The choice is kept in the browser, like the register button groups. `Load Default` puts every plot and the overlay list back to the config file. If the config file is edited so that a saved choice no longer fits, it is dropped on the next page load and the file wins.
+ - `Update Config File` in the same dialog writes the channels, formulas and overlays into the config file instead. A formula may span several lines, indent the follow up lines.
+
+`Update Config File` replaces only the spans that belong to the keys you changed, so the rest of the file, its comments and its layout included, stays byte for byte the same. Comments **inside** a replaced span are lost. The previous version of the file is kept next to it as `<name>.json.bak`, overwritten on each save. After a successful write the browser copy is dropped, so the file is the one source again, and `Load Default` from then on means what the file now says.
 
 <img src="doc/p4.avif">  
 

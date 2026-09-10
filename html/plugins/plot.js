@@ -8,7 +8,7 @@ import { L } from '../utils/lang.js'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_float,
          read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
 import { CDWebSocket } from '../utils/cd_ws.js';
-import { csa, alloc_port, show_banner, show_cfg_error } from '../common.js';
+import { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error } from '../common.js';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
 import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js';
 import { plot_reg_w_init, plot_reg_w, cfg_reg_slots } from './plot_reg_w.js';
@@ -381,8 +381,104 @@ let overlay_dft = null; // reg_overlay, shared by all plots
 let plot_cfg_idx = 0;   // plot the channel dialog is editing
 
 
+// A name is written the way the config file writes it, quoted and escaped,
+// so a name that contains a colon or a comma cannot break the line apart.
+// An unquoted name is still accepted, it just cannot contain a colon.
+function name2txt(name) {
+    return JSON.stringify(name);
+}
+
+// end index of the quoted string starting at i, or -1
+function quoted_end(s, i) {
+    let q = s[i];
+    for (i++; i < s.length; i++) {
+        if (s[i] == '\\') {
+            i++;
+            continue;
+        }
+        if (s[i] == q)
+            return i;
+    }
+    return -1;
+}
+
+// drop the quotes only when the whole field is one quoted string, so a value
+// like `'a' + 'b'` is left alone
+function unquote(f) {
+    if (f[0] != '"' && f[0] != "'")
+        return f;
+    let end = quoted_end(f, 0);
+    if (end != f.length - 1)
+        return f;
+    return f.slice(1, end).replace(/\\(.)/g, '$1');
+}
+
+// split on commas that are not inside quotes
+function split_fields(s) {
+    let out = [];
+    let cur = '';
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] == '"' || s[i] == "'") {
+            let end = quoted_end(s, i);
+            if (end < 0) {
+                cur += s.slice(i);
+                break;
+            }
+            cur += s.slice(i, end + 1);
+            i = end;
+        } else if (s[i] == ',') {
+            out.push(cur.trim());
+            cur = '';
+        } else {
+            cur += s[i];
+        }
+    }
+    out.push(cur.trim());
+    return out;
+}
+
+function split_name(line) {
+    let q = line[0];
+    if (q == '"' || q == "'") {
+        let end = -1;
+        for (let i = 1; i < line.length; i++) {
+            if (line[i] == '\\') {
+                i++;
+                continue;
+            }
+            if (line[i] == q) {
+                end = i;
+                break;
+            }
+        }
+        if (end < 0)
+            return null;
+        let rest = line.slice(end + 1).trim();
+        if (rest[0] != ':')
+            return null;
+        return [line.slice(1, end).replace(/\\(.)/g, '$1'), rest.slice(1).trim()];
+    }
+    let i = line.indexOf(':');
+    if (i <= 0)
+        return null;
+    return [line.slice(0, i).trim(), line.slice(i + 1).trim()];
+}
+
+function each_line(txt) {
+    return txt.split('\n').map(x => x.trim()).filter(x => x && !x.startsWith('//'));
+}
+
+// A formula may span lines: the follow up lines are indented, the way a
+// continuation is written in a config file that has room for it.
 function cal2txt(cal) {
-    return Object.entries(cal || {}).map(([k, v]) => `${k}: ${v}`).join('\n');
+    return Object.entries(cal || {}).map(([k, v]) => {
+        let lines = String(v).split('\n');
+        // a body that opens with a comment would read as if the whole formula
+        // were commented out, so leave the name line bare in that case
+        let head = lines[0].startsWith('//') ? '' : lines.shift();
+        return name2txt(k) + ':' + (head ? ' ' + head : '') +
+               lines.map(x => '\n    ' + x).join('');
+    }).join('\n');
 }
 
 function txt2label(txt) {
@@ -391,41 +487,74 @@ function txt2label(txt) {
 
 function txt2cal(txt) {
     let cal = {};
+    let name = null;
+    let head = '';
+    let cont = [];
+
+    let flush = () => {
+        if (name == null)
+            return;
+        let body;
+        if (!cont.length) {
+            body = unquote(head);
+        } else { // take the common indent back off, keep the shape inside
+            let pad = Math.min(...cont.map(x => x.match(/^ */)[0].length));
+            let lines = cont.map(x => x.slice(pad));
+            body = head ? [head, ...lines].join('\n') : lines.join('\n');
+        }
+        if (!body)
+            throw new Error(L('formula "%s" has no expression').replace('%s', name));
+        cal[name] = body;
+        name = null;
+        head = '';
+        cont = [];
+    };
+
     for (let line of txt.split('\n')) {
-        line = line.trim();
-        if (!line || line.startsWith('//'))
+        line = line.replace(/\s+$/, '');
+        // an indented line carries the formula on, comments in a body included
+        if (name != null && line && /^\s/.test(line)) {
+            cont.push(line);
             continue;
-        let i = line.indexOf(':');
-        if (i <= 0)
-            throw new Error(L('a formula line must be "name: expression": %s').replace('%s', line));
-        cal[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+        }
+        if (!line || line.startsWith('//')) // blank, or a note about the box
+            continue;
+        flush();
+        let nv = split_name(line);
+        if (!nv || !nv[0])
+            throw new Error(L('a formula line must be "name": expression, got: %s')
+                            .replace('%s', line));
+        name = nv[0];
+        head = nv[1];
     }
+    flush();
     return cal;
 }
 
 // reg_overlay entry: [base, ofs, len, fmt, name], base is an address or a
-// register name; shown as one line per entry: "name: base, ofs, len, fmt"
+// register name; shown as one line per entry: "name": base, ofs, len, fmt
 function overlay2txt(overlay) {
     return (overlay || []).map(o => {
-        let base = typeof o[0] == 'number' ? `0x${o[0].toString(16)}` : o[0];
-        return `${o[4]}: ${base}, ${o[1]}, ${o[2]}, ${o[3]}`;
+        let base = typeof o[0] == 'number' ?
+                   `0x${o[0].toString(16).padStart(4, '0')}` : name2txt(o[0]);
+        return `${name2txt(o[4])}: ${base}, ${o[1]}, ${o[2]}, ${name2txt(o[3])}`;
     }).join('\n');
 }
 
 function txt2overlay(txt) {
     let ret = [];
-    for (let line of txt.split('\n')) {
-        line = line.trim();
-        if (!line || line.startsWith('//'))
-            continue;
-        let i = line.indexOf(':');
-        let a = i > 0 ? line.slice(i + 1).split(',').map(x => x.trim()) : [];
-        if (i <= 0 || a.length != 4 || !a[0] || !a[3] ||
+    for (let line of each_line(txt)) {
+        let nv = split_name(line);
+        let a = nv ? split_fields(nv[1]) : [];
+        // an unquoted format may hold commas, e.g. H,B2, so it takes the rest
+        let fmt = unquote(a.slice(3).join(','));
+        let base_s = a.length ? unquote(a[0]) : '';
+        if (!nv || !nv[0] || a.length < 4 || !base_s || !fmt ||
                 !Number.isFinite(Number(a[1])) || !(Number(a[2]) > 0))
-            throw new Error(L('an overlay line must be "name: base, ofs, len, fmt": %s')
+            throw new Error(L('an overlay line must be "name": base, ofs, len, fmt, got: %s')
                             .replace('%s', line));
-        let base = /^[-+]?(0[xX][0-9a-fA-F]+|\d+)$/.test(a[0]) ? Number(a[0]) : a[0];
-        ret.push([base, Number(a[1]), Number(a[2]), a[3], line.slice(0, i).trim()]);
+        let base = /^[-+]?(0[xX][0-9a-fA-F]+|\d+)$/.test(base_s) ? Number(base_s) : base_s;
+        ret.push([base, Number(a[1]), Number(a[2]), fmt, nv[0]]);
     }
     return ret;
 }
@@ -505,10 +634,26 @@ async function plot_apply_cfg(idx, label, cal, overlay) {
     }
 }
 
+function plot_cfg_diff() {
+    let vals = [];
+    if (overlay2txt(csa.cfg.plot.reg_overlay) != overlay2txt(overlay_dft))
+        vals.push({ path: ['plot', 'reg_overlay'], val: csa.cfg.plot.reg_overlay || [] });
+    for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
+        let c = csa.cfg.plot.plots[i];
+        let d = plot_dft[i];
+        if (compare_dat(c.label, d.label) !== null)
+            vals.push({ path: ['plot', 'plots', i, 'label'], val: c.label });
+        if (cal2txt(c.cal) != cal2txt(d.cal))
+            vals.push({ path: ['plot', 'plots', i, 'cal'], val: c.cal || {} });
+    }
+    return vals;
+}
+
 async function plot_cfg_apply(label, cal, overlay) {
     let idx = plot_cfg_idx;
     let err_elm = document.getElementById('plot_cfg_err');
-    let btns = ['plot_cfg_apply', 'plot_cfg_def'].map(x => document.getElementById(x));
+    let btns = ['plot_cfg_apply', 'plot_cfg_def', 'plot_cfg_file']
+               .map(x => document.getElementById(x));
     err_elm.innerText = '';
     btns.forEach(b => b.disabled = true);
     try {
@@ -715,21 +860,25 @@ async function init_plot() {
                         <span class="is-size-7">${L('one per line, the first is the x axis')}</span>
                         | <span class="is-size-7" id="plot_cfg_hint"></span>
                     </div>
-                    <textarea class="textarea is-small" rows="7" id="plot_cfg_label" spellcheck="false"></textarea>
+                    <textarea class="textarea is-small" rows="7" id="plot_cfg_label"
+                              style="font-family: monospace;" spellcheck="false"></textarea>
                     <div style="margin: 0.6rem 0 0.3rem;">${L('Formulas')}:
-                        <span class="is-size-7">${L('one per line, "name: expression"')}</span>
+                        <span class="is-size-7">${L('one per line, "name": expression')}</span>
                     </div>
-                    <textarea class="textarea is-small" rows="3" id="plot_cfg_cal" spellcheck="false"></textarea>
+                    <textarea class="textarea is-small" rows="5" id="plot_cfg_cal"
+                              style="font-family: monospace;" spellcheck="false"></textarea>
                     <div style="margin: 0.6rem 0 0.3rem;">${L('Overlays')}:
-                        <span class="is-size-7">${L('shared by all plots, "name: base, ofs, len, fmt"')}</span>
+                        <span class="is-size-7">${L('shared by all plots, "name": base, ofs, len, fmt')}</span>
                     </div>
-                    <textarea class="textarea is-small" rows="3" id="plot_cfg_ovl" spellcheck="false"></textarea>
+                    <textarea class="textarea is-small" rows="4" id="plot_cfg_ovl"
+                              style="font-family: monospace;" spellcheck="false"></textarea>
                     <div class="is-size-7" id="plot_cfg_err"
                          style="margin-top: 0.5rem; color: #c00; white-space: pre-wrap;"></div>
                 </section>
                 <footer class="modal-card-foot" style="padding: 0.8rem 1rem;">
                     <button class="button is-small is-primary" id="plot_cfg_apply">${L('Apply')}</button>
                     <button class="button is-small" id="plot_cfg_def">${L('Load Default')}</button>
+                    <button class="button is-small" id="plot_cfg_file">${L('Update Config File')}</button>
                 </footer>
             </div>
         </div>
@@ -739,6 +888,19 @@ async function init_plot() {
     let cfg_close = () => document.getElementById('plot_cfg_modal').classList.remove('is-active');
     document.getElementById('plot_cfg_close').onclick = cfg_close;
     document.getElementById('plot_cfg_bg').onclick = cfg_close;
+
+    // examples, shown while a box is still empty
+    document.getElementById('plot_cfg_cal').placeholder =
+            L('// _d[1] is the first channel, _d[0] the x axis, at(-1) its newest sample') + '\n' +
+            L('// indent to carry one formula on to the next line') + '\n' +
+            '"err": _d[2].at(-1) - _d[1].at(-1)\n' +
+            '"clip": let e = _d[2].at(-1) - _d[1].at(-1);\n' +
+            '    return Math.min(Math.abs(e), 100);';
+    document.getElementById('plot_cfg_ovl').placeholder =
+            L('// base is a reg name or an address, ofs and len are bytes') + '\n' +
+            L('// commas in fmt cover several values: pid_dbg[0], pid_dbg[1] ...') + '\n' +
+            '"i_term": "pid_pos_ki", 24, 4, "f"\n' +
+            '"pid_dbg": 0x0150, 0, 12, "i,f,i"';
     document.getElementById('plot_cfg_apply').onclick = async () => {
         let label, cal, ovl;
         try {
@@ -750,6 +912,43 @@ async function init_plot() {
             return;
         }
         await plot_cfg_apply(label, cal, ovl);
+    };
+    // apply what is in the boxes, then push every change into the config file
+    document.getElementById('plot_cfg_file').onclick = async () => {
+        let err_elm = document.getElementById('plot_cfg_err');
+        let btns = ['plot_cfg_apply', 'plot_cfg_def', 'plot_cfg_file']
+                   .map(x => document.getElementById(x));
+        let label, cal, ovl;
+        try {
+            label = txt2label(document.getElementById('plot_cfg_label').value);
+            cal = txt2cal(document.getElementById('plot_cfg_cal').value);
+            ovl = txt2overlay(document.getElementById('plot_cfg_ovl').value);
+        } catch (err) {
+            err_elm.innerText = `${err.message || err}`;
+            return;
+        }
+        err_elm.innerText = '';
+        btns.forEach(b => b.disabled = true);
+        try {
+            await plot_apply_cfg(plot_cfg_idx, label, cal, ovl);
+            let vals = plot_cfg_diff();
+            if (!vals.length) {
+                err_elm.innerText = L('The config file already matches, nothing to save.');
+                return;
+            }
+            await save_cfg_file(vals);
+            overlay_dft = csa.cfg.plot.reg_overlay; // the file is the default now
+            plot_dft = csa.cfg.plot.plots.map(c => ({ label: c.label, cal: c.cal }));
+            await plot_cfg_save();
+            document.getElementById('plot_cfg_modal').classList.remove('is-active');
+            alert(L('Saved to %s, the previous version is kept as a .bak file.')
+                  .replace('%s', csa.arg.cfg));
+        } catch (err) {
+            err_elm.innerText = `${err.message || err}`;
+        } finally {
+            btns.forEach(b => b.disabled = false);
+            plot_cfg_hint(plot_cfg_idx);
+        }
     };
     // the overlay list is shared, so this restores every plot at once
     document.getElementById('plot_cfg_def').onclick = async () => {

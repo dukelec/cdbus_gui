@@ -61,6 +61,8 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Individual channels can be toggled on or off for clarity.
  - Multiple plots can be started or stopped simultaneously via the `dbg_raw_msk` register.
  - Supports formula-based waveforms (e.g., `u_cal` below). Click `Re-Calc` to refresh the plot after modifying or adding formulas.
+ - `Channels` opens a dialog to pick which registers the plot samples, the formulas derived from them, and the `reg_overlay` list shared by all plots. The dialog shows how many config register slots the current choice takes.
+ - The choice is kept in the browser, like the register button groups. `Load Default` puts every plot and the overlay list back to the config file. If the config file is edited so that a saved choice no longer fits, it is dropped on the next page load and the file wins.
 
 <img src="doc/p4.avif">  
 
@@ -112,7 +114,8 @@ GET    /api/dev/{dev}/log               log text        [?since=N&max=N]
 DELETE /api/dev/{dev}/log               drop buffered log
 POST   /api/dev/{dev}/plot/{idx}/en     body "1" or "0", start/stop waveform
 POST   /api/dev/{dev}/plot/{idx}/cfg    pick channels, body
-                                        {"label":["N","a","b"],"cal":{"e":"..."}}
+                                        {"label":["N","a","b"],"cal":{"e":"..."},
+                                         "overlay":[...], "save":false}
 GET    /api/dev/{dev}/plot/{idx}        waveform as csv
                                         [?tail=N | ?start=X&end=X]
                                         [&step=N&digits=N&series=a,b&fmt=json]
@@ -128,9 +131,15 @@ section of the config file holds: the first entry names the x axis, the rest
 are register names, which may index an array or a struct array member, e.g.
 `dbg_raw[0]`, and may name a `reg_overlay` entry. `cal` are the derived
 series, javascript expressions over
-`_d`, where `_d[0]` is x and `_d[1]` is the first channel. Send only `label`
-to keep the current formulas, `"cal": null` to drop them all. The reply is the
-new series list.
+`_d`, where `_d[0]` is x and `_d[1]` is the first channel. `overlay` is the
+`reg_overlay` list, shared by every plot of the device, entries are
+`[base, ofs, len, fmt, name]`. Send only `label` to keep the current formulas,
+`"cal": null` to drop them all, and leave a field out to leave it alone. The
+reply is the new series list.
+
+A change made through the API is not kept: a page reload goes back to what the
+user picked in the browser, or to the config file. Pass `"save": true` to make
+it stick, which is the same thing the dialog does.
 
 Two limits worth knowing. The config register holds a fixed number of slots,
 6 for a 24 byte `dbg_raw`, and one slot covers one contiguous address range,

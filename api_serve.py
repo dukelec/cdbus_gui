@@ -208,7 +208,7 @@ async def h_plot_cfg(request):
         raise web.HTTPBadRequest(text='err: body must be a json object: '
                                       '{"label": [...], "cal": {...}}\n')
     args = {'idx': m_int(request, 'idx')}
-    for k in ('label', 'cal'):  # only touch what the caller sent
+    for k in ('label', 'cal', 'overlay', 'save'):  # only touch what the caller sent
         if k in body:
             args[k] = body[k]
     return web.json_response(await call(request.match_info['dev'], 'plot_cfg', args, timeout=30))
@@ -275,6 +275,9 @@ CDBUS GUI external API. A page for the device must be opened in the browser.
   POST   /api/dev/{dev}/plot/{idx}/en     body "1" or "0", start/stop waveform
   POST   /api/dev/{dev}/plot/{idx}/cfg    pick channels, body
                                           {"label":["N","a","b"],"cal":{"e":"..."}}
+                                          "overlay" sets the shared reg_overlay
+                                          list, "save":true keeps the choice in
+                                          the browser across page reloads
   GET    /api/dev/{dev}/plot/{idx}        waveform as csv
                                           [?tail=N | ?start=X&end=X]
                                           [&step=N&digits=N&series=a,b&fmt=json]

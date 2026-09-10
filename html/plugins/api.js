@@ -200,7 +200,13 @@ async plot_cfg(a) {
     if (a.cal !== undefined && a.cal !== null &&
             (typeof a.cal != 'object' || Array.isArray(a.cal)))
         throw new Error('cal must be an object: {"name": "expression"}');
-    return await csa.plot.reconfig(idx, a.label, a.cal);
+    if (a.overlay !== undefined && a.overlay !== null && !Array.isArray(a.overlay))
+        throw new Error('overlay must be a list of [base, ofs, len, fmt, name]');
+    // overlay is shared by all plots of the device, not per plot
+    let ret = await csa.plot.reconfig(idx, a.label, a.cal, a.overlay);
+    if (a.save)  // keep it across page reloads, like the user's own choice
+        await csa.plot.save_cfg();
+    return ret;
 },
 
 async plot_clear(a) {

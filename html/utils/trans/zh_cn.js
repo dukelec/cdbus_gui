@@ -52,6 +52,14 @@ let trans_zh_cn = {
     'Depth': '深度',
     'Realtime': '实时',
     'Re-Calc': '更新计算',
+    'Channels': '通道',
+    'Formulas': '公式',
+    'Overlays': '叠加项',
+    'Apply': '应用',
+    'Slots': '条目',
+    'modified': '已修改',
+    'one per line, the first is the x axis': '每行一个，第一行是 X 轴',
+    'one per line, "name: expression"': '每行一个，格式 "名称: 表达式"',
     
     'Reboot': '重启',
     'Flash': '烧录',
@@ -103,7 +111,16 @@ let trans_zh_cn = {
     'label list is empty.': '曲线列表为空。',
     'data register not found: %s': '数据寄存器不存在：%s',
     'config register not found: %s': '配置寄存器不存在：%s',
-    'config register has too few slots: %s': '配置寄存器条目数量不足：%s'
+    'config register has too few slots: %s': '配置寄存器条目数量不足：%s',
+    'a formula line must be "name: expression": %s': '公式每行须为 "名称: 表达式"：%s',
+    'an overlay line must be "name: base, ofs, len, fmt": %s':
+        '叠加项每行须为 "名称: 基址, 偏移, 长度, 类型"：%s',
+    'shared by all plots, "name: base, ofs, len, fmt"':
+        '所有波形共用，格式 "名称: 基址, 偏移, 长度, 类型"',
+    'Restore the channels of all plots and the overlay list from the config file?':
+        '把所有波形的通道和叠加项恢复为配置文件中的默认值？',
+    'Saved plot channels no longer fit the config file, the default was restored.':
+        '保存的波形通道与配置文件不符，已恢复默认。'
 };
 
 export { trans_zh_cn };

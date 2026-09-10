@@ -199,6 +199,21 @@ async def h_plot_en(request):
     return as_text('ok')
 
 
+async def h_plot_cfg(request):
+    try:
+        body = json.loads(await request.text())
+    except Exception as err:
+        raise web.HTTPBadRequest(text=f'err: body is not json: {err}\n')
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text='err: body must be a json object: '
+                                      '{"label": [...], "cal": {...}}\n')
+    args = {'idx': m_int(request, 'idx')}
+    for k in ('label', 'cal'):  # only touch what the caller sent
+        if k in body:
+            args[k] = body[k]
+    return web.json_response(await call(request.match_info['dev'], 'plot_cfg', args, timeout=30))
+
+
 async def h_plot_get(request):
     series = request.query.get('series')
     args = {
@@ -258,6 +273,8 @@ CDBUS GUI external API. A page for the device must be opened in the browser.
   GET    /api/dev/{dev}/log               log text        [?since=N&max=N]
   DELETE /api/dev/{dev}/log               drop buffered log
   POST   /api/dev/{dev}/plot/{idx}/en     body "1" or "0", start/stop waveform
+  POST   /api/dev/{dev}/plot/{idx}/cfg    pick channels, body
+                                          {"label":["N","a","b"],"cal":{"e":"..."}}
   GET    /api/dev/{dev}/plot/{idx}        waveform as csv
                                           [?tail=N | ?start=X&end=X]
                                           [&step=N&digits=N&series=a,b&fmt=json]
@@ -286,6 +303,7 @@ async def start_api(addr, port):
         web.get('/api/dev/{dev}/log', h_log),
         web.delete('/api/dev/{dev}/log', h_log_clear),
         web.post('/api/dev/{dev}/plot/{idx}/en', h_plot_en),
+        web.post('/api/dev/{dev}/plot/{idx}/cfg', h_plot_cfg),
         web.get('/api/dev/{dev}/plot/{idx}', h_plot_get),
         web.delete('/api/dev/{dev}/plot/{idx}', h_plot_clear),
         web.post('/api/dev/{dev}/iap', h_iap_post),

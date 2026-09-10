@@ -18,6 +18,7 @@ import { CDWebSocket } from '../utils/cd_ws.js';
 import { csa } from '../common.js';
 import { fmt_size, read_reg_val, write_reg_val,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
+import { cfg_reg_slots } from './plot_reg_w.js';
 
 
 // ------------------------------------------------------------ reg helpers
@@ -93,10 +94,17 @@ async info() {
     if (csa.plot) {
         for (let i = 0; i < csa.plot.plots.length; i++) {
             let xs = csa.plot.dat[i][0];
+            let c = csa.cfg.plot.plots[i];
             plots.push({
                 idx: i,
                 en: document.getElementById(`plot${i}_en`).checked,
                 labels: csa.plot.plots[i].series.map(s => s.label),
+                label: c.label,     // channel list, what plot_cfg takes
+                cal: c.cal || null,
+                x_fmt: c.x_fmt,
+                cfg_reg: c.cfg_reg,
+                slots: cfg_reg_slots(c.cfg_reg),
+                slots_used: csa.plot.reg_val[i] ? csa.plot.reg_val[i].length : null,
                 len: xs.length,
                 x_min: xs.length ? xs[0] : null,
                 x_max: xs.length ? xs.at(-1) : null
@@ -106,6 +114,7 @@ async info() {
     return {
         tgt: csa.arg.tgt, name: csa.arg.name, cfg: csa.arg.cfg,
         info: document.getElementById('dev_info').innerText,
+        reg_overlay: (csa.cfg.plot && csa.cfg.plot.reg_overlay) || [],
         regs, plots
     };
 },
@@ -181,6 +190,17 @@ async plot_en(a) {
     if (await csa.plot.set_en(idx, !!a.en))
         throw new Error(`plot${idx}: set enable failed, check the page for details`);
     return 0;
+},
+
+// pick what the plot samples, without reloading the page
+async plot_cfg(a) {
+    let idx = chk_plot(a.idx);
+    if (a.label !== undefined && (!Array.isArray(a.label) || a.label.length < 2))
+        throw new Error('label must be a list of at least 2: [x_name, ch1, ...]');
+    if (a.cal !== undefined && a.cal !== null &&
+            (typeof a.cal != 'object' || Array.isArray(a.cal)))
+        throw new Error('cal must be an object: {"name": "expression"}');
+    return await csa.plot.reconfig(idx, a.label, a.cal);
 },
 
 async plot_clear(a) {

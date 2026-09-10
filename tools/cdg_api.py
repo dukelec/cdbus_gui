@@ -67,6 +67,16 @@ class CdgApi:
     def plot_en(self, idx, en=True):
         self._req('POST', f'/plot/{idx}/en', None, '1' if en else '0')
 
+    def plot_cfg(self, idx, label=None, cal=...):
+        """Pick what the plot samples: label is [x_name, ch1, ch2, ...],
+        cal is {name: js_expression}. Returns the new series labels."""
+        body = {}
+        if label is not None:
+            body['label'] = label
+        if cal is not ...:
+            body['cal'] = cal
+        return json.loads(self._req('POST', f'/plot/{idx}/cfg', None, json.dumps(body)))
+
     def plot_clear(self, idx):
         self._req('DELETE', f'/plot/{idx}')
 

@@ -50,9 +50,23 @@ function append_cal_val(idx, start) {
         return;
     let _d = csa.plot.dat[idx];
     for (let i = 0; i < fcals.length; i++) {
-        const cal_fn = fcals[i];
-        let val = cal_fn(_d);
-        csa.plot.dat[idx][start+i].push(isNaN(val) ? null : val);
+        if (!_d[start+i]) { // more formulas than series, should not happen
+            console.error(`Plot${idx}: no series for cal result ${start+i}`);
+            break;
+        }
+        let val;
+        try {
+            val = fcals[i](_d);
+        } catch (err) {
+            // e.g. the formula points at a series that no longer exists;
+            // drop the value, do not throw away the whole packet
+            if (!csa.plot.cal_error_reported[idx]) {
+                csa.plot.cal_error_reported[idx] = true;
+                console.error(`Plot${idx}: cal formula error, further errors are not repeated:`, err);
+            }
+            val = NaN;
+        }
+        _d[start+i].push(isNaN(val) ? null : val);
     }
 }
 
@@ -63,7 +77,11 @@ function init_cal_fn(idx) {
         let c_str = cals[c_name];
         if (!/\breturn\b/.test(c_str))
             c_str = `return ( ${c_str} )`;
-        csa.plot.cal_fn[idx].push(new Function('_d', `${c_str}`));
+        try {
+            csa.plot.cal_fn[idx].push(new Function('_d', `${c_str}`));
+        } catch (err) {
+            throw new Error(`cal "${c_name}": ${err.message || err}`);
+        }
     }
 }
 
@@ -357,6 +375,76 @@ async function plot_set_one_en(i, en) {
     return await plot_apply_en(i);
 }
 
+// Rebuild a plot from a new channel list without reloading the page: same
+// steps init_plot runs. Used by the api plugin, so a script can pick what it
+// wants to look at. Restores the old config if the new one does not fit.
+async function plot_reconfig(idx, label, cal) {
+    let cfg = csa.cfg.plot.plots[idx];
+    let bk = { label: cfg.label, cal: cfg.cal, p_label: csa.plot.label[idx],
+               fmt: csa.plot.fmt[idx], reg_val: csa.plot.reg_val[idx] };
+    let checkbox = document.getElementById(`plot${idx}_en`);
+    let was_en = checkbox.checked;
+
+    if (was_en) { // stop the device first, it still sends the old layout
+        checkbox.checked = false;
+        await plot_set_en();
+    }
+
+    if (label)
+        cfg.label = label;
+    if (cal !== undefined)
+        cfg.cal = cal;
+    csa.plot.label[idx] = [];
+    let err = plot_reg_w_init(idx);
+    let series = null;
+    if (!err) {
+        try {
+            series = plot_init_series(idx); // throws if a formula does not compile
+            // run each one once: catches a formula pointing at a series that
+            // the new channel list does not have
+            let names = Object.keys(cfg.cal || {});
+            csa.plot.cal_fn[idx].forEach((fn, i) => {
+                try {
+                    fn(csa.plot.dat[idx]);
+                } catch (e) {
+                    throw new Error(`cal "${names[i]}": ${e.message || e}`);
+                }
+            });
+        } catch (e) {
+            err = `${e.message || e}`;
+        }
+    }
+
+    if (err) { // put everything back, the page has to stay usable
+        cfg.label = bk.label;
+        cfg.cal = bk.cal;
+        csa.plot.label[idx] = bk.p_label;
+        csa.plot.fmt[idx] = bk.fmt;
+        csa.plot.reg_val[idx] = bk.reg_val;
+        plot_init_series(idx);
+        csa.plot.plots[idx].setData(csa.plot.dat[idx]);
+        if (was_en) {
+            checkbox.checked = true;
+            await plot_apply_en(idx);
+        }
+        throw new Error(err);
+    }
+
+    csa.plot.x_ofs[idx] = 0;
+    csa.plot.parse_error_reported[idx] = false;
+    csa.plot.cal_error_reported[idx] = false;
+    document.getElementById(`plot${idx}_parse_error`).style.display = 'none';
+    csa.plot.plots[idx].destroy();
+    csa.plot.plots[idx] = make_chart(idx, `Plot${idx}`, series);
+
+    if (was_en) {
+        checkbox.checked = true;
+        if (await plot_apply_en(idx))
+            throw new Error('new config written, but enabling the waveform failed');
+    }
+    return csa.plot.plots[idx].series.map(x => x.label);
+}
+
 function plot_clear_dat(i) {
     for (let s = 0; s < csa.plot.dat[i].length; s++)
         csa.plot.dat[i][s] = [];
@@ -382,8 +470,8 @@ function plot_init_series(idx) {
     if (cals) {
         series_num += Object.keys(cals).length;
         f_label = [...f_label, ...Object.keys(cals)];
-        init_cal_fn(idx);
     }
+    init_cal_fn(idx); // always, or removing every formula leaves stale ones
     
     csa.plot.dat[idx] = [];
     for (let s = 0; s < series_num; s++) {
@@ -486,6 +574,7 @@ async function init_plot() {
     csa.plot.label = [];
     csa.plot.reg_val = [];
     csa.plot.parse_error_reported = [];
+    csa.plot.cal_error_reported = [];
     csa.plot.parse_dat_len_bk = [];
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
@@ -499,9 +588,12 @@ async function init_plot() {
         csa.plot.label.push([]);
         csa.plot.reg_val.push(null);
         csa.plot.parse_error_reported.push(false);
+        csa.plot.cal_error_reported.push(false);
         csa.plot.parse_dat_len_bk.push([]);
         await plot_fft_init(i);
-        plot_reg_w_init(i);
+        let cfg_err = plot_reg_w_init(i);
+        if (cfg_err)
+            show_cfg_error(`Plot${i}: ` + cfg_err);
         
         let html = `
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
@@ -567,6 +659,7 @@ async function init_plot() {
     
     csa.plot.set_en = plot_set_one_en;
     csa.plot.clear = plot_clear_dat;
+    csa.plot.reconfig = plot_reconfig;
 
     csa.plot.dat_export = () => { return csa.plot.dat; };
     csa.plot.dat_import = (dat) => {

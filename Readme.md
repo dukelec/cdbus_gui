@@ -111,6 +111,8 @@ POST   /api/dev/{dev}/reg               write regs, body {"name": val, ...}
 GET    /api/dev/{dev}/log               log text        [?since=N&max=N]
 DELETE /api/dev/{dev}/log               drop buffered log
 POST   /api/dev/{dev}/plot/{idx}/en     body "1" or "0", start/stop waveform
+POST   /api/dev/{dev}/plot/{idx}/cfg    pick channels, body
+                                        {"label":["N","a","b"],"cal":{"e":"..."}}
 GET    /api/dev/{dev}/plot/{idx}        waveform as csv
                                         [?tail=N | ?start=X&end=X]
                                         [&step=N&digits=N&series=a,b&fmt=json]
@@ -118,6 +120,34 @@ DELETE /api/dev/{dev}/plot/{idx}        clear waveform buffer
 POST   /api/dev/{dev}/iap               body {"path":..,"action":..,"check":..}
 GET    /api/dev/{dev}/iap               iap progress
 DELETE /api/dev/{dev}/iap               stop a running iap
+```
+
+A script can also choose what a plot samples, without editing the config file
+or reloading the page. `label` is the channel list, the same thing the `plot`
+section of the config file holds: the first entry names the x axis, the rest
+are register names, which may index an array or a struct array member, e.g.
+`dbg_raw[0]`, and may name a `reg_overlay` entry. `cal` are the derived
+series, javascript expressions over
+`_d`, where `_d[0]` is x and `_d[1]` is the first channel. Send only `label`
+to keep the current formulas, `"cal": null` to drop them all. The reply is the
+new series list.
+
+Two limits worth knowing. The config register holds a fixed number of slots,
+6 for a 24 byte `dbg_raw`, and one slot covers one contiguous address range,
+so listing registers that sit next to each other costs fewer slots than
+scattered ones. And more channels means fewer samples per packet, so the
+effective sample rate drops. `GET .../info` reports `slots` and `slots_used`
+for each plot, along with the current `label`, `cal` and the `reg_overlay`
+list, which is what a script needs to decide.
+
+A rejected config changes nothing: the previous channels keep streaming. Note
+that `Re-Calc` re-reads the formulas from the config file on disk, so it
+discards formulas set through the API, and those file formulas may not line up
+with a channel list the API changed.
+
+```shell
+curl -X POST localhost:8911/api/dev/motor/plot/0/cfg \
+     -d '{"label":["N","tgt_pos","meas_pos"],"cal":{"err":"_d[1].at(-1)-_d[2].at(-1)"}}'
 ```
 
 Waveform data can be large, so narrow it down on the server side with `tail`

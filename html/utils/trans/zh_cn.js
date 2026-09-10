@@ -129,8 +129,6 @@ let trans_zh_cn = {
     'The config file already matches, nothing to save.': '配置文件已经一致，无需写入。',
     'Saved to %s, the previous version is kept as a .bak file.':
         '已写入 %s，原文件已备份为同名的 .bak 文件。',
-    'Restore the channels of all plots and the overlay list from the config file?':
-        '把所有波形的通道和叠加项恢复为配置文件中的默认值？',
     'Saved plot channels no longer fit the config file, the default was restored.':
         '保存的波形通道与配置文件不符，已恢复默认。'
 };

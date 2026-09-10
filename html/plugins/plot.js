@@ -605,7 +605,11 @@ async function plot_reconfig_all(skip=-1) {
         if (i == skip)
             continue;
         let c = csa.cfg.plot.plots[i];
-        await plot_reconfig(i, c.label, c.cal || null);
+        try {
+            await plot_reconfig(i, c.label, c.cal || null);
+        } catch (err) { // name the plot that does not fit the shared list
+            throw new Error(`Plot${i}: ${err.message || err}`);
+        }
     }
 }
 
@@ -613,6 +617,7 @@ async function plot_reconfig_all(skip=-1) {
 // it changes every plot is rebuilt, and put back if the new one does not fit.
 async function plot_apply_cfg(idx, label, cal, overlay) {
     let ovl_bk = csa.cfg.plot.reg_overlay;
+    let cfg_bk = { label: csa.cfg.plot.plots[idx].label, cal: csa.cfg.plot.plots[idx].cal };
     let ovl_changed = overlay !== undefined && overlay2txt(overlay) != overlay2txt(ovl_bk);
     try {
         if (ovl_changed)
@@ -622,10 +627,13 @@ async function plot_apply_cfg(idx, label, cal, overlay) {
             await plot_reconfig_all(idx);
         return ret;
     } catch (err) {
+        // plot_reconfig puts its own plot back, but this one may have gone
+        // through before a later plot refused the shared list
         if (ovl_changed) {
             csa.cfg.plot.reg_overlay = ovl_bk;
             try {
-                await plot_reconfig_all();
+                await plot_reconfig(idx, cfg_bk.label, cfg_bk.cal || null);
+                await plot_reconfig_all(idx);
             } catch (e) {
                 console.error('restore after a failed overlay change:', e);
             }
@@ -950,20 +958,25 @@ async function init_plot() {
             plot_cfg_hint(plot_cfg_idx);
         }
     };
-    // the overlay list is shared, so this restores every plot at once
+    // restores the three boxes of this dialog: the channels and formulas of
+    // this plot, and the overlay list, which is shared and so goes back for
+    // everyone. The other plots keep the channels they were given.
     document.getElementById('plot_cfg_def').onclick = async () => {
-        if (!confirm(L('Restore the channels of all plots and the overlay list from the config file?')))
-            return;
+        let idx = plot_cfg_idx;
+        let d = plot_dft[idx];
         let err_elm = document.getElementById('plot_cfg_err');
+        let btns = ['plot_cfg_apply', 'plot_cfg_def', 'plot_cfg_file']
+                   .map(x => document.getElementById(x));
         err_elm.innerText = '';
+        btns.forEach(b => b.disabled = true);
         try {
-            csa.cfg.plot.reg_overlay = overlay_dft;
-            for (let i = 0; i < csa.cfg.plot.plots.length; i++)
-                await plot_reconfig(i, plot_dft[i].label, plot_dft[i].cal || null);
+            await plot_apply_cfg(idx, d.label, d.cal || null, overlay_dft);
             await plot_cfg_save();
-            plot_cfg_open(plot_cfg_idx);
+            plot_cfg_open(idx); // show what is applied now, stay open
         } catch (err) {
             err_elm.innerText = `${err.message || err}`;
+        } finally {
+            btns.forEach(b => b.disabled = false);
         }
     };
     

@@ -128,8 +128,6 @@ let trans_zh_hk = {
     'The config file already matches, nothing to save.': '配置文件已經一致，無需寫入。',
     'Saved to %s, the previous version is kept as a .bak file.':
         '已寫入 %s，原檔案已備份為同名的 .bak 檔案。',
-    'Restore the channels of all plots and the overlay list from the config file?':
-        '把所有波形的通道和疊加項恢復為配置文件中的預設值？',
     'Saved plot channels no longer fit the config file, the default was restored.':
         '保存的波形通道與配置文件不符，已恢復預設。'
 };

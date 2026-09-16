@@ -53,6 +53,13 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Hover over a register to view its description, type, and default value.
  - Registers are grouped for atomic R/W; groups can be edited freely.
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
+ - The drop-down next to `Read All` / `Write All` picks the group set: `reg` for `reg_r` / `reg_w`, the default,
+   which lists every register, or the `xxx` of any other `xxx_r` / `xxx_w` pair in the config (e.g. `less`),
+   which only lists the registers its groups cover. The sets are offered in the order the config file has them. While `Button Edit` is on every register is listed,
+   so one can be added to a group. A set without any group is not offered; with only `reg` left the
+   drop-down is locked.
+ - The chosen set and the read period are remembered per device page (by its name);
+   the periodic read switch itself always starts off.
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
  - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
  - `Update Config File` writes the edited button groups back into the config file.
@@ -312,7 +319,7 @@ from the script.
 }
 ```
 
- - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way).
+ - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way, as does any other "xxx_r" / "xxx_w" pair, each one a set to pick on the device page).
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.

@@ -41,8 +41,8 @@ let trans_zh_hk = {
     'Read All': '讀取全部',
     'Write All': '寫入全部',
     
-    'Less': '簡潔模式',
     'Read per': '讀取頻率',
+    'No other register group set to choose': '沒有其他可選的寄存器分組',
     
     'Button Edit': '按鍵編輯',
     'Group': '合併組',

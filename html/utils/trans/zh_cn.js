@@ -42,8 +42,8 @@ let trans_zh_cn = {
     'Read All': '读取全部',
     'Write All': '写入全部',
     
-    'Less': '简洁模式',
     'Read per': '读取频率',
+    'No other register group set to choose': '没有其他可选的寄存器分组',
     
     'Button Edit': '按键编辑',
     'Group': '合并组',

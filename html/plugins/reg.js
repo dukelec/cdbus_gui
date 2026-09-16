@@ -79,7 +79,7 @@ function init_reg_list() {
         }
         
         let html = `
-            <div class="columns is-mobile is-gapless">
+            <div class="columns is-mobile is-gapless" id="reg_row.${reg[R_ID]}">
               <div class="column">
                 <div class="level is-mobile" style="margin: 5px 0;">
                   <span class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" data-tooltip="${reg[R_DESC]}">${reg[R_ID]}</span>
@@ -92,6 +92,7 @@ function init_reg_list() {
               <div class="column is-1 reg_btn_rw" id="reg_btn_r.${reg[R_ID]}">R</div>
               <div class="column is-1 reg_btn_rw" id="reg_btn_w.${reg[R_ID]}">W</div>
             </div>`;
+        csa.reg.elm[`reg_row.${reg[R_ID]}`] = null;
         csa.reg.elm[`reg_btn_r.${reg[R_ID]}`] = null;
         csa.reg.elm[`reg_btn_w.${reg[R_ID]}`] = null;
         list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', html);
@@ -109,6 +110,75 @@ function in_reg_rw(reg_rw, addr) { // test if in range
             return i;
     }
     return null;
+}
+
+// the group set shown: 'reg' for reg_r / reg_w, or the xxx of an xxx_r / xxx_w pair
+function cur_mode() {
+    return document.getElementById('reg_mode').value;
+}
+
+function in_button_edit() {
+    return document.getElementById('button_edit').style.background != '';
+}
+
+// every xxx_r / xxx_w set, in the order the config file first names it (the json5 parser, msgpack
+// and the js object all keep that order); reg is the default and always there, first when the file
+// has neither reg_r nor reg_w
+function mode_names() {
+    let names = [];
+    for (let key in csa.cfg.reg) {
+        let m = key.match(/^(\w+)_[rw]$/);
+        if (m && !names.includes(m[1]))
+            names.push(m[1]);
+    }
+    if (!names.includes('reg'))
+        names.unshift('reg');
+    return names;
+}
+
+// the groups of a set in effect: this browser's edited copy of each side, else the config file's
+// (a side edited back to what the file has is stored as null, so each side falls back on its own)
+async function mode_groups(mode) {
+    let r = await csa.db.get('tmp', `${csa.arg.name}/reg.${mode}_r`);
+    let w = await csa.db.get('tmp', `${csa.arg.name}/reg.${mode}_w`);
+    return [r ?? csa.cfg.reg[`${mode}_r`], w ?? csa.cfg.reg[`${mode}_w`]];
+}
+
+// offer reg plus every set that has at least one group, keeping the page's choice when it is
+// still there; with only reg left there is nothing to choose, so the select is locked
+async function update_mode_select() {
+    let sel = document.getElementById('reg_mode');
+    let names = [];
+    for (let m of mode_names()) {
+        let [r, w] = await mode_groups(m);
+        if (m == 'reg' || (r && r.length) || (w && w.length))
+            names.push(m);
+    }
+    sel.innerHTML = names.map(m => `<option value="${m}">${m}</option>`).join('');
+    sel.value = names.includes(csa.reg.mode) ? csa.reg.mode : 'reg';
+    sel.disabled = names.length < 2;
+    sel.title = names.length < 2 ? L('No other register group set to choose') : '';
+}
+
+// a set other than reg only shows the regs a read or a write group covers, but all of them while
+// the groups are being edited, or there would be no way to add one; the shown rows are then split
+// over the two columns again the way init_reg_list() does it
+function layout_reg_rows() {
+    let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
+    let all = cur_mode() == 'reg' || in_button_edit();
+    let rows = csa.cfg.reg.list.map(reg => ({
+        elm: csa.reg.elm[`reg_row.${reg[R_ID]}`],
+        show: all || in_reg_rw(csa.reg.reg_r, reg[R_ADDR]) != null || in_reg_rw(csa.reg.reg_w, reg[R_ADDR]) != null,
+        lines: reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1
+    }));
+    let max_line = rows.reduce((n, r) => n + (r.show ? r.lines : 0), 0);
+    let cur_line = 0;
+    for (let r of rows) {
+        r.elm.style.display = r.show ? '' : 'none';
+        list[cur_line <= max_line/2 ? 0 : 1].appendChild(r.elm);
+        if (r.show)
+            cur_line += r.lines;
+    }
 }
 
 function update_reg_rw_btn(rw='r') {
@@ -291,6 +361,7 @@ async function button_edit() {
     if (document.getElementById('button_edit').style.background == '') {
         document.getElementById('button_edit').style.background = 'yellow';
         document.getElementById('button_subs').style.display = 'inline';
+        layout_reg_rows();
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
@@ -310,15 +381,18 @@ async function button_edit() {
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
         // save to idb, only what differs from the config file
-        let less = document.getElementById('less_reg').checked;
-        await save_reg_db(less ? 'less_r' : 'reg_r', reg_rw2reg_cfg(csa.reg.reg_r));
-        await save_reg_db(less ? 'less_w' : 'reg_w', reg_rw2reg_cfg(csa.reg.reg_w));
-        console.log(less ? 'new less_r values:' : 'new reg_r values:');
+        let mode = cur_mode();
+        await save_reg_db(`${mode}_r`, reg_rw2reg_cfg(csa.reg.reg_r));
+        await save_reg_db(`${mode}_w`, reg_rw2reg_cfg(csa.reg.reg_w));
+        console.log(`new ${mode}_r values:`);
         console.log(JSON.stringify(csa.reg.reg_r));
         console.log(JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
-        console.log(less ? 'new less_w values:' : 'new reg_w values:');
+        console.log(`new ${mode}_w values:`);
         console.log(JSON.stringify(csa.reg.reg_w));
         console.log(JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
+        // the edit may have emptied a set, or Load Default refilled one
+        await update_mode_select();
+        await init_reg_rw();
     }
 }
 
@@ -432,13 +506,13 @@ function button_none() {
 }
 
 async function button_def() {
-    let less = document.getElementById('less_reg').checked;
-    csa.reg.reg_r = reg_cfg2reg_rw(less ? csa.cfg.reg.less_r : csa.cfg.reg.reg_r);
-    csa.reg.reg_w = reg_cfg2reg_rw(less ? csa.cfg.reg.less_w : csa.cfg.reg.reg_w);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.reg_r`, null);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.reg_w`, null);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.less_r`, null);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.less_w`, null);
+    let mode = cur_mode();
+    csa.reg.reg_r = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_r`]);
+    csa.reg.reg_w = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_w`]);
+    for (let m of mode_names()) {
+        await csa.db.set('tmp', `${csa.arg.name}/reg.${m}_r`, null);
+        await csa.db.set('tmp', `${csa.arg.name}/reg.${m}_w`, null);
+    }
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     // re-install onclick callback:
@@ -448,25 +522,29 @@ async function button_def() {
 }
 
 async function save_reg_db(name, val) {
-    let same = JSON.stringify(val) == JSON.stringify(csa.cfg.reg[name]);
+    let same = JSON.stringify(val) == JSON.stringify(csa.cfg.reg[name] || []);
     await csa.db.set('tmp', `${csa.arg.name}/reg.${name}`, same ? null : val);
 }
 
 // push the edited button groups back into the json5 config file, so they
 // become the default for every browser instead of only this one
 async function reg_save_file() {
-    let less = document.getElementById('less_reg').checked;
+    let mode = cur_mode();
     let cur = {};
-    cur[less ? 'less_r' : 'reg_r'] = reg_rw2reg_cfg(csa.reg.reg_r);
-    cur[less ? 'less_w' : 'reg_w'] = reg_rw2reg_cfg(csa.reg.reg_w);
-    for (let n of less ? ['reg_r', 'reg_w'] : ['less_r', 'less_w']) {
-        let v = await csa.db.get('tmp', `${csa.arg.name}/reg.${n}`);
-        if (v)
-            cur[n] = v;
+    cur[`${mode}_r`] = reg_rw2reg_cfg(csa.reg.reg_r);
+    cur[`${mode}_w`] = reg_rw2reg_cfg(csa.reg.reg_w);
+    for (let m of mode_names()) {   // and whatever was edited in the other sets
+        if (m == mode)
+            continue;
+        for (let n of [`${m}_r`, `${m}_w`]) {
+            let v = await csa.db.get('tmp', `${csa.arg.name}/reg.${n}`);
+            if (v)
+                cur[n] = v;
+        }
     }
     let vals = [];
     for (let n in cur) {
-        if (JSON.stringify(cur[n]) != JSON.stringify(csa.cfg.reg[n]))
+        if (JSON.stringify(cur[n]) != JSON.stringify(csa.cfg.reg[n] || []))
             vals.push({ path: ['reg', n], val: cur[n] });
     }
     if (!vals.length) {
@@ -491,26 +569,13 @@ async function reg_save_file() {
 }
 
 async function init_reg_rw() {
-    let less = document.getElementById('less_reg').checked;
-    let reg_r = await csa.db.get('tmp', `${csa.arg.name}/reg.reg_r`);
-    let reg_w = await csa.db.get('tmp', `${csa.arg.name}/reg.reg_w`);
-    let less_r = await csa.db.get('tmp', `${csa.arg.name}/reg.less_r`);
-    let less_w = await csa.db.get('tmp', `${csa.arg.name}/reg.less_w`);
-    if (!less && reg_r && reg_w) {
-        console.log('init reg from db reg_r/w');
-        csa.reg.reg_r = reg_cfg2reg_rw(reg_r);
-        csa.reg.reg_w = reg_cfg2reg_rw(reg_w);
-    } else if (less && less_r && less_w) {
-        console.log('init reg from db less_r/w');
-        csa.reg.reg_r = reg_cfg2reg_rw(less_r);
-        csa.reg.reg_w = reg_cfg2reg_rw(less_w);
-    } else {
-        console.log(less ? 'init reg from cfg.less_r/w' : 'init reg from cfg.reg_r/w');
-        csa.reg.reg_r = reg_cfg2reg_rw(less ? csa.cfg.reg.less_r : csa.cfg.reg.reg_r);
-        csa.reg.reg_w = reg_cfg2reg_rw(less ? csa.cfg.reg.less_w : csa.cfg.reg.reg_w);
-    }
+    let [reg_r, reg_w] = await mode_groups(cur_mode());
+    console.log(`init reg ${cur_mode()} groups:`, reg_r, reg_w);
+    csa.reg.reg_r = reg_cfg2reg_rw(reg_r);
+    csa.reg.reg_w = reg_cfg2reg_rw(reg_w);
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
+    layout_reg_rows();
 }
 
 
@@ -553,7 +618,7 @@ async function init_reg() {
                 <button class="button is-small" id="dev_read_all">${L('Read All')}</button>
                 <button class="button is-small" id="dev_write_all">${L('Write All')}</button>
                 |
-                <label class="checkbox"><input type="checkbox" id="less_reg"> <span>${L('Less')}</span></label>
+                <span class="select is-small"><select id="reg_mode"></select></span>
                 <label class="checkbox"><input type="checkbox" id="keep_read"> <span>${L('Read per')}</span></label>
                 <input type="text" size="5" placeholder="200" id="read_period" value="200"> ms
                 |
@@ -582,6 +647,12 @@ async function init_reg() {
     
     check_reg_list();
     init_reg_list();
+    // the group set (reg by default) and the read period are remembered per device page,
+    // the read switch itself always starts off
+    csa.reg.mode = await csa.db.get('tmp', `${csa.arg.name}/reg.mode`) || 'reg';
+    document.getElementById('read_period').value =
+            await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`) || '200';
+    await update_mode_select();
     await init_reg_rw();
     
     document.getElementById(`button_edit`).onclick = () => { button_edit(); button_none(); };
@@ -591,7 +662,17 @@ async function init_reg() {
     document.getElementById(`enable_off`).onclick = () => { set_enable(false); button_none(); };
     document.getElementById(`button_all`).onclick = button_all;
     document.getElementById(`button_def`).onclick = () => { button_none(); button_def(); };
-    document.getElementById(`less_reg`).onchange = init_reg_rw;
+    document.getElementById('reg_mode').onchange = async () => {
+        csa.reg.mode = cur_mode();
+        await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, csa.reg.mode);
+        await init_reg_rw();
+    };
+    document.getElementById('read_period').oninput = async () => {
+        let val = document.getElementById('read_period').value.trim();
+        if (Number(val) > 0) {  // keep the last good one, an empty box would read with no delay
+            await csa.db.set('tmp', `${csa.arg.name}/reg.read_period`, val);
+        }
+    };
     document.getElementById(`save_reg_file`).onclick = reg_save_file;
     
     document.getElementById('dev_read_all').onclick = async function() {

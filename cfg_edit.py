@@ -13,6 +13,7 @@
 # are lost, which is why only the spans the user actually changed are sent.
 
 import os
+import re
 import json
 import json5
 import shutil
@@ -176,7 +177,8 @@ def _j(v):
 
 def _style(path):
     last = path[-1]
-    if last in ('reg_r', 'reg_w', 'less_r', 'less_w'):
+    # the register group sets: reg_r / reg_w and any other xxx_r / xxx_w the page offers
+    if len(path) == 2 and path[0] == 'reg' and isinstance(last, str) and re.fullmatch(r'\w+_[rw]', last):
         return 'compact'
     if last == 'label':
         return 'inline'

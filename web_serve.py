@@ -125,19 +125,25 @@ async def http_file_server(path, request):
 
 
 async def ws_handler(ws, path):
+    logger.info(f'ws: connect, path: {path}')
+    if path in ws_ns.connections:
+        logger.warning(f'ws: only allow one connection for: {path}')
+        await ws.close(WS_CLOSE_DUPLICATE, 'duplicate connection')
+        return
+    ws_ns.connections[path] = ws
     try:
-        logger.info(f'ws: connect, path: {path}')
-        if path in ws_ns.connections:
-            logger.warning(f'ws: only allow one connection for: {path}')
-            await ws.close(WS_CLOSE_DUPLICATE, 'duplicate connection')
-            return
-        ws_ns.connections[path] = ws
         while True:
             msg_ = await ws.recv()
             msg = umsgpack.unpackb(msg_)
             if msg['dst'][0] != 'server':
                 logger.warning('ws: addr error')
                 return
+            # a page may address a service this run does not have, the external api for one
+            # when it is disabled: drop the message, killing the connection over it would
+            # take the whole page down with it
+            if msg['dst'][1] not in ws_ns.sockets:
+                logger.warning(f'ws: drop msg for unknown port: {msg["dst"][1]}')
+                continue
             sock = ws_ns.sockets[msg['dst'][1]]
             sock.recv_q.put_nowait((msg['dat'], msg['src']))
     
@@ -146,8 +152,10 @@ async def ws_handler(ws, path):
     #except:
     #    pass
     
-    del ws_ns.connections[path]
-    logger.info(f'ws: disconnect, path: {path}')
+    finally:
+        # always give the path up again, or the next page for it is refused as a duplicate
+        del ws_ns.connections[path]
+        logger.info(f'ws: disconnect, path: {path}')
 
 
 async def start_web(addr='localhost', port=8910):                                                     

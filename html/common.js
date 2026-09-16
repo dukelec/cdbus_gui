@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.1';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.2';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -29,18 +29,22 @@ let csa = {
 };
 
 
+// ask the backend for a port number, or drop all of them for 'clr_all'. Every caller hands
+// the port straight to a CDWebSocket, so a missing reply cannot be papered over with a null
+// port: say what happened and stop here rather than run on with a socket nothing can reach.
 async function alloc_port(port=null) {
     csa.cmd_sock.flush();
-    if (port == 'clr_all') {
-        await csa.cmd_sock.sendto({'action': 'clr_all'}, ['server', 'port']);
-        let ret = await csa.cmd_sock.recvfrom(1000);
-        console.log(`clr_all ports ret: ${ret[0]}`);
-    } else {
-        await csa.cmd_sock.sendto({'action': 'get_port', 'port': port}, ['server', 'port']);
-        let ret = await csa.cmd_sock.recvfrom(1000);
-        //console.log(`alloc port: ${ret[0]}`);
-        return ret[0];
+    let req = port == 'clr_all' ? {'action': 'clr_all'} : {'action': 'get_port', 'port': port};
+    await csa.cmd_sock.sendto(req, ['server', 'port']);
+    let ret = await csa.cmd_sock.recvfrom(1000);
+    if (!ret) {
+        show_banner('ws_banner', `<b>${L('No reply from backend, please check the backend log and reload the page.')}</b>`);
+        throw new Error(`alloc_port(${port}): no reply from backend`);
     }
+    if (port == 'clr_all')
+        console.log(`clr_all ports ret: ${ret[0]}`);
+    else
+        return ret[0];
 }
 
 // write a few values back into the device's json5 config file, in place:

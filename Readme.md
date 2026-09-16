@@ -14,6 +14,14 @@ Python version >= 3.8
 #### Usage:
 Run `main.py`, then open the following URL in your web browser: http://localhost:8910
 
+Every page carries a top bar with the tool version and a language picker (Auto follows the browser,
+otherwise English / Simplified Chinese / Traditional Chinese, the choice is remembered per browser).
+Hovering the version shows the full asset version, the same `v3.0-<hash of all own front end files>`
+that `main.py` prints at startup and that every own css / js url is tagged with, so an updated front
+end always reaches the browser: the hash changes, the urls change, and the cached files are bypassed.
+Bump `VERSION` in `html/common.js` for a release; the hash part follows the files on its own, and it
+is rechecked per request, so an edit under `html/` takes effect on the next reload without a restart.
+
 The underlying protocol for serial port is CDBUS, which uses the following frame format:  
 `src, dst, len, [payload], crc_l, crc_h`
 

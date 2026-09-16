@@ -6,6 +6,10 @@
  */
 
 let trans_zh_hk = {
+    // nav
+    'Language': '語言',
+    'Auto': '自動',
+    
     // index
     'Index': '首頁',
     'Serial': '串口',
@@ -31,6 +35,7 @@ let trans_zh_hk = {
     'Open Window': '打開頁面',
     
     // ctrl
+    'Device': '設備',
     'Regs': '寄存器',
     'Read Info': '讀設備信息',
     'Read All': '讀取全部',

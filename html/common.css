@@ -47,3 +47,8 @@
     background-size: 14px 14px;
     cursor: se-resize;
 }
+
+/* the nav bar already separates the content from the top of the window */
+body > section.section {
+    padding-top: 1.5rem;
+}

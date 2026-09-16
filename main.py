@@ -24,7 +24,7 @@ import asyncio, aiohttp
 import websockets
 from time import sleep
 from cd_ws import CDWebSocket, CDWebSocketNS
-from web_serve import ws_ns, start_web
+from web_serve import ws_ns, start_web, get_asset_ver
 import cd_watch
 import cfg_edit
 
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         api_init(csa, port=api_port, allow_iap=api_iap)
     
     #csa['async_loop'].create_task(open_brower())
-    logger.info(f'Please open url: http://localhost:{http_port}')
+    logger.info(f'Please open url: http://localhost:{http_port} , web {get_asset_ver()}')
     csa['async_loop'].run_forever()
     sys.exit(cd_watch.exit_code)
 

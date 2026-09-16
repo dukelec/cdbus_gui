@@ -4,10 +4,10 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
-import { dat2str } from '../utils/helper.js';
-import { CDWebSocket } from '../utils/cd_ws.js';
-import { csa, alloc_port } from '../common.js';
+import { L } from '../utils/lang.js?v=__V__'
+import { dat2str } from '../utils/helper.js?v=__V__';
+import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
+import { csa, alloc_port } from '../common.js?v=__V__';
 import { Terminal } from '../libs/xterm-5.6.0-beta.129.js';
 import { WebglAddon } from '../libs/xterm-addon-webgl-0.19.0-beta.129.js';
 import { FitAddon } from '../libs/xterm-addon-fit-0.11.0-beta.129.js';

@@ -7,6 +7,10 @@
 
 // cat zh_hk.js | cconv -f UTF8 -t UTF8-CN
 let trans_zh_cn = {
+    // nav
+    'Language': '语言',
+    'Auto': '自动',
+    
     // index
     'Index': '首页',
     'Serial': '串口',
@@ -32,6 +36,7 @@ let trans_zh_cn = {
     'Open Window': '打开页面',
     
     // ctrl
+    'Device': '设备',
     'Regs': '寄存器',
     'Read Info': '读设备信息',
     'Read All': '读取全部',

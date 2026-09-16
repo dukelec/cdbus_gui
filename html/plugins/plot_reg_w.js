@@ -4,10 +4,10 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
-import { csa } from '../common.js';
-import { fmt_size, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { val2hex } from '../utils/helper.js';
+import { L } from '../utils/lang.js?v=__V__'
+import { csa } from '../common.js?v=__V__';
+import { fmt_size, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
+import { val2hex } from '../utils/helper.js?v=__V__';
 
 
 async function plot_reg_w(idx) {

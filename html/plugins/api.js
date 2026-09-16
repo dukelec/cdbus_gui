@@ -13,12 +13,12 @@
  * Commands are serialized: one finishes before the next starts.
  */
 
-import { timestamp } from '../utils/helper.js';
-import { CDWebSocket } from '../utils/cd_ws.js';
-import { csa } from '../common.js';
+import { timestamp } from '../utils/helper.js?v=__V__';
+import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
+import { csa } from '../common.js?v=__V__';
 import { fmt_size, read_reg_val, write_reg_val,
-         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
-import { cfg_reg_slots } from './plot_reg_w.js';
+         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
+import { cfg_reg_slots } from './plot_reg_w.js?v=__V__';
 
 
 // ------------------------------------------------------------ reg helpers

@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { csa } from '../common.js';
+import { csa } from '../common.js?v=__V__';
 import * as FFTModule from '../libs/kissfft.131.2.0.js';
 
 let overlay = {

@@ -4,17 +4,17 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
+import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_float,
-         read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js';
-import { CDWebSocket } from '../utils/cd_ws.js';
-import { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error } from '../common.js';
-import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js';
-import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js';
-import { plot_reg_w_init, plot_reg_w, cfg_reg_slots } from './plot_reg_w.js';
-import { reg_idx_by_name } from './reg.js';
+         read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js?v=__V__';
+import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
+import { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error } from '../common.js?v=__V__';
+import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js?v=__V__';
+import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js?v=__V__';
+import { plot_reg_w_init, plot_reg_w, cfg_reg_slots } from './plot_reg_w.js?v=__V__';
+import { reg_idx_by_name } from './reg.js?v=__V__';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
-         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
+         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 
 let color_dft = [ "black", "red", "green", "blue", "cyan", "magenta", "gold",
                   "purple", "brown", "teal", "lime", "hotpink", "tan",

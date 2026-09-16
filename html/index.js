@@ -4,13 +4,13 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
+import { L } from './utils/lang.js?v=__V__'
 import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from './utils/helper.js';
-import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
-import { Idb } from './utils/idb.js';
-import { csa, alloc_port, show_banner, ws_closed, init_sys } from './common.js';
-import { init_dbg } from './plugins/dbg.js';
+         read_file, download, readable_size, blob2dat } from './utils/helper.js?v=__V__';
+import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js?v=__V__';
+import { Idb } from './utils/idb.js?v=__V__';
+import { csa, init_nav, alloc_port, show_banner, ws_closed, init_sys } from './common.js?v=__V__';
+import { init_dbg } from './plugins/dbg.js?v=__V__';
 
 
 csa.ws_ns = new CDWebSocketNS('/');
@@ -256,15 +256,7 @@ document.getElementById('btn_dev_close').onclick = async function() {
 window.addEventListener('load', async function() {
     console.log("load app");
     
-    // apply translation
-    for (let tag of ['button', 'span', 'option', 'td']) {
-        let elems = document.getElementsByTagName(tag);
-        for (let e of elems) {
-            e.innerHTML = eval("`" + e.innerHTML + "`");
-            if (e.title)
-                e.title = eval("`" + e.title + "`");
-        }
-    }
+    init_nav();     // translate the page and draw the top bar
     
     csa.db = await new Idb();
     init_ws();

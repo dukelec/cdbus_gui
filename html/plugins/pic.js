@@ -4,13 +4,13 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
+import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
-//import { konva_zoom, konva_responsive } from '../utils/konva_helper.js';
-import { CDWebSocket, CDWebSocketNS } from '../utils/cd_ws.js';
-import { Idb } from '../utils/idb.js';
-import { csa, alloc_port } from '../common.js';
+         read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
+//import { konva_zoom, konva_responsive } from '../utils/konva_helper.js?v=__V__';
+import { CDWebSocket, CDWebSocketNS } from '../utils/cd_ws.js?v=__V__';
+import { Idb } from '../utils/idb.js?v=__V__';
+import { csa, alloc_port } from '../common.js?v=__V__';
 
 
 async function pic_service() {

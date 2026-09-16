@@ -4,19 +4,19 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
+import { L } from './utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from './utils/helper.js';
-import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js';
-import { Idb } from './utils/idb.js';
-import { csa, alloc_port, show_banner, ws_closed, init_sys } from './common.js';
-import { init_reg } from './plugins/reg.js';
-import { init_plot } from './plugins/plot.js';
-import { init_dbg } from './plugins/dbg.js';
-import { init_pic } from './plugins/pic.js';
-import { init_iap } from './plugins/iap.js';
-import { init_export } from './plugins/export.js';
-import { init_api } from './plugins/api.js';
+         read_file, download, readable_size, blob2dat } from './utils/helper.js?v=__V__';
+import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js?v=__V__';
+import { Idb } from './utils/idb.js?v=__V__';
+import { csa, init_nav, alloc_port, show_banner, ws_closed, init_sys } from './common.js?v=__V__';
+import { init_reg } from './plugins/reg.js?v=__V__';
+import { init_plot } from './plugins/plot.js?v=__V__';
+import { init_dbg } from './plugins/dbg.js?v=__V__';
+import { init_pic } from './plugins/pic.js?v=__V__';
+import { init_iap } from './plugins/iap.js?v=__V__';
+import { init_export } from './plugins/export.js?v=__V__';
+import { init_api } from './plugins/api.js?v=__V__';
 
 
 function init_ws() {
@@ -115,15 +115,7 @@ document.getElementById('dev_read_info').onclick = async function() {
 window.addEventListener('load', async function() {
     console.log("load ctrl");
     
-    // apply translation
-    for (let tag of ['button', 'span', 'option', 'td']) {
-        let elems = document.getElementsByTagName(tag);
-        for (let e of elems) {
-            e.innerHTML = eval("`" + e.innerHTML + "`");
-            if (e.title)
-                e.title = eval("`" + e.title + "`");
-        }
-    }
+    init_nav();     // translate the page and draw the top bar
     
     let url_arg = new URLSearchParams(location.search);
 

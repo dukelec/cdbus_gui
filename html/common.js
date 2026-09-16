@@ -4,11 +4,17 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from './utils/lang.js'
-import { escape_html } from './utils/helper.js';
-import { CDWebSocket } from './utils/cd_ws.js';
+import { L, LANGS, lang_pref, set_lang } from './utils/lang.js?v=__V__'
+import { escape_html } from './utils/helper.js?v=__V__';
+import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
+
+const VERSION = 'v3.0';     // shown in the nav bar, web_serve.py reads it from here
+// replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
+// string the ?v= of every own css / js / module url carries, so a changed front end
+// means changed urls and the browser is bound to fetch the new files
+const ASSET_VER = '__V__';
 
 let csa = {
     arg: {},            // url args
@@ -51,6 +57,44 @@ async function save_cfg_file(vals) {
     if (ret[0] != 'successed')
         throw new Error(`${ret[0]}`);
     return vals.length;
+}
+
+// evaluate the ${L('...')} placeholders written in the static html
+function apply_trans() {
+    for (let tag of ['button', 'span', 'option', 'td']) {
+        let elems = document.getElementsByTagName(tag);
+        for (let e of elems) {
+            e.innerHTML = eval("`" + e.innerHTML + "`");
+            if (e.title)
+                e.title = eval("`" + e.title + "`");
+        }
+    }
+}
+
+// translate the page, then fill the <div id="nav"> of the page with the top bar:
+// app name, version and the language picker
+function init_nav() {
+    apply_trans();
+    let nav = document.getElementById('nav');
+    if (!nav)
+        return;
+    let ver = ASSET_VER.startsWith(`${VERSION}-`) ? ASSET_VER : VERSION;  // full one only when served
+    nav.innerHTML = `
+      <nav class="navbar is-light" role="navigation">
+        <div class="navbar-brand">
+          <a class="navbar-item has-text-weight-bold" href="./">CDBUS GUI
+            <span class="has-text-grey has-text-weight-normal is-size-7 ml-2" title="${ver}">${VERSION}</span></a>
+        </div>
+        <div class="navbar-menu is-active">
+          <div class="navbar-end">
+            <div class="navbar-item" title="${L('Language')}"><span class="select is-small"><select id="lang_sel">
+              ${LANGS.map(([v, t]) => `<option value="${v}" ${v == lang_pref() ? 'selected' : ''}>${v ? t : L('Auto')}</option>`).join('')}
+            </select></span></div>
+          </div>
+        </div>
+      </nav>`;
+    // L() is fixed when the modules load, so just remember the choice and reload the page
+    document.getElementById('lang_sel').onchange = e => { set_lang(e.target.value); location.reload(); };
 }
 
 // show a sticky notification at the top of the page, same id replaces the previous one
@@ -124,4 +168,5 @@ async function init_sys() {
     })();
 }
 
-export { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };
+export { csa, VERSION, init_nav,
+         alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };

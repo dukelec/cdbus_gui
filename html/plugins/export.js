@@ -4,12 +4,12 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
+import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
-         read_file, download, readable_size, blob2dat } from '../utils/helper.js';
-import { csa, alloc_port } from '../common.js';
+         read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
+import { csa, alloc_port } from '../common.js?v=__V__';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
-         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js';
+         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 
 let html = `
     <div class="container">

@@ -4,10 +4,10 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js'
+import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat, hex2float, parse_bigint,
-         read_file, download, readable_size, readable_float, blob2dat } from '../utils/helper.js';
-import { csa } from '../common.js';
+         read_file, download, readable_size, readable_float, blob2dat } from '../utils/helper.js?v=__V__';
+import { csa } from '../common.js?v=__V__';
 
 const R_ADDR = 0; const R_LEN = 1; const R_FMT = 2;
 const R_SHOW = 3; const R_ID = 4; const R_DESC = 5;

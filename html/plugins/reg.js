@@ -9,6 +9,7 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
+         reg_range_err, reg_range_tip,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 import { csa, alloc_port, save_cfg_file, show_cfg_error } from '../common.js?v=__V__';
 
@@ -29,6 +30,12 @@ function check_reg_list() {
     }
     if (bad.length)
         show_cfg_error(L('Register list is out of order, addresses must ascend without overlap: %s').replace('%s', bad.join(', ')));
+
+    for (let reg of list) {
+        let err = reg_range_err(reg);
+        if (err)
+            show_cfg_error(`${reg[R_ID]}: ${err}`);
+    }
 }
 
 function init_reg_list() {
@@ -54,7 +61,7 @@ function init_reg_list() {
             count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
             for (let n = 0; n < count; n++) {
                 html_input += `
-                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}.${n}">
+                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}" id="reg_dft.${reg[R_ID]}.${n}">
                       <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
                     </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
                 `;
@@ -63,7 +70,7 @@ function init_reg_list() {
             }
         } else {
             html_input = `
-                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}" id="reg_dft.${reg[R_ID]}">
+                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}" id="reg_dft.${reg[R_ID]}">
                   <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
                 </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
             `;

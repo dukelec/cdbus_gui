@@ -208,6 +208,17 @@ from the script.
  - Uses JSON5 format, supporting hexadecimal values and comments.
  - The "fmt" string with "[]" is an array, which displays all data in one text box.
  - "{}" denotes struct arrays; each array element has its own text box containing multiple members of the struct.
+ - A register entry may carry an optional last member, the range of what may be written to it:
+   `[[min, max, step], ...]`, or just `[min, max, step]` when there is only one range.
+   **Both ends are included**, `step` may be left out, and `null` as an end means it is not limited.
+   Several ranges are alternatives: the value is good when it fits any one of them, and `step` counts
+   from the min of the range it fits. A write is refused, and the input boxes of the whole group turn
+   red, as soon as one value is outside; the ranges also show up in the tooltip of the input box.
+   The step is only enforced where it is exact, that is when min, step and the value are all integers;
+   on a float it is only a hint of the granularity. The ranges apply to every value of the register, so
+   a "[]" or "{}" register shares one set of them, and they are skipped for text ("[c]" shown as a
+   string) and for registers shown as raw bytes ("show": 2). A bound beyond 2^53 has to be written as
+   a string, e.g. `[["0", "18446744073709551615"]]`, as a json number cannot hold it exactly.
 
 **E.g.** `cdstep-v6.json`
 ```json5
@@ -223,7 +234,9 @@ from the script.
             [ 0x0005, 1, "B", 0, "do_reboot", "1: reboot to bl, 2: reboot to app" ],
             [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
 
-            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
+            // the last member is optional: [[min, max, step], ...], or [min, max, step] for a single
+            // range; both ends included, step optional, null for an end that is not limited
+            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254", [0, 254] ],
             [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
             [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
             // ...

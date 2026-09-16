@@ -170,8 +170,9 @@ async reg_write(a) {
     for (let e of entries)
         csa.reg.elm[e.key].value = a.vals[e.name];
     for (let i of idxs) {
-        if (await write_reg_val(i))
-            throw new Error(`write reg group ${i} failed (addr 0x${csa.reg.reg_w[i][0].toString(16)})`);
+        if (await write_reg_val(i, false))      // no modal, the reason goes back to the caller
+            throw new Error(`write reg group ${i} failed (addr 0x${csa.reg.reg_w[i][0].toString(16)})` +
+                            (csa.reg.last_err ? `: ${csa.reg.last_err}` : ''));
     }
     return names.length;
 },

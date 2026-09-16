@@ -116,6 +116,13 @@ let trans_zh_hk = {
     'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的數據無法解析，已忽略。後續同類錯誤不會重複提示。',
     
     'Config file error, related functions may not work:': '配置文件有誤，相關功能可能無法使用：',
+    'range must be [min, max, step] or [[min, max, step], ...]: %s':
+        '範圍須寫成 [最小值, 最大值, 步長] 或 [[最小值, 最大值, 步長], ...]：%s',
+    'range bounds must be numbers: %s': '範圍的端點必須是數字：%s',
+    'range min must not be above max: %s': '範圍的最小值不能大於最大值：%s',
+    'range step must be above 0: %s': '範圍的步長必須大於 0：%s',
+    '%s: "%s" is not a number': '%s："%s" 不是數字',
+    '%s: %s is outside %s': '%s：%s 超出允許範圍 %s',
     'Register list is empty.': '寄存器列表為空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表順序有誤，地址必須遞增且不重疊：%s',
     'Plot list is empty.': '波形列表為空。',

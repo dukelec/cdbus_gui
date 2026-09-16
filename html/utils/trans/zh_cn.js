@@ -117,6 +117,13 @@ let trans_zh_cn = {
     'Invalid incoming data was ignored. Further errors will not be shown repeatedly.': '收到的数据无法解析，已忽略。后续同类错误不会重复提示。',
     
     'Config file error, related functions may not work:': '配置文件有误，相关功能可能无法使用：',
+    'range must be [min, max, step] or [[min, max, step], ...]: %s':
+        '范围须写成 [最小值, 最大值, 步长] 或 [[最小值, 最大值, 步长], ...]：%s',
+    'range bounds must be numbers: %s': '范围的端点必须是数字：%s',
+    'range min must not be above max: %s': '范围的最小值不能大于最大值：%s',
+    'range step must be above 0: %s': '范围的步长必须大于 0：%s',
+    '%s: "%s" is not a number': '%s："%s" 不是数字',
+    '%s: %s is outside %s': '%s：%s 超出允许范围 %s',
     'Register list is empty.': '寄存器列表为空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表顺序有误，地址必须递增且不重叠：%s',
     'Plot list is empty.': '波形列表为空。',

@@ -10,7 +10,125 @@ import { escape_html, date2num, val2hex, dat2str, str2dat, dat2hex, hex2dat, hex
 import { csa } from '../common.js?v=__V__';
 
 const R_ADDR = 0; const R_LEN = 1; const R_FMT = 2;
-const R_SHOW = 3; const R_ID = 4; const R_DESC = 5;
+const R_SHOW = 3; const R_ID = 4; const R_DESC = 5; const R_RANGE = 6;
+
+// R_RANGE is the optional last member of a reg entry, it limits what may be written:
+//   [[min, max, step], ...]  several ranges, the value is good when it fits any one of them
+//   [min, max, step]         shorthand when there is only one range
+// Both ends are included, step is optional, and null as an end means that end is not limited.
+// The step is only enforced where it is exact, that is when min, step and the value are all
+// integers; on a float it is just a hint of the granularity. It applies to every value of the
+// register, so a struct or an array register shares one set of ranges.
+
+// a bound may be a number, or a string for a value a json number cannot hold exactly
+function to_num(v) {
+    if (v === null || v === undefined || v === '')
+        return null;
+    if (typeof v == 'number')
+        return isNaN(v) ? null : v;
+    let str = String(v).trim();
+    let neg = str.startsWith('-');       // Number() takes '0x..' but not '-0x..'
+    let n = Number(neg ? str.slice(1) : str);
+    return (str == '' || isNaN(n)) ? null : (neg ? -n : n);
+}
+
+// the ranges of a reg entry as [[min, max, step], ...], or null when it has none
+function reg_ranges(reg) {
+    let r = reg[R_RANGE];
+    if (!Array.isArray(r) || !r.length)
+        return null;
+    let list = Array.isArray(r[0]) ? r : [r];   // accept the single range shorthand
+    let ret = [];
+    for (let one of list) {
+        if (!Array.isArray(one) || one.length < 2)
+            return null;                        // reg_range_err() reports it, ignore it here
+        ret.push([to_num(one[0]), to_num(one[1]), to_num(one[2])]);
+    }
+    return ret;
+}
+
+// complain about a malformed range definition, so a typo does not just drop the limit
+function reg_range_err(reg) {
+    let r = reg[R_RANGE];
+    if (r === undefined || r === null)
+        return null;
+    let bad = L('range must be [min, max, step] or [[min, max, step], ...]: %s');
+    if (!Array.isArray(r) || !r.length)
+        return bad.replace('%s', JSON.stringify(r));
+    for (let one of (Array.isArray(r[0]) ? r : [r])) {
+        if (!Array.isArray(one) || one.length < 2 || one.length > 3)
+            return bad.replace('%s', JSON.stringify(one));
+        let min = to_num(one[0]), max = to_num(one[1]);
+        if ((one[0] != null && min == null) || (one[1] != null && max == null))
+            return L('range bounds must be numbers: %s').replace('%s', JSON.stringify(one));
+        if (min != null && max != null && min > max)
+            return L('range min must not be above max: %s').replace('%s', JSON.stringify(one));
+        if (one.length == 3 && one[2] != null) {
+            let step = to_num(one[2]);
+            if (step == null || step <= 0)
+                return L('range step must be above 0: %s').replace('%s', JSON.stringify(one));
+        }
+    }
+    return null;
+}
+
+// the ranges as text for the tooltip, e.g. "0~254" or "9600, 115200~921600/100"
+function reg_range_str(reg) {
+    let ranges = reg_ranges(reg);
+    if (!ranges)
+        return '';
+    return ranges.map(([min, max, step]) => {
+        let s;
+        if (min != null && max != null)
+            s = min == max ? `${min}` : `${min}~${max}`;
+        else if (min != null)
+            s = `>=${min}`;
+        else if (max != null)
+            s = `<=${max}`;
+        else
+            s = '*';
+        return step ? `${s}/${step}` : s;
+    }).join(', ');
+}
+
+// the range as a tooltip line, empty when the reg has none
+function reg_range_tip(reg) {
+    let str = reg_range_str(reg);
+    return str ? `\nRange: ${str}` : '';
+}
+
+// check what the user typed against the ranges, returns the reason it is bad, or null
+function reg_range_check(reg, str) {
+    let ranges = reg_ranges(reg);
+    if (!ranges)
+        return null;
+    if (reg[R_SHOW] == 2)                                   // raw bytes, nothing to compare
+        return null;
+    if (reg[R_SHOW] == 0 && reg[R_FMT].includes('c'))       // a string, not numbers
+        return null;
+    for (let tok of str.trim().split(/\s+/)) {
+        if (tok == '')
+            continue;
+        let val = to_num(tok);
+        if (val == null)
+            return L('%s: "%s" is not a number').replace('%s', reg[R_ID]).replace('%s', tok);
+        let fit = false;
+        for (let [min, max, step] of ranges) {
+            if ((min != null && val < min) || (max != null && val > max))
+                continue;
+            let base = min == null ? 0 : min;
+            if (step && Number.isInteger(step) && Number.isInteger(base) &&
+                    Number.isInteger(val) && (val - base) % step != 0)
+                continue;
+            fit = true;
+            break;
+        }
+        if (!fit)
+            return L('%s: %s is outside %s').replace('%s', reg[R_ID])
+                    .replace('%s', tok).replace('%s', reg_range_str(reg));
+    }
+    return null;
+}
 
 function fmt_size(fmt) {
     let f = fmt.replace(/\W/g, ''); // remove non-word chars
@@ -199,7 +317,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                     let [str, ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                     if (read_dft) {
                         let elem = csa.reg.elm[`reg_dft.${r[R_ID]}.${n}`];
-                        elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
+                        elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                     } else {
                         let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
                         if (!in_editing(elem))
@@ -221,7 +339,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                 }
                 
                 if (read_dft) {
-                    csa.reg.elm[`reg_dft.${r[R_ID]}`].setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}`);
+                    csa.reg.elm[`reg_dft.${r[R_ID]}`].setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                 } else {
                     let elem = csa.reg.elm[`reg.${r[R_ID]}`];
                     if (!in_editing(elem))
@@ -232,7 +350,7 @@ async function read_reg_val(r_idx, read_dft=false) {
                 let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
                 if (read_dft) {
                     let elem = csa.reg.elm[`reg_dft.${r[R_ID]}`];
-                    elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}`);
+                    elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                 } else {
                     let elem = csa.reg.elm[`reg.${r[R_ID]}`];
                     if (!in_editing(elem))
@@ -330,11 +448,60 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
     }
 }
 
-async function write_reg_val(w_idx) {
+// the regs a read / write group covers, in list order
+function group_regs(addr, len) {
+    let ret = [];
+    let found_start = false;
+    for (let r of csa.cfg.reg.list) {
+        if (!found_start) {
+            if (addr != r[R_ADDR])
+                continue;
+            found_start = true;
+        }
+        if (r[R_ADDR] - addr >= len)
+            break;
+        ret.push(r);
+    }
+    return ret;
+}
+
+// every value of a write group against the ranges of its regs
+function check_group_range(addr, len) {
+    for (let r of group_regs(addr, len)) {
+        let count = r[R_FMT][0] == '{' ? Math.trunc(r[R_LEN] / fmt_size(r[R_FMT])) : 0;
+        if (count) {
+            for (let n = 0; n < count; n++) {
+                let err = reg_range_check(r, csa.reg.elm[`reg.${r[R_ID]}.${n}`].value);
+                if (err)
+                    return err;
+            }
+        } else {
+            let err = reg_range_check(r, csa.reg.elm[`reg.${r[R_ID]}`].value);
+            if (err)
+                return err;
+        }
+    }
+    return null;
+}
+
+async function write_reg_val(w_idx, alert_err=true) {
     set_input_bg('w', w_idx, '#D6EAF8');
     let has_empty = false;
+    csa.reg.last_err = null;
     let addr = csa.reg.reg_w[w_idx][0];
     let len = csa.reg.reg_w[w_idx][1];
+    
+    // refuse a value the config does not allow before the read-before-write round trip:
+    // no point going out to the bus just to reject it here afterwards
+    let bad_range = check_group_range(addr, len);
+    if (bad_range) {
+        console.log('write reg: out of range:', bad_range);
+        csa.reg.last_err = bad_range;
+        set_input_bg('w', w_idx, '#F5B7B180');
+        if (alert_err)
+            alert(bad_range);
+        return -1;
+    }
     
     if (!csa.reg.reg_rbw[w_idx]) { // read-before-write
         let dat = new Uint8Array([0x00, 0, 0, len]);
@@ -468,5 +635,6 @@ function set_input_bg(rw='r', idx, bg) {
 
 export {
     fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
-    R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC
+    reg_range_err, reg_range_tip,
+    R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC, R_RANGE
 };

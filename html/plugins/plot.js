@@ -338,18 +338,23 @@ async function plot_set_en() {
         console.log('plot_set_en ret', ret);
         if (ret && (ret[0].dat[0] & 0xf) == 0) {
             console.log('plot_set_en ok');
-            break;
+            for (let n = 0; n < csa.cfg.plot.plots.length; n++)
+                csa.plot.en_state[n] = !!(msk & (1 << n));
+            return 0;
         } else {
             console.warn(`plot_set_en err retry${i}`);
         }
     }
+    return -1;
 }
 
 
 // apply the current checkbox state of plot `i` to the device
 async function plot_apply_en(i) {
     let checkbox = document.getElementById(`plot${i}_en`);
+    let label = checkbox.closest('label');
     checkbox.disabled = true;
+    label.style.background = '';
     try {
         if (checkbox.checked) {
             let ret = await plot_reg_w(i);
@@ -358,7 +363,15 @@ async function plot_apply_en(i) {
                 return -1;
             }
         }
-        await plot_set_en();
+        if (await plot_set_en()) {
+            // every retry of the mask write failed: put the switch back to the state the device
+            // last acknowledged, so clicking it again simply retries, e.g. switching a plot off
+            // while its data floods the bus
+            checkbox.checked = csa.plot.en_state[i];
+            label.style.background = '#F5B7B180';
+            console.warn(`Plot${i}: enable mask write failed, switch restored to ${checkbox.checked}`);
+            return -1;
+        }
         return 0;
     } catch (err) {
         checkbox.checked = false;
@@ -994,6 +1007,7 @@ async function init_plot() {
     csa.plot.plot_less_len = [];
     csa.plot.plot_less_en = [];
     csa.plot.plot_fft_en = [];
+    csa.plot.en_state = [];
     csa.plot.plot_fft = [];
     csa.plot.x_ofs = [];
     csa.plot.fmt = [];
@@ -1008,6 +1022,7 @@ async function init_plot() {
         csa.plot.plot_less_len.push(less_len);
         csa.plot.plot_less_en.push(true);
         csa.plot.plot_fft_en.push(false);
+        csa.plot.en_state.push(false);   // what the device last acknowledged for the enable mask
         csa.plot.plot_fft.push({});
         csa.plot.x_ofs.push(0);
         csa.plot.fmt.push('');

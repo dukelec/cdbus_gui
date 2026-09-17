@@ -52,3 +52,90 @@
 body > section.section {
     padding-top: 1.5rem;
 }
+
+/* the sticky strip under the nav bar that any plugin can put widgets into; it is not
+   rendered at all while every slot is empty, so a page that pins nothing looks unchanged */
+#topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
+    background: #fafafae6;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid #dbdbdb;
+}
+#topbar_body {
+    flex: 1;
+    min-width: 0;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+#topbar.is-folded #topbar_body {
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;     /* clipped, out of the tab order, but still measurable */
+}
+#topbar_body, .topbar_slot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.2rem 1.2rem;
+}
+#topbar_fold {
+    flex: 0 0 auto;
+    width: 14px;
+    padding-top: 2px;
+    line-height: 1;
+    color: #7a7a7a;
+    cursor: pointer;
+    user-select: none;
+}
+#topbar_fold::before { content: '\25be'; }
+#topbar.is-folded #topbar_fold::before { content: '\25b8'; }
+
+/* register rows, shared by the list and by the mirrors in the top bar */
+.reg_row_name .level { margin: 5px 0; }
+.reg_row_name .level-right { margin: 0 8px 0 4px; font-family: monospace; }
+.reg_row_val { margin: 5px 0; flex: 0 0 200px; }
+
+.columns.is-gapless > .is-1.reg_btn_pin {
+    width: 24px;
+    margin: 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+/* the four states are left to plain class selectors and settled by their order here: the rule
+   above is specific enough to override any of them */
+.reg_btn_pin {
+    color: #7a7a7a;
+    opacity: 0.15;      /* a hint, not noise; hover brings it out, and a touch screen has none */
+    cursor: pointer;
+}
+.reg_row:hover .reg_btn_pin { opacity: 0.5; }
+.reg_btn_pin:hover { opacity: 1; }
+.reg_btn_pin.is-pinned { opacity: 1; color: #3273dc; }
+
+/* one run of registers that sit next to each other in the list, drawn as a single column so a
+   read / write group reads the same up here as it does in the list below. The rows of a run give
+   up their own flex layout and share the grid's columns: the run comes out as wide as its longest
+   name, and the R / W buttons still line up into one bar however long the other names are. */
+.reg_pin_cluster {
+    flex: 0 0 auto;
+    max-width: 100%;
+    display: grid;
+    /* --pin_name is measured over the whole bar, so every run comes out the same width */
+    grid-template-columns: var(--pin_name, max-content) 11rem max-content max-content max-content;
+}
+#topbar .reg_row { display: contents; }
+#topbar .reg_row_name { white-space: nowrap; }
+#topbar .reg_row_name .level-right { margin-left: 1rem; }
+/* the box has to leave room for the H / B suffix next to it, or that wraps and the row
+   grows to two lines */
+#topbar .reg_row_val input { width: 9rem; }
+#topbar .reg_btn_pin { opacity: 1; color: #3273dc; }
+#topbar .reg_btn_pin svg { transform: rotate(180deg); }

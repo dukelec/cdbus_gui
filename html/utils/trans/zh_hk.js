@@ -7,6 +7,9 @@
 
 let trans_zh_hk = {
     // nav
+    'Fold': '摺疊',
+    'Keep in the top bar': '固定到頂欄',
+    'Take out of the top bar': '從頂欄移除',
     'Language': '語言',
     'Auto': '自動',
     
@@ -123,6 +126,7 @@ let trans_zh_hk = {
     'range step must be above 0: %s': '範圍的步長必須大於 0：%s',
     '%s: "%s" is not a number': '%s："%s" 不是數字',
     '%s: %s is outside %s': '%s：%s 超出允許範圍 %s',
+    'reg.pin must be a list of register names.': 'reg.pin 必須是暫存器名稱的列表。',
     'Register list is empty.': '寄存器列表為空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表順序有誤，地址必須遞增且不重疊：%s',
     'Plot list is empty.': '波形列表為空。',

@@ -9,9 +9,10 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
 import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
-         reg_range_err, reg_range_tip,
+         reg_range_err, reg_range_tip, reg_watch, reg_unwatch, reg_notify, reg_set_str,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
-import { csa, alloc_port, save_cfg_file, show_cfg_error } from '../common.js?v=__V__';
+import { csa, alloc_port, save_cfg_file, show_cfg_error,
+         topbar_slot, topbar_update } from '../common.js?v=__V__';
 
 
 // the whole page assumes the reg list is sorted by address and has no overlap
@@ -38,6 +39,65 @@ function check_reg_list() {
     }
 }
 
+const PIN_SVG = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" ` +
+                `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
+                `<path d="M3.5 2.5h9"/><path d="M8 13.5V5.5"/><path d="M5 8.5l3-3 3 3"/></svg>`;
+
+// the value boxes one register has: a single one, or one per element of a {..} array
+function reg_val_sfx(reg) {
+    if (reg[R_FMT][0] != '{')
+        return [reg[R_ID]];
+    let count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
+    return Array.from({length: count}, (_, n) => `${reg[R_ID]}.${n}`);
+}
+
+// every element id one row owns, with `p` in front of each of them
+function reg_row_keys(reg, p='') {
+    let keys = [`${p}reg_row.${reg[R_ID]}`, `${p}reg_btn_r.${reg[R_ID]}`,
+                `${p}reg_btn_w.${reg[R_ID]}`, `${p}reg_btn_pin.${reg[R_ID]}`];
+    for (let sfx of reg_val_sfx(reg))
+        keys.push(`${p}reg_dft.${sfx}`, `${p}reg.${sfx}`);
+    return keys;
+}
+
+// one row of the register list. `p` prefixes every element id, so the same row can be built a
+// second time as a mirror in the top bar; a mirror uses the browser's own title tooltips, the
+// bar scrolls its contents and would clip the css ones.
+function reg_row_html(reg, p='') {
+    let dft_tip = `Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}`;
+    let dft_attr = p ? `title="${escape_html(dft_tip)}"` :
+                       `class="has-tooltip-arrow has-tooltip-left" data-tooltip="${escape_html(dft_tip)}"`;
+    let desc = escape_html(reg[R_DESC] || '');
+    let name_attr = p ? `class="level-left" title="${desc}"` :
+                        `class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" ` +
+                        `data-tooltip="${desc}"`;
+    let show = reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B');
+    let sfx_list = reg_val_sfx(reg);
+    
+    let br = sfx_list.length > 1 ? ' <br>' : '';
+    let html_input = sfx_list.map(sfx => `
+                <span ${dft_attr} id="${p}reg_dft.${sfx}">
+                  <input type="text" style="font-family: monospace;" id="${p}reg.${sfx}">
+                </span> ${show}${br}`).join('');
+    
+    return `
+        <div class="columns is-mobile is-gapless reg_row" id="${p}reg_row.${reg[R_ID]}">
+          <div class="column reg_row_name">
+            <div class="level is-mobile">
+              <span ${name_attr}>${reg[R_ID]}</span>
+              <span class="level-right">0x${val2hex(reg[R_ADDR])}</span>
+            </div>
+          </div>
+          <div class="column reg_row_val">
+            ${html_input}
+          </div>
+          <div class="column is-1 reg_btn_rw" id="${p}reg_btn_r.${reg[R_ID]}">R</div>
+          <div class="column is-1 reg_btn_rw" id="${p}reg_btn_w.${reg[R_ID]}">W</div>
+          <div class="column is-1 reg_btn_pin" id="${p}reg_btn_pin.${reg[R_ID]}"
+               title="${p ? L('Take out of the top bar') : L('Keep in the top bar')}">${PIN_SVG}</div>
+        </div>`;
+}
+
 function init_reg_list() {
     let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
     list[0].innerHTML = list[1].innerHTML = '';
@@ -54,53 +114,23 @@ function init_reg_list() {
     let cur_line = 0;
     for (let i = 0; i < csa.cfg.reg.list.length; i++) {
         let reg = csa.cfg.reg.list[i];
-        let count = 1;
-        let html_input = '';
-        
-        if (reg[R_FMT][0] == '{') {
-            count = Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT]));
-            for (let n = 0; n < count; n++) {
-                html_input += `
-                    <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}" id="reg_dft.${reg[R_ID]}.${n}">
-                      <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}.${n}">
-                    </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')} <br>
-                `;
-                csa.reg.elm[`reg_dft.${reg[R_ID]}.${n}`] = null;
-                csa.reg.elm[`reg.${reg[R_ID]}.${n}`] = null;
-            }
-        } else {
-            html_input = `
-                <span class="has-tooltip-arrow has-tooltip-left" data-tooltip="Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}" id="reg_dft.${reg[R_ID]}">
-                  <input type="text" style="font-family: monospace;" id="reg.${reg[R_ID]}">
-                </span> ${reg[R_SHOW] == 0 ? '' : (reg[R_SHOW] == 1 ? 'H' : 'B')}
-            `;
-            csa.reg.elm[`reg_dft.${reg[R_ID]}`] = null;
-            csa.reg.elm[`reg.${reg[R_ID]}`] = null;
-        }
-        
-        let html = `
-            <div class="columns is-mobile is-gapless" id="reg_row.${reg[R_ID]}">
-              <div class="column">
-                <div class="level is-mobile" style="margin: 5px 0;">
-                  <span class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" data-tooltip="${reg[R_DESC]}">${reg[R_ID]}</span>
-                  <span class="level-right" style="margin: 0 8px 0 4px; font-family: monospace;">0x${val2hex(reg[R_ADDR])}</span>
-                </div>
-              </div>
-              <div class="column is-mobile" style="margin: 5px 0; flex: 0 0 200px;">
-                ${html_input}
-              </div>
-              <div class="column is-1 reg_btn_rw" id="reg_btn_r.${reg[R_ID]}">R</div>
-              <div class="column is-1 reg_btn_rw" id="reg_btn_w.${reg[R_ID]}">W</div>
-            </div>`;
-        csa.reg.elm[`reg_row.${reg[R_ID]}`] = null;
-        csa.reg.elm[`reg_btn_r.${reg[R_ID]}`] = null;
-        csa.reg.elm[`reg_btn_w.${reg[R_ID]}`] = null;
-        list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', html);
+        let count = reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1;
+        for (let key of reg_row_keys(reg))
+            csa.reg.elm[key] = null;
+        list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', reg_row_html(reg));
         cur_line += count;
     }
     
     for (let e in csa.reg.elm)
         csa.reg.elm[e] = document.getElementById(e);
+    
+    // a value typed into the list has to reach the mirrors of that value as well
+    for (let reg of csa.cfg.reg.list) {
+        for (let sfx of reg_val_sfx(reg)) {
+            let elem = csa.reg.elm[`reg.${sfx}`];
+            elem.oninput = () => reg_notify(elem);
+        }
+    }
 }
 
 
@@ -236,39 +266,39 @@ function update_reg_rw_btn(rw='r') {
                 btn.onclick = async () => { await read_reg_val(rw_idx); };
             }
 
-            let disconn_pre = true;
-            let disconn_next = true;
-            if (reg_pre && reg_pre[R_ADDR] + reg_pre[R_LEN] == reg[R_ADDR])
-                disconn_pre = false;
-            if (reg_next && reg[R_ADDR] + reg[R_LEN] == reg_next[R_ADDR])
-                disconn_next = false;
-            
-            if (rw_idx == rw_idx_pre && rw_idx != rw_idx_next) {
-                btn.style['margin-top'] = '0';
-                btn.style['border-width'] = '0 0.1px 0.1px 0.1px';
-                if (!disconn_pre)
-                    btn.style['border-radius'] = '0 0 6px 6px';
-            
-            } else if (rw_idx == rw_idx_pre && rw_idx == rw_idx_next) {
-                btn.style['margin-top'] = '0';
-                btn.style['margin-bottom'] = '0';
-                btn.style['border-width'] = '0 0.1px 0 0.1px';
-                
-                if (!disconn_pre && !disconn_next)
-                    btn.style['border-radius'] = '0 0 0 0';
-                else if (disconn_pre && !disconn_next)
-                    btn.style['border-radius'] = '6px 6px 0 0';
-                else if (!disconn_pre && disconn_next)
-                    btn.style['border-radius'] = '0 0 6px 6px';
-                
-            } else if (rw_idx != rw_idx_pre && rw_idx == rw_idx_next) {
-                btn.style['margin-bottom'] = '0';
-                btn.style['border-width'] = '0.1px 0.1px 0 0.1px';
-                if (!disconn_next)
-                    btn.style['border-radius'] = '6px 6px 0 0';
-            }
+            // the list shows every register there is, so an edge is either the end of the
+            // group or a join to the row next to it, never open
+            set_rw_btn_style(btn, rw_idx == rw_idx_pre ? 'join' : 'end',
+                                  rw_idx == rw_idx_next ? 'join' : 'end',
+                             reg_pre, reg, reg_next);
         }
     }
+}
+
+// How one R / W button is drawn between the registers above and below it in the list. Each of
+// its two edges is one of:
+//   'end'   the group ends here, so that side of the button is closed off
+//   'join'  the same group carries on into the row right next to it, and the two become one bar
+//   'open'  the same group carries on, but into a register this list is not showing. The side
+//           is drawn exactly as a join would draw it, only nothing is glued to it: a register
+//           on its own in the top bar then looks the way it does down in the register list,
+//           open above and below, instead of reading as a group of its own.
+// `reg_pre` / `reg_next` are the neighbours in the register list, whatever is on screen: an
+// address gap to one of them keeps that corner rounded, which is what shows the gap as a notch.
+function set_rw_btn_style(btn, edge_pre, edge_next, reg_pre, reg, reg_next) {
+    let disconn_pre = !(reg_pre && reg_pre[R_ADDR] + reg_pre[R_LEN] == reg[R_ADDR]);
+    let disconn_next = !(reg_next && reg[R_ADDR] + reg[R_LEN] == reg_next[R_ADDR]);
+    let round_pre = edge_pre == 'end' || disconn_pre;
+    let round_next = edge_next == 'end' || disconn_next;
+    
+    if (edge_pre == 'join')
+        btn.style['margin-top'] = '0';
+    if (edge_next == 'join')
+        btn.style['margin-bottom'] = '0';
+    btn.style['border-width'] = `${edge_pre == 'end' ? '0.1px' : '0'} 0.1px ` +
+                                `${edge_next == 'end' ? '0.1px' : '0'} 0.1px`;
+    btn.style['border-radius'] = round_pre ? (round_next ? '6px' : '6px 6px 0 0')
+                                           : (round_next ? '0 0 6px 6px' : '0');
 }
 
 function cal_reg_rw(rw='r') {
@@ -362,6 +392,7 @@ async function button_edit() {
         document.getElementById('button_edit').style.background = 'yellow';
         document.getElementById('button_subs').style.display = 'inline';
         layout_reg_rows();
+        build_pin_bar();
         
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {
             let reg = csa.cfg.reg.list[i];
@@ -568,6 +599,150 @@ async function reg_save_file() {
     }
 }
 
+// ---- the top bar ----------------------------------------------------------------------
+
+// the pinned registers in address order, split into runs of registers that sit next to each
+// other in the list: a run is drawn as one column, so a group reads up in the bar exactly as
+// it does in the list below. Two pinned registers with an unpinned one between them start
+// separate runs, or the bar would draw a group with one of its members silently missing.
+function pin_runs() {
+    let runs = [];
+    for (let i = 0; i < csa.cfg.reg.list.length; i++) {
+        if (!csa.reg.pin.ids.includes(csa.cfg.reg.list[i][R_ID]))
+            continue;
+        let last = runs[runs.length - 1];
+        if (last && last[last.length - 1] == i - 1)
+            last.push(i);
+        else
+            runs.push([i]);
+    }
+    return runs;
+}
+
+// tie one mirror row to the row of the same register in the list: the list keeps the only
+// copy of every value, the mirror only shows it and hands typing straight back
+function bind_pin_row(idx, in_run_pre, in_run_next) {
+    let reg = csa.cfg.reg.list[idx];
+    let id = reg[R_ID];
+    let pin = csa.reg.pin.elm;
+    // a run is a stretch of the list, so a neighbour it shows is the list neighbour itself
+    let reg_pre = idx > 0 ? csa.cfg.reg.list[idx-1] : null;
+    let reg_next = idx < csa.cfg.reg.list.length - 1 ? csa.cfg.reg.list[idx+1] : null;
+    
+    for (let sfx of reg_val_sfx(reg)) {
+        let src = csa.reg.elm[`reg.${sfx}`];
+        let dst = pin[`pin_reg.${sfx}`];
+        reg_watch(src, 'reg_pin', (e) => {
+            dst.value = e.value;
+            dst.style.background = e.style.background;
+        }, dst);
+        dst.oninput = () => { src.value = dst.value; reg_notify(src, 'reg_pin'); };
+        dst.onkeydown = (evt) => src.onkeydown?.(evt);   // enter writes, as it does in the list
+        
+        let src_dft = csa.reg.elm[`reg_dft.${sfx}`];
+        let dst_dft = pin[`pin_reg_dft.${sfx}`];
+        reg_watch(src_dft, 'reg_pin', (e) => { dst_dft.title = e.getAttribute('data-tooltip') || ''; });
+    }
+    
+    // the buttons do whatever the list row's buttons do at that moment, group and all, so
+    // there is never a second idea of what R or W means for this register
+    for (let rw of ['r', 'w']) {
+        let btn = pin[`pin_reg_btn_${rw}.${id}`];
+        let src_btn = csa.reg.elm[`reg_btn_${rw}.${id}`];
+        btn.onclick = () => src_btn.onclick?.();
+        
+        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
+        let rw_idx = reg_rw ? in_reg_rw(reg_rw, reg[R_ADDR]) : null;
+        if (rw_idx == null)     // not in a group of the set in use, same dead button as below
+            continue;
+        btn.style['background'] = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
+        // same edges as the list row has, except that an edge whose register the bar is not
+        // showing is left open instead of glued to it
+        let same = (r) => r != null && in_reg_rw(reg_rw, r[R_ADDR]) === rw_idx;
+        set_rw_btn_style(btn,
+                !same(reg_pre) ? 'end' : (in_run_pre ? 'join' : 'open'),
+                !same(reg_next) ? 'end' : (in_run_next ? 'join' : 'open'),
+                reg_pre, reg, reg_next);
+    }
+    
+    pin[`pin_reg_btn_pin.${id}`].onclick = () => toggle_pin(id);
+}
+
+function build_pin_bar() {
+    if (!csa.reg.pin.slot)
+        return;
+    reg_unwatch('reg_pin');
+    csa.reg.pin.slot.innerHTML = '';
+    csa.reg.pin.elm = {};
+    // while the groups are being edited the R / W buttons mean something else entirely
+    let runs = in_button_edit() ? [] : pin_runs();
+    
+    for (let run of runs) {
+        let div = document.createElement('div');
+        div.className = 'reg_pin_cluster';
+        for (let i of run)
+            div.insertAdjacentHTML('beforeend', reg_row_html(csa.cfg.reg.list[i], 'pin_'));
+        csa.reg.pin.slot.appendChild(div);
+        for (let i of run) {
+            for (let key of reg_row_keys(csa.cfg.reg.list[i], 'pin_'))
+                csa.reg.pin.elm[key] = document.getElementById(key);
+        }
+    }
+    for (let run of runs) {
+        for (let n = 0; n < run.length; n++)
+            bind_pin_row(run[n], n > 0, n < run.length - 1);
+    }
+    fit_pin_names();
+    topbar_update();
+}
+
+// Each run is a grid of its own, so left alone each is only as wide as its own longest name and
+// the runs do not line up once the bar wraps onto a second line. Measuring the widest name of
+// the whole bar and handing it to every run makes them all the same width, and equally wide
+// items in a wrapping row line up column for column by themselves.
+function fit_pin_names() {
+    let slot = csa.reg.pin.slot;
+    slot.style.removeProperty('--pin_name');    // back to each run's own width to measure
+    let w = 0;
+    for (let e of slot.getElementsByClassName('reg_row_name'))
+        w = Math.max(w, e.getBoundingClientRect().width);
+    if (w)      // 0 before the page is laid out, leave each run its own width until then
+        slot.style.setProperty('--pin_name', `${Math.ceil(w)}px`);
+}
+
+function update_pin_btns() {
+    for (let reg of csa.cfg.reg.list) {
+        csa.reg.elm[`reg_btn_pin.${reg[R_ID]}`]
+                .classList.toggle('is-pinned', csa.reg.pin.ids.includes(reg[R_ID]));
+    }
+}
+
+async function toggle_pin(id) {
+    let i = csa.reg.pin.ids.indexOf(id);
+    if (i < 0)
+        csa.reg.pin.ids.push(id);
+    else
+        csa.reg.pin.ids.splice(i, 1);
+    await csa.db.set('tmp', `${csa.arg.name}/reg.pin`, csa.reg.pin.ids);
+    update_pin_btns();
+    build_pin_bar();
+}
+
+// the bar is this browser's own, the config file only says which registers start out in it
+async function init_pin() {
+    csa.reg.pin.slot = await topbar_slot('reg', 0);
+    let ids = await csa.db.get('tmp', `${csa.arg.name}/reg.pin`) ?? csa.cfg.reg.pin ?? [];
+    if (!Array.isArray(ids)) {
+        show_cfg_error(L('reg.pin must be a list of register names.'));
+        ids = [];
+    }
+    csa.reg.pin.ids = ids.filter(id => reg_idx_by_name(id) != null);
+    for (let reg of csa.cfg.reg.list)
+        csa.reg.elm[`reg_btn_pin.${reg[R_ID]}`].onclick = () => toggle_pin(reg[R_ID]);
+    update_pin_btns();
+}
+
+
 async function init_reg_rw() {
     let [reg_r, reg_w] = await mode_groups(cur_mode());
     console.log(`init reg ${cur_mode()} groups:`, reg_r, reg_w);
@@ -576,6 +751,7 @@ async function init_reg_rw() {
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     layout_reg_rows();
+    build_pin_bar();
 }
 
 
@@ -598,7 +774,8 @@ async function init_reg() {
         reg_w: null,
         reg_dft_r: [],  // first read flag
         reg_rbw: [],    // read before write data
-        elm: {}         // cache dom elements
+        elm: {},        // cache dom elements
+        pin: { ids: [], elm: {}, slot: null }   // the rows mirrored in the top bar
     };
     csa.plugins.push('reg');
     
@@ -647,6 +824,7 @@ async function init_reg() {
     
     check_reg_list();
     init_reg_list();
+    await init_pin();
     // the group set (reg by default) and the read period are remembered per device page,
     // the read switch itself always starts off
     csa.reg.mode = await csa.db.get('tmp', `${csa.arg.name}/reg.mode`) || 'reg';
@@ -729,11 +907,11 @@ async function init_reg() {
                 let count = Math.trunc(r[R_LEN] / one_size);
                 for (let n = 0; n < count; n++) {
                     if (`${r[R_ID]}.${n}` in dat)
-                        csa.reg.elm[`reg.${r[R_ID]}.${n}`].value = dat[`${r[R_ID]}.${n}`];
+                        reg_set_str(csa.reg.elm[`reg.${r[R_ID]}.${n}`], dat[`${r[R_ID]}.${n}`]);
                 }
             } else {
                 if (`${r[R_ID]}` in dat)
-                    csa.reg.elm[`reg.${r[R_ID]}`].value = dat[`${r[R_ID]}`];
+                    reg_set_str(csa.reg.elm[`reg.${r[R_ID]}`], dat[`${r[R_ID]}`]);
             }
         }
     };

@@ -8,6 +8,9 @@
 // cat zh_hk.js | cconv -f UTF8 -t UTF8-CN
 let trans_zh_cn = {
     // nav
+    'Fold': '折叠',
+    'Keep in the top bar': '固定到顶栏',
+    'Take out of the top bar': '从顶栏移除',
     'Language': '语言',
     'Auto': '自动',
     
@@ -124,6 +127,7 @@ let trans_zh_cn = {
     'range step must be above 0: %s': '范围的步长必须大于 0：%s',
     '%s: "%s" is not a number': '%s："%s" 不是数字',
     '%s: %s is outside %s': '%s：%s 超出允许范围 %s',
+    'reg.pin must be a list of register names.': 'reg.pin 必须是寄存器名称的列表。',
     'Register list is empty.': '寄存器列表为空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表顺序有误，地址必须递增且不重叠：%s',
     'Plot list is empty.': '波形列表为空。',

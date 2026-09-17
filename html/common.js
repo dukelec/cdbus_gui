@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.4';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.5';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -99,6 +99,65 @@ function init_nav() {
       </nav>`;
     // L() is fixed when the modules load, so just remember the choice and reload the page
     document.getElementById('lang_sel').onchange = e => { set_lang(e.target.value); location.reload(); };
+    init_topbar();
+}
+
+
+// A sticky strip right under the nav bar that any plugin can put widgets into: ask for a
+// slot once, fill it, then call topbar_update(). The strip is not rendered at all while
+// every slot is empty, so a page that pins nothing behaves exactly as it did before.
+
+let topbar_fold_read = false;   // the folded state is read back from the db only once
+
+function init_topbar() {
+    let nav = document.getElementById('nav');
+    if (!nav || document.getElementById('topbar'))
+        return;
+    nav.insertAdjacentHTML('afterend', `
+      <div id="topbar" style="display: none;">
+        <div id="topbar_fold" title="${L('Fold')}"></div>
+        <div id="topbar_body"></div>
+      </div>`);
+    document.getElementById('topbar_fold').onclick = async () => {
+        let fold = !document.getElementById('topbar').classList.contains('is-folded');
+        set_topbar_fold(fold);
+        if (csa.db && csa.arg.name)
+            await csa.db.set('tmp', `${csa.arg.name}/topbar.fold`, fold);
+    };
+}
+
+function set_topbar_fold(fold) {
+    document.getElementById('topbar').classList.toggle('is-folded', fold);
+}
+
+// the container a plugin owns, placed among the other slots by `order`
+async function topbar_slot(name, order=0) {
+    init_topbar();
+    let body = document.getElementById('topbar_body');
+    if (!body)
+        return null;
+    if (!topbar_fold_read && csa.db && csa.arg.name) {
+        topbar_fold_read = true;
+        set_topbar_fold(!!await csa.db.get('tmp', `${csa.arg.name}/topbar.fold`));
+    }
+    let slot = document.getElementById(`topbar_slot.${name}`);
+    if (!slot) {
+        slot = document.createElement('div');
+        slot.id = `topbar_slot.${name}`;
+        slot.className = 'topbar_slot';
+        slot.style.order = order;
+        body.appendChild(slot);
+    }
+    return slot;
+}
+
+// call after changing what is in a slot: the strip shows itself only while something is in it
+function topbar_update() {
+    let bar = document.getElementById('topbar');
+    if (!bar)
+        return;
+    let any = [...bar.getElementsByClassName('topbar_slot')].some(s => s.children.length);
+    bar.style.display = any ? '' : 'none';
 }
 
 // show a sticky notification at the top of the page, same id replaces the previous one
@@ -172,5 +231,5 @@ async function init_sys() {
     })();
 }
 
-export { csa, VERSION, init_nav,
+export { csa, VERSION, init_nav, topbar_slot, topbar_update,
          alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };

@@ -6,7 +6,8 @@
 
 import { L } from '../utils/lang.js?v=__V__'
 import { csa } from '../common.js?v=__V__';
-import { fmt_size, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
+import { fmt_size, reg_set_str,
+         R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 import { val2hex } from '../utils/helper.js?v=__V__';
 
 
@@ -15,13 +16,14 @@ async function plot_reg_w(idx) {
     let reg_name = csa.cfg.plot.plots[idx].cfg_reg;
     for (let i = 0; true; i++) {
         if (`reg.${reg_name}.${i}` in csa.reg.elm)
-            csa.reg.elm[`reg.${reg_name}.${i}`].value = '0x0000 0x00';
+            reg_set_str(csa.reg.elm[`reg.${reg_name}.${i}`], '0x0000 0x00');
         else
             break;
     }
     for (let i = 0; i < reg_val.length; i++) {
         if (`reg.${reg_name}.${i}` in csa.reg.elm) {
-            csa.reg.elm[`reg.${reg_name}.${i}`].value = `0x${val2hex(reg_val[i][0])} 0x${val2hex(reg_val[i][1], 2)}`
+            reg_set_str(csa.reg.elm[`reg.${reg_name}.${i}`],
+                        `0x${val2hex(reg_val[i][0])} 0x${val2hex(reg_val[i][1], 2)}`);
         } else {
             console.warn(`reg.${reg_name}.${i} not exist`);
             alert(L('Insufficient registers!'));

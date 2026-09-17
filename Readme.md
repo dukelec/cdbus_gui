@@ -63,6 +63,16 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
  - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
  - `Update Config File` writes the edited button groups back into the config file.
+ - The small pin beside `R` / `W` keeps a register in a bar at the top of the page, which stays in
+   view while the page is scrolled, so a register can be worked on while watching a plot. The copy
+   up there is the very same value as the one in the list: either can be typed into, and its `R` /
+   `W` do exactly what the ones in the list do, group and all. Every button is drawn the way the
+   register's own row in the list draws it: registers that sit next to each other in the list stay
+   together up there and their buttons join into one bar, and where a group carries on into a
+   register the bar is not showing, that end of the button is left open, so a lone member of a
+   group never reads as a group of its own. A pinned register is not taken out of the list. What is
+   pinned is remembered per device page (by its name), the triangle on the left folds the bar away,
+   and with nothing pinned there is no bar at all.
 
 <img src="doc/p2.avif">  
 
@@ -282,7 +292,10 @@ from the script.
                   ["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],
                   ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
         "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
-        "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]
+        "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],
+        
+        // registers the top bar starts out with
+        "pin": ["tc_pos", "state"]
     },
     
     "plot": {
@@ -320,6 +333,7 @@ from the script.
 ```
 
  - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way, as does any other "xxx_r" / "xxx_w" pair, each one a set to pick on the device page).
+ - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.

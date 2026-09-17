@@ -273,8 +273,52 @@ async function reg_xfer(sock, dat, timeout=1000) {
     }
 }
 
+// A register value lives in exactly one place: the input box of the register list. Every
+// other widget showing the same value (the mirrors in the top bar, later the dashboard) is
+// told to re-read it whenever it changes, so there is never a second copy to keep in step.
+// `edit_elm` is the widget's own input, if it has one the user can type into.
+function reg_watch(elem, owner, cb, edit_elm=null) {
+    (elem._subs ||= []).push({owner, cb, edit_elm});
+    cb(elem);
+}
+
+// drop everything one owner subscribed to, before it rebuilds its widgets
+function reg_unwatch(owner) {
+    for (let key in csa.reg.elm) {
+        let elem = csa.reg.elm[key];
+        if (elem && elem._subs)
+            elem._subs = elem._subs.filter(s => s.owner !== owner);
+    }
+}
+
+// `src` is the owner that caused the change, it does not need telling about its own edit
+function reg_notify(elem, src=null) {
+    for (let s of (elem._subs || []))
+        if (s.owner !== src)
+            s.cb(elem);
+}
+
+function reg_set_str(elem, str) {
+    if (elem.value == str)
+        return;
+    elem.value = str;
+    reg_notify(elem);
+}
+
+function reg_set_tip(elem, tip) {
+    elem.setAttribute('data-tooltip', tip);
+    reg_notify(elem);
+}
+
 function in_editing(elem) { // skip update the input box being edited during periodic read
-    return document.getElementById('keep_read')?.checked && document.activeElement === elem;
+    if (!document.getElementById('keep_read')?.checked)
+        return false;
+    if (document.activeElement === elem)
+        return true;
+    for (let s of (elem._subs || []))   // one of its mirrors is being edited
+        if (s.edit_elm && document.activeElement === s.edit_elm)
+            return true;
+    return false;
 }
 
 async function read_reg_val(r_idx, read_dft=false) {
@@ -317,11 +361,11 @@ async function read_reg_val(r_idx, read_dft=false) {
                     let [str, ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
                     if (read_dft) {
                         let elem = csa.reg.elm[`reg_dft.${r[R_ID]}.${n}`];
-                        elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+                        reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                     } else {
                         let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
                         if (!in_editing(elem))
-                            elem.value = str;
+                            reg_set_str(elem, str);
                     }
                 }
             } else if (r[R_FMT][0] == '[') {
@@ -339,22 +383,22 @@ async function read_reg_val(r_idx, read_dft=false) {
                 }
                 
                 if (read_dft) {
-                    csa.reg.elm[`reg_dft.${r[R_ID]}`].setAttribute('data-tooltip', `Default: ${val}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+                    reg_set_tip(csa.reg.elm[`reg_dft.${r[R_ID]}`], `Default: ${val}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                 } else {
                     let elem = csa.reg.elm[`reg.${r[R_ID]}`];
                     if (!in_editing(elem))
-                        elem.value = val;
+                        reg_set_str(elem, val);
                 }
                 
             } else {
                 let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
                 if (read_dft) {
                     let elem = csa.reg.elm[`reg_dft.${r[R_ID]}`];
-                    elem.setAttribute('data-tooltip', `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+                    reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
                 } else {
                     let elem = csa.reg.elm[`reg.${r[R_ID]}`];
                     if (!in_editing(elem))
-                        elem.value = str;
+                        reg_set_str(elem, str);
                 }
             }
             
@@ -622,13 +666,17 @@ function set_input_bg(rw='r', idx, bg) {
             let count = Math.trunc(r[R_LEN] / one_size);
             for (let n = 0; n < count; n++) {
                 let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
-                if (!skip_edit || !in_editing(elem))
+                if (!skip_edit || !in_editing(elem)) {
                     elem.style.background = bg;
+                    reg_notify(elem);
+                }
             }
         } else {
             let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-            if (!skip_edit || !in_editing(elem))
+            if (!skip_edit || !in_editing(elem)) {
                 elem.style.background = bg;
+                reg_notify(elem);
+            }
         }
     }
 }
@@ -636,5 +684,6 @@ function set_input_bg(rw='r', idx, bg) {
 export {
     fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
     reg_range_err, reg_range_tip,
+    reg_watch, reg_unwatch, reg_notify, reg_set_str,
     R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC, R_RANGE
 };

@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.6';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.7';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files

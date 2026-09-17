@@ -75,10 +75,11 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
    and with nothing pinned there is no bar at all.
  - The same pin sits beside the `Logs` heading and in the controls of every plot, and sends that
    one thing up to the bar as well. Those really move rather than being copied, and come back to
-   the same place when the pin is clicked again. Up there they start shorter than they are down
-   the page, and pinned plots share the width side by side; both can still be dragged to any size
-   by the corner. This is what the bar is for: the waveform and the registers that drive it end up
-   next to each other and stay there while the page is scrolled.
+   the same place when the pin is clicked again. They look the same up there as they did down the
+   page, except that pinned plots share the width side by side; either can be dragged to any size
+   by its corner, and the bar scrolls once it has taken 80% of the window. This is what the bar is
+   for: the waveform and the registers that drive it end up next to each other and stay there
+   while the page is scrolled.
  - Each plugin gets a row of its own in the bar, and the small arrows on the left of a row move it
    past the others. The order is remembered per device page as well.
 

@@ -1123,9 +1123,11 @@ async function init_plot() {
             let elm = document.getElementById(`plot${i}`);
             let title_height = elm.querySelector('.u-title').offsetHeight;
             let legend_height = elm.querySelector('.u-legend').offsetHeight;
-            let height = elm.offsetHeight - title_height - legend_height;
-            //console.log(`plot${i} fit: width: ${elm.offsetWidth}, height: ${height} (${elm.offsetHeight})`);
-            csa.plot.plots[i].setSize({width: elm.offsetWidth, height});
+            // the content box, not the border box: offsetWidth counts a scrollbar in, so a chart
+            // sized by it stayed too wide for the space left beside the scrollbar it caused
+            let height = Math.max(elm.clientHeight - title_height - legend_height, 20);
+            //console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
+            csa.plot.plots[i].setSize({width: elm.clientWidth, height});
         });
         observer.observe(document.getElementById(`plot${i}`));
         

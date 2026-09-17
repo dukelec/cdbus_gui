@@ -19,8 +19,7 @@ import { SearchAddon } from '../libs/xterm-addon-search-0.16.0-beta.129.js';
 let html = `
     <div class="container" id="dbg_sect">
         <div id="dbg_box">
-            <h2 class="title is-size-4">Logs
-                <span class="topbar_pin" id="dbg_pin" title="${L('Keep in the top bar')}">${PIN_SVG}</span></h2>
+            <h2 class="title is-size-4">Logs</h2>
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
                 <span>${L('Max Len')}:</span> <input type="text" size="8" id="dbg_len" value="99999">
                 <button class="button is-small" id="dbg_clear">${L('Clear')}</button>
@@ -28,6 +27,8 @@ let html = `
                 <input type="text" size="32" placeholder="search" id="dbg_search">
                 <button class="button is-small" id="dbg_search_prev">${L('Prev')}</button>
                 <button class="button is-small" id="dbg_search_next">${L('Next')}</button>
+                <span class="topbar_pin" id="dbg_pin"
+                      title="${L('Keep in the top bar')}">${PIN_SVG}</span>
             </div>
             <div id="dbg_log" class="resizable"></div>
         </div>

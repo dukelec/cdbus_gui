@@ -27,7 +27,10 @@
 .resizable {
   position: relative;
   resize: vertical;
-  overflow: auto;
+  /* resize needs an overflow other than visible, but not auto: at any zoom but 100% the content
+     ends up a fraction of a pixel wider than the box, and a scrollbar over that fraction only
+     makes the box narrower still. Clipping that fraction is what one wants to see anyway. */
+  overflow: hidden;
 }
 
 .resizable::after {
@@ -71,7 +74,7 @@ body > section.section {
 #topbar_body {
     flex: 1;
     min-width: 0;
-    max-height: 45vh;
+    max-height: 80vh;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -174,9 +177,12 @@ body > section.section {
 #topbar .reg_btn_pin { opacity: 1; }
 
 /* the log terminal wants the whole width, plots share what there is and wrap when it runs out.
-   Both come up shorter than they are down the page: the whole point of the strip is to spend
-   less height, and either can still be dragged taller by its own resize corner. */
+   Neither is given a height of its own up here: a plot's legend can be tall enough that a fixed
+   one leaves no room for the chart at all, and both keep their own resize corner anyway. */
 #topbar #dbg_box { flex: 1 1 100%; min-width: 0; }
-#topbar #dbg_log { height: 11rem; }
 #topbar .plot_box { flex: 1 1 32rem; min-width: 0; }
-#topbar .plot_box > .resizable { height: 13rem; }
+
+/* xterm lays the terminal out in whole character cells, so the box is up to one row taller and
+   one cell wider than the black it holds, and the resize grip in the corner of the box floated
+   off the corner of the terminal. Painting the box the terminal's own colour closes the gap. */
+#dbg_log { background: #000; }

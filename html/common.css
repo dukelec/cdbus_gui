@@ -182,7 +182,12 @@ body > section.section {
 #topbar #dbg_box { flex: 1 1 100%; min-width: 0; }
 #topbar .plot_box { flex: 1 1 32rem; min-width: 0; }
 
-/* xterm lays the terminal out in whole character cells, so the box is up to one row taller and
-   one cell wider than the black it holds, and the resize grip in the corner of the box floated
-   off the corner of the terminal. Painting the box the terminal's own colour closes the gap. */
-#dbg_log { background: #000; }
+/* The box needs a height of its own. Left to its content it was exactly as tall as the terminal,
+   while the fit addon works the terminal out from the box: parseInt() of the box height, then
+   floor() over the cell height. At any zoom but 100% a cell is a fraction of a pixel tall, so a
+   round could come out a row short, the box shrank along with the terminal and set the observer
+   off again, and rows once lost never came back: zooming out could walk it down to one row.
+   xterm lays the terminal out in whole character cells, so the box is then up to one row taller
+   and one cell wider than the black it holds; painting the box the terminal's own colour keeps
+   the resize grip on the corner of the terminal. 21rem is the 24 rows it used to open with. */
+#dbg_log { height: 21rem; background: #000; }

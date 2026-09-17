@@ -72,8 +72,13 @@ async function dbg_service() {
     const search_addon = new SearchAddon();
     term.loadAddon(search_addon);
     term.open(document.getElementById('dbg_log'));
+    // refit when the box changes size, and when the terminal itself does: a zoom changes the size
+    // of a character cell but not the box, and the terminal would keep its row count and run on
+    // past the bottom of the box, hiding the newest lines. fit() leaves the terminal alone once
+    // the rows and columns already match, so the two do not set each other off for ever.
     const observer = new ResizeObserver(() => fit_addon.fit());
     observer.observe(document.getElementById('dbg_log'));
+    observer.observe(term.element);
     
     term.attachCustomKeyEventHandler((e) => {
         if (e.ctrlKey && e.code == 'KeyC' && e.type == 'keydown') {

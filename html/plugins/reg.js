@@ -578,6 +578,8 @@ async function reg_save_file() {
         alert(L('The config file already matches, nothing to save.'));
         return;
     }
+    if (!confirm(L('Write the button groups into %s?').replace('%s', csa.arg.cfg)))
+        return;
     let btn = document.getElementById('save_reg_file');
     btn.disabled = true;
     try {

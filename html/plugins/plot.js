@@ -979,6 +979,10 @@ async function init_plot() {
                 err_elm.innerText = L('The config file already matches, nothing to save.');
                 return;
             }
+            if (!confirm(L('Write the plot settings into %s?').replace('%s', csa.arg.cfg))) {
+                await plot_cfg_save(); // the plots already took the boxes, keep them like Apply
+                return;
+            }
             await save_cfg_file(vals);
             overlay_dft = csa.cfg.plot.reg_overlay; // the file is the default now
             plot_dft = csa.cfg.plot.plots.map(c => ({ label: c.label, cal: c.cal }));

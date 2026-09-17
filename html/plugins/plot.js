@@ -8,7 +8,8 @@ import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, readable_float,
          read_file, download, readable_size, blob2dat, compare_dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
-import { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error } from '../common.js?v=__V__';
+import { csa, alloc_port, save_cfg_file, show_banner, show_cfg_error, PIN_SVG,
+         topbar_slot, topbar_take, topbar_give_back } from '../common.js?v=__V__';
 import { wheelZoomPlugin, touchZoomPlugin } from './plot_zoom.js?v=__V__';
 import { plot_fft_init, plot_fft_deinit, plot_fft_cal } from './plot_fft.js?v=__V__';
 import { plot_reg_w_init, plot_reg_w, cfg_reg_slots } from './plot_reg_w.js?v=__V__';
@@ -843,6 +844,27 @@ async function plot_cal_update(idx) {
 }
 
 
+// a plot keeps its own box wherever it is, and uPlot follows the resize that moving it causes;
+// the boxes are ordered by plot number up there, whatever order they were sent up in
+async function plot_set_pin(idx, on) {
+    let box = document.getElementById(`plot${idx}_box`);
+    if (on) {
+        if (!csa.plot.pin.includes(idx))
+            csa.plot.pin.push(idx);
+        topbar_take(csa.plot.slot, box, idx);
+    } else {
+        csa.plot.pin = csa.plot.pin.filter(i => i != idx);
+        topbar_give_back(box);
+    }
+    let btn = document.getElementById(`plot${idx}_pin`);
+    btn.classList.toggle('is-pinned', on);
+    btn.title = on ? L('Take out of the top bar') : L('Keep in the top bar');
+    // with every plot up in the bar the heading down here has nothing left to head
+    document.getElementById('plot_title').hidden =
+            !document.getElementById('plot_list').querySelector('.plot_box');
+    await csa.db.set('tmp', `${csa.arg.name}/plot.pin`, csa.plot.pin);
+}
+
 async function init_plot() {
     if (!csa.cfg.plot) {
         console.info(`skip init_plot`);
@@ -854,7 +876,7 @@ async function init_plot() {
     }
     if (reg_idx_by_name(csa.cfg.plot.mask) == null)
         show_cfg_error(L('Plot mask register not found: %s').replace('%s', `${csa.cfg.plot.mask}`));
-    csa.plot = {};
+    csa.plot = { pin: [] };
     csa.plugins.push('plot');
 
     let port = await alloc_port(0x0a);
@@ -867,7 +889,7 @@ async function init_plot() {
     
     let html = `
         <div class="container" id="plot_list">
-            <h2 class="title is-size-4">Plots</h2>
+            <h2 class="title is-size-4" id="plot_title">Plots</h2>
         </div>
         <div class="modal" id="plot_cfg_modal">
             <div class="modal-background" id="plot_cfg_bg"></div>
@@ -1067,6 +1089,7 @@ async function init_plot() {
     
     for (let i = 0; i < csa.cfg.plot.plots.length; i++) {
         let html = `
+            <div class="plot_box" id="plot${i}_box">
             <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
                 <label class="checkbox"><input type="checkbox" id="plot${i}_en"> ${L('Enable')} Plot${i}</label>
                 | ${L('Depth')}: <input type="text" size="8" placeholder="${max_len}" id="plot${i}_len" value="${max_len}">
@@ -1076,12 +1099,15 @@ async function init_plot() {
                 <button class="button is-small" id="plot${i}_cfg">${L('Channels')}</button>
                 <button class="button is-small" id="plot${i}_clear">${L('Clear')}</button>
                 <button class="button is-small" id="plot${i}_re_cal">${L('Re-Calc')}</button>
+                <span class="topbar_pin" id="plot${i}_pin"
+                      title="${L('Keep in the top bar')}">${PIN_SVG}</span>
             </div>
             <div class="notification is-warning is-light" id="plot${i}_parse_error" style="display: none; padding: 0.75rem;">
                 <button class="delete" aria-label="close"></button>
                 Plot${i}: ${L('Invalid incoming data was ignored. Further errors will not be shown repeatedly.')}
             </div>
             <div id="plot${i}" class="resizable"></div>
+            </div>
         `;
         
         list.insertAdjacentHTML('beforeend', html);
@@ -1126,7 +1152,15 @@ async function init_plot() {
             await plot_cal_update(i);
             document.getElementById(`plot${i}_re_cal`).disabled = false;
         };
+        document.getElementById(`plot${i}_pin`).onclick = () =>
+                plot_set_pin(i, !document.getElementById(`plot${i}_pin`).classList.contains('is-pinned'));
     }
+    
+    csa.plot.slot = await topbar_slot('plot');
+    let pinned = await csa.db.get('tmp', `${csa.arg.name}/plot.pin`);
+    for (let i of (Array.isArray(pinned) ? pinned : []))
+        if (i >= 0 && i < csa.cfg.plot.plots.length)
+            await plot_set_pin(i, true);
     
     dbg_raw_service();
     

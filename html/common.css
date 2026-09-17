@@ -73,18 +73,55 @@ body > section.section {
     min-width: 0;
     max-height: 45vh;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
 }
+/* one band per plugin, stacked, each with the arrows that move it past the others */
+.topbar_band {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+}
+.topbar_band[hidden] { display: none; }
+.topbar_move {
+    flex: 0 0 auto;
+    padding-top: 2px;
+    line-height: 0.8;
+    color: #b5b5b5;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+}
+.topbar_move > span { cursor: pointer; }
+.topbar_move > span:hover { color: #3273dc; }
+#topbar.is-single .topbar_move { visibility: hidden; }
+/* a heading that came up with its plugin has no room to be a heading here */
+#topbar .title { font-size: 1rem; margin-bottom: 0.3rem; }
 #topbar.is-folded #topbar_body {
     max-height: 0;
     overflow: hidden;
     visibility: hidden;     /* clipped, out of the tab order, but still measurable */
 }
-#topbar_body, .topbar_slot {
+.topbar_slot {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 0.2rem 1.2rem;
 }
+
+/* the mark on whatever a plugin can send up to the strip */
+.topbar_pin {
+    display: inline-flex;
+    align-items: center;
+    color: #7a7a7a;
+    cursor: pointer;
+}
+.topbar_pin.is-pinned { color: #3273dc; }
+#topbar .topbar_pin { color: #3273dc; }
+#topbar .topbar_pin svg { transform: rotate(180deg); }
 #topbar_fold {
     flex: 0 0 auto;
     width: 14px;
@@ -109,16 +146,13 @@ body > section.section {
     justify-content: center;
     align-items: center;
 }
-/* the four states are left to plain class selectors and settled by their order here: the rule
-   above is specific enough to override any of them */
-.reg_btn_pin {
-    color: #7a7a7a;
-    opacity: 0.15;      /* a hint, not noise; hover brings it out, and a touch screen has none */
-    cursor: pointer;
-}
+/* there is one of these on every row, so unlike the other plugins' it stays faint until the row
+   is under the pointer. The four states are left to plain class selectors and settled by their
+   order here: the rule above is specific enough to override any of them. */
+.reg_btn_pin { opacity: 0.15; }     /* a hint, not noise; a touch screen has no hover */
 .reg_row:hover .reg_btn_pin { opacity: 0.5; }
 .reg_btn_pin:hover { opacity: 1; }
-.reg_btn_pin.is-pinned { opacity: 1; color: #3273dc; }
+.reg_btn_pin.is-pinned { opacity: 1; }
 
 /* one run of registers that sit next to each other in the list, drawn as a single column so a
    read / write group reads the same up here as it does in the list below. The rows of a run give
@@ -137,5 +171,12 @@ body > section.section {
 /* the box has to leave room for the H / B suffix next to it, or that wraps and the row
    grows to two lines */
 #topbar .reg_row_val input { width: 9rem; }
-#topbar .reg_btn_pin { opacity: 1; color: #3273dc; }
-#topbar .reg_btn_pin svg { transform: rotate(180deg); }
+#topbar .reg_btn_pin { opacity: 1; }
+
+/* the log terminal wants the whole width, plots share what there is and wrap when it runs out.
+   Both come up shorter than they are down the page: the whole point of the strip is to spend
+   less height, and either can still be dragged taller by its own resize corner. */
+#topbar #dbg_box { flex: 1 1 100%; min-width: 0; }
+#topbar #dbg_log { height: 11rem; }
+#topbar .plot_box { flex: 1 1 32rem; min-width: 0; }
+#topbar .plot_box > .resizable { height: 13rem; }

@@ -7,6 +7,8 @@
 
 let trans_zh_hk = {
     // nav
+    'Move up': '上移',
+    'Move down': '下移',
     'Fold': '摺疊',
     'Keep in the top bar': '固定到頂欄',
     'Take out of the top bar': '從頂欄移除',

@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.5';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.6';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -103,11 +103,19 @@ function init_nav() {
 }
 
 
-// A sticky strip right under the nav bar that any plugin can put widgets into: ask for a
-// slot once, fill it, then call topbar_update(). The strip is not rendered at all while
-// every slot is empty, so a page that pins nothing behaves exactly as it did before.
+// A sticky strip right under the nav bar that any plugin can put something into. A plugin asks
+// for its slot once and either fills it or hands a whole element over with topbar_take(). Each
+// slot is a band of its own, the bands stack up and the user can move them past each other. The
+// strip is not rendered at all while every band is empty, so a page that puts nothing up there
+// behaves exactly as it did before.
 
-let topbar_fold_read = false;   // the folded state is read back from the db only once
+// the mark on whatever can be sent up to the strip: an arrow into a bar, turned over once it is
+// up there to mean putting it back
+const PIN_SVG = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" ` +
+                `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
+                `<path d="M3.5 2.5h9"/><path d="M8 13.5V5.5"/><path d="M5 8.5l3-3 3 3"/></svg>`;
+
+let topbar_order = null;    // slot names top to bottom, null until read back from the db
 
 function init_topbar() {
     let nav = document.getElementById('nav');
@@ -120,44 +128,111 @@ function init_topbar() {
       </div>`);
     document.getElementById('topbar_fold').onclick = async () => {
         let fold = !document.getElementById('topbar').classList.contains('is-folded');
-        set_topbar_fold(fold);
-        if (csa.db && csa.arg.name)
-            await csa.db.set('tmp', `${csa.arg.name}/topbar.fold`, fold);
+        document.getElementById('topbar').classList.toggle('is-folded', fold);
+        await topbar_save('fold', fold);
     };
 }
 
-function set_topbar_fold(fold) {
-    document.getElementById('topbar').classList.toggle('is-folded', fold);
+async function topbar_save(key, val) {
+    if (csa.db && csa.arg.name)
+        await csa.db.set('tmp', `${csa.arg.name}/topbar.${key}`, val);
 }
 
-// the container a plugin owns, placed among the other slots by `order`
-async function topbar_slot(name, order=0) {
+// the container a plugin owns. The bands come out in the order the plugins ask for them, which
+// is the order of the page itself, unless the user has moved them since.
+async function topbar_slot(name) {
     init_topbar();
     let body = document.getElementById('topbar_body');
     if (!body)
         return null;
-    if (!topbar_fold_read && csa.db && csa.arg.name) {
-        topbar_fold_read = true;
-        set_topbar_fold(!!await csa.db.get('tmp', `${csa.arg.name}/topbar.fold`));
+    if (topbar_order == null) {
+        let saved = csa.db && csa.arg.name ? await csa.db.get('tmp', `${csa.arg.name}/topbar.order`) : null;
+        topbar_order = Array.isArray(saved) ? saved : [];
+        if (csa.db && csa.arg.name && await csa.db.get('tmp', `${csa.arg.name}/topbar.fold`))
+            document.getElementById('topbar').classList.add('is-folded');
     }
     let slot = document.getElementById(`topbar_slot.${name}`);
     if (!slot) {
-        slot = document.createElement('div');
-        slot.id = `topbar_slot.${name}`;
-        slot.className = 'topbar_slot';
-        slot.style.order = order;
-        body.appendChild(slot);
+        if (!topbar_order.includes(name))
+            topbar_order.push(name);
+        body.insertAdjacentHTML('beforeend', `
+            <div class="topbar_band" id="topbar_band.${name}" hidden>
+              <div class="topbar_move">
+                <span id="topbar_up.${name}" title="${L('Move up')}">&#9652;</span>
+                <span id="topbar_dn.${name}" title="${L('Move down')}">&#9662;</span>
+              </div>
+              <div class="topbar_slot" id="topbar_slot.${name}"></div>
+            </div>`);
+        document.getElementById(`topbar_up.${name}`).onclick = () => move_band(name, -1);
+        document.getElementById(`topbar_dn.${name}`).onclick = () => move_band(name, 1);
+        slot = document.getElementById(`topbar_slot.${name}`);
+        apply_topbar_order();
     }
     return slot;
 }
 
-// call after changing what is in a slot: the strip shows itself only while something is in it
+function apply_topbar_order() {
+    for (let i = 0; i < topbar_order.length; i++) {
+        let band = document.getElementById(`topbar_band.${topbar_order[i]}`);
+        if (band)
+            band.style.order = i;
+    }
+}
+
+// swap a band with the one shown above or below it. A band with nothing in it keeps its place in
+// the order while it is out of sight, so filling it again does not shuffle the others.
+async function move_band(name, dir) {
+    let shown = topbar_order.filter(n => {
+        let band = document.getElementById(`topbar_band.${n}`);
+        return band && !band.hidden;
+    });
+    let other = shown[shown.indexOf(name) + dir];
+    if (!other)
+        return;
+    let a = topbar_order.indexOf(name), b = topbar_order.indexOf(other);
+    [topbar_order[a], topbar_order[b]] = [topbar_order[b], topbar_order[a]];
+    apply_topbar_order();
+    await topbar_save('order', topbar_order);
+}
+
+// hand an element over to the strip, or give it back to where it came from. The anchor left
+// behind in its place is what puts it back in the same spot, whatever has been added since.
+function topbar_take(slot, elm, order=0) {
+    if (!elm._topbar_anchor) {
+        elm._topbar_anchor = document.createElement('div');
+        elm._topbar_anchor.hidden = true;
+        elm.parentElement.insertBefore(elm._topbar_anchor, elm);
+    }
+    elm.style.order = order;
+    slot.appendChild(elm);
+    topbar_update();
+}
+
+function topbar_give_back(elm) {
+    if (elm._topbar_anchor) {
+        elm.style.order = '';
+        elm._topbar_anchor.parentElement.insertBefore(elm, elm._topbar_anchor);
+    }
+    topbar_update();
+}
+
+// call after changing what is in a slot: a band with nothing in it steps out of the way, and the
+// strip shows itself only while some band is left
 function topbar_update() {
     let bar = document.getElementById('topbar');
     if (!bar)
         return;
-    let any = [...bar.getElementsByClassName('topbar_slot')].some(s => s.children.length);
-    bar.style.display = any ? '' : 'none';
+    let shown = 0;
+    for (let name of topbar_order || []) {
+        let band = document.getElementById(`topbar_band.${name}`);
+        if (!band)
+            continue;
+        band.hidden = !document.getElementById(`topbar_slot.${name}`).children.length;
+        if (!band.hidden)
+            shown++;
+    }
+    bar.style.display = shown ? '' : 'none';
+    bar.classList.toggle('is-single', shown < 2);   // nothing to reorder, no arrows
 }
 
 // show a sticky notification at the top of the page, same id replaces the previous one
@@ -231,5 +306,6 @@ async function init_sys() {
     })();
 }
 
-export { csa, VERSION, init_nav, topbar_slot, topbar_update,
+export { csa, VERSION, init_nav, PIN_SVG,
+         topbar_slot, topbar_update, topbar_take, topbar_give_back,
          alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };

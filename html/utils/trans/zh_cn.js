@@ -8,6 +8,8 @@
 // cat zh_hk.js | cconv -f UTF8 -t UTF8-CN
 let trans_zh_cn = {
     // nav
+    'Move up': '上移',
+    'Move down': '下移',
     'Fold': '折叠',
     'Keep in the top bar': '固定到顶栏',
     'Take out of the top bar': '从顶栏移除',

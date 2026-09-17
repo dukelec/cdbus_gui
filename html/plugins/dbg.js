@@ -7,26 +7,32 @@
 import { L } from '../utils/lang.js?v=__V__'
 import { dat2str } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
-import { csa, alloc_port } from '../common.js?v=__V__';
+import { csa, alloc_port, PIN_SVG,
+         topbar_slot, topbar_take, topbar_give_back } from '../common.js?v=__V__';
 import { Terminal } from '../libs/xterm-5.6.0-beta.129.js';
 import { WebglAddon } from '../libs/xterm-addon-webgl-0.19.0-beta.129.js';
 import { FitAddon } from '../libs/xterm-addon-fit-0.11.0-beta.129.js';
 import { SearchAddon } from '../libs/xterm-addon-search-0.16.0-beta.129.js';
 
+// dbg_box is what moves up to the top bar and back, heading and all; the section around it is
+// then empty, so it steps out of the way while the box is away
 let html = `
-    <div class="container">
-        <h2 class="title is-size-4">Logs</h2>
-        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-            <span>${L('Max Len')}:</span> <input type="text" size="8" id="dbg_len" value="99999">
-            <button class="button is-small" id="dbg_clear">${L('Clear')}</button>
-            <button class="button is-small" id="dbg_select_all">${L('Select All')}</button> |
-            <input type="text" size="32" placeholder="search" id="dbg_search">
-            <button class="button is-small" id="dbg_search_prev">${L('Prev')}</button>
-            <button class="button is-small" id="dbg_search_next">${L('Next')}</button>
+    <div class="container" id="dbg_sect">
+        <div id="dbg_box">
+            <h2 class="title is-size-4">Logs
+                <span class="topbar_pin" id="dbg_pin" title="${L('Keep in the top bar')}">${PIN_SVG}</span></h2>
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+                <span>${L('Max Len')}:</span> <input type="text" size="8" id="dbg_len" value="99999">
+                <button class="button is-small" id="dbg_clear">${L('Clear')}</button>
+                <button class="button is-small" id="dbg_select_all">${L('Select All')}</button> |
+                <input type="text" size="32" placeholder="search" id="dbg_search">
+                <button class="button is-small" id="dbg_search_prev">${L('Prev')}</button>
+                <button class="button is-small" id="dbg_search_next">${L('Next')}</button>
+            </div>
+            <div id="dbg_log" class="resizable"></div>
         </div>
-        <div id="dbg_log" class="resizable"></div>
-    </div>
-    <br>`;
+        <br>
+    </div>`;
 
 let term = null;
 let origin_log = [];
@@ -117,6 +123,20 @@ async function dbg_service() {
     }
 }
 
+// the terminal refits itself on the resize that moving it causes, so there is nothing else to do
+async function dbg_set_pin(on) {
+    let box = document.getElementById('dbg_box');
+    if (on)
+        topbar_take(csa.dbg.slot, box);
+    else
+        topbar_give_back(box);
+    document.getElementById('dbg_sect').hidden = on;
+    let btn = document.getElementById('dbg_pin');
+    btn.classList.toggle('is-pinned', on);
+    btn.title = on ? L('Take out of the top bar') : L('Keep in the top bar');
+    await csa.db.set('tmp', `${csa.arg.name}/dbg.pin`, on);
+}
+
 async function init_dbg() {
     csa.dbg = {};
     csa.plugins.push('dbg');
@@ -127,6 +147,11 @@ async function init_dbg() {
     
     document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="./libs/xterm-5.6.0-beta.129.css">');
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
+    csa.dbg.slot = await topbar_slot('dbg');
+    document.getElementById('dbg_pin').onclick = () =>
+            dbg_set_pin(!document.getElementById('dbg_pin').classList.contains('is-pinned'));
+    if (await csa.db.get('tmp', `${csa.arg.name}/dbg.pin`))
+        await dbg_set_pin(true);
     dbg_service();
     
     // for the external API: read back buffered log by cursor

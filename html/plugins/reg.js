@@ -12,7 +12,7 @@ import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
          reg_range_err, reg_range_tip, reg_watch, reg_unwatch, reg_notify, reg_set_str,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 import { csa, alloc_port, save_cfg_file, show_cfg_error,
-         topbar_slot, topbar_update } from '../common.js?v=__V__';
+         PIN_SVG, topbar_slot, topbar_update } from '../common.js?v=__V__';
 
 
 // the whole page assumes the reg list is sorted by address and has no overlap
@@ -38,10 +38,6 @@ function check_reg_list() {
             show_cfg_error(`${reg[R_ID]}: ${err}`);
     }
 }
-
-const PIN_SVG = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" ` +
-                `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
-                `<path d="M3.5 2.5h9"/><path d="M8 13.5V5.5"/><path d="M5 8.5l3-3 3 3"/></svg>`;
 
 // the value boxes one register has: a single one, or one per element of a {..} array
 function reg_val_sfx(reg) {
@@ -93,7 +89,7 @@ function reg_row_html(reg, p='') {
           </div>
           <div class="column is-1 reg_btn_rw" id="${p}reg_btn_r.${reg[R_ID]}">R</div>
           <div class="column is-1 reg_btn_rw" id="${p}reg_btn_w.${reg[R_ID]}">W</div>
-          <div class="column is-1 reg_btn_pin" id="${p}reg_btn_pin.${reg[R_ID]}"
+          <div class="column is-1 topbar_pin reg_btn_pin" id="${p}reg_btn_pin.${reg[R_ID]}"
                title="${p ? L('Take out of the top bar') : L('Keep in the top bar')}">${PIN_SVG}</div>
         </div>`;
 }
@@ -692,8 +688,8 @@ function build_pin_bar() {
         for (let n = 0; n < run.length; n++)
             bind_pin_row(run[n], n > 0, n < run.length - 1);
     }
+    topbar_update();    // the strip has to be on screen before a name can be measured
     fit_pin_names();
-    topbar_update();
 }
 
 // Each run is a grid of its own, so left alone each is only as wide as its own longest name and
@@ -730,7 +726,7 @@ async function toggle_pin(id) {
 
 // the bar is this browser's own, the config file only says which registers start out in it
 async function init_pin() {
-    csa.reg.pin.slot = await topbar_slot('reg', 0);
+    csa.reg.pin.slot = await topbar_slot('reg');
     let ids = await csa.db.get('tmp', `${csa.arg.name}/reg.pin`) ?? csa.cfg.reg.pin ?? [];
     if (!Array.isArray(ids)) {
         show_cfg_error(L('reg.pin must be a list of register names.'));

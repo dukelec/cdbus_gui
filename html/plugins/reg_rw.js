@@ -310,6 +310,15 @@ function reg_set_tip(elem, tip) {
     reg_notify(elem);
 }
 
+// The button edit mode replaces the group sets while a read or write may be on its way. Such a
+// transfer keeps the addr / len it started with, but its index may now name another group, or
+// none: the rows of that group are not its to colour, and a write must not pack the fresh
+// read-before-write bytes of another group.
+function grp_same(rw, idx, addr, len) {
+    let g = (rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w)[idx];
+    return !!g && g[0] == addr && g[1] == len;
+}
+
 function in_editing(elem) { // skip update the input box being edited during periodic read
     if (!document.getElementById('keep_read')?.checked)
         return false;
@@ -322,9 +331,11 @@ function in_editing(elem) { // skip update the input box being edited during per
 }
 
 async function read_reg_val(r_idx, read_dft=false) {
+    let grp = csa.reg.reg_r[r_idx];
+    if (!grp)
+        return -1;
+    let [addr, len] = grp;
     set_input_bg('r', r_idx, '#D5F5E3');
-    let addr = csa.reg.reg_r[r_idx][0];
-    let len = csa.reg.reg_r[r_idx][1];
     
     let dat = new Uint8Array([read_dft ? 0x01 : 0x00, 0, 0, len]);
     let dv = new DataView(dat.buffer);
@@ -405,10 +416,13 @@ async function read_reg_val(r_idx, read_dft=false) {
         }
     } else {
         console.warn('read reg err');
-        set_input_bg('r', r_idx, '#F5B7B180');
+        if (grp_same('r', r_idx, addr, len))
+            set_input_bg('r', r_idx, '#F5B7B180');
         return -1;
     }
     
+    if (!grp_same('r', r_idx, addr, len)) // the groups changed meanwhile, the values still went in
+        return -1;
     if (!read_dft && !csa.reg.reg_dft_r[r_idx]) {
         console.log('read default');
         return await read_reg_val(r_idx, true);
@@ -529,11 +543,13 @@ function check_group_range(addr, len) {
 }
 
 async function write_reg_val(w_idx, alert_err=true) {
+    let grp = csa.reg.reg_w[w_idx];
+    if (!grp)
+        return -1;
+    let [addr, len] = grp;
     set_input_bg('w', w_idx, '#D6EAF8');
     let has_empty = false;
     csa.reg.last_err = null;
-    let addr = csa.reg.reg_w[w_idx][0];
-    let len = csa.reg.reg_w[w_idx][1];
     
     // refuse a value the config does not allow before the read-before-write round trip:
     // no point going out to the bus just to reject it here afterwards
@@ -555,6 +571,10 @@ async function write_reg_val(w_idx, alert_err=true) {
         console.log('read-before-write wait ret');
         let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
         console.log('read-before-write ret', ret);
+        if (!grp_same('w', w_idx, addr, len)) { // the groups changed meanwhile, give up
+            console.log('read-before-write: group changed');
+            return -1;
+        }
         if (ret && (ret[0].dat[0] & 0xf) == 0) {
             csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1);
         } else {
@@ -626,14 +646,18 @@ async function write_reg_val(w_idx, alert_err=true) {
     console.log('write reg wait ret');
     let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
     console.log('write reg ret', ret);
+    let same = grp_same('w', w_idx, addr, len); // else the rows are another group's now
     if (ret && (ret[0].dat[0] & 0xf) == 0) {
         console.log('write reg succeeded');
-        set_input_bg('w', w_idx, '#D6EAF860');
-        setTimeout(() => { set_input_bg('w', w_idx, ''); }, 100);
+        if (same) {
+            set_input_bg('w', w_idx, '#D6EAF860');
+            setTimeout(() => { set_input_bg('w', w_idx, ''); }, 100);
+        }
         return 0;
     } else {
         console.log('write reg err');
-        set_input_bg('w', w_idx, '#F5B7B180');
+        if (same)
+            set_input_bg('w', w_idx, '#F5B7B180');
         return -1;
     }
 }
@@ -642,8 +666,9 @@ async function write_reg_val(w_idx, alert_err=true) {
 function set_input_bg(rw='r', idx, bg) {
     let skip_edit = rw == 'r' && bg != ''; // don't highlight the input box being edited
     let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
-    let addr = reg_rw[idx][0];
-    let len = reg_rw[idx][1];
+    if (!reg_rw[idx]) // a timer from before the groups were edited
+        return;
+    let [addr, len] = reg_rw[idx];
     
     let start = addr;
     let found_start = false;

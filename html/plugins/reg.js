@@ -210,6 +210,8 @@ function layout_reg_rows() {
 function update_reg_rw_btn(rw='r') {
     let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
     csa.reg.reg_rbw = []; // clean read-before-write buffer
+    if (rw == 'r')
+        csa.reg.reg_dft_r = []; // the default read flags are per group index too
     
     for (let i = 0; i < csa.cfg.reg.list.length; i++) {
         let reg_pre = null;
@@ -532,14 +534,13 @@ function button_none() {
     }
 }
 
+// back to the config file for the set being edited, the other sets keep their local edits
 async function button_def() {
     let mode = cur_mode();
     csa.reg.reg_r = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_r`]);
     csa.reg.reg_w = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_w`]);
-    for (let m of mode_names()) {
-        await csa.db.set('tmp', `${csa.arg.name}/reg.${m}_r`, null);
-        await csa.db.set('tmp', `${csa.arg.name}/reg.${m}_w`, null);
-    }
+    await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_r`, null);
+    await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_w`, null);
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     // re-install onclick callback:
@@ -761,8 +762,16 @@ async function period_read() {
         read_timer = null;
         return;
     }
-    await document.getElementById('dev_read_all').onclick();
-    read_timer = setTimeout(period_read, document.getElementById('read_period').value);
+    try {
+        await document.getElementById('dev_read_all').onclick();
+    } catch (err) { // one bad round must not end the periodic read for good
+        console.error('period read:', err);
+    }
+    // an empty or bad box would mean no delay at all: keep the last good period instead
+    let ms = Number(document.getElementById('read_period').value);
+    if (!(ms > 0))
+        ms = Number(await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`)) || 200;
+    read_timer = setTimeout(period_read, ms);
 }
 
 
@@ -853,22 +862,28 @@ async function init_reg() {
     
     document.getElementById('dev_read_all').onclick = async function() {
         document.getElementById('dev_read_all').disabled = true;
-        for (let i = 0; i < csa.reg.reg_r.length; i++) {
-            let ret = await read_reg_val(i);
-            if (ret)
-                break;
+        try {
+            for (let i = 0; i < csa.reg.reg_r.length; i++) {
+                let ret = await read_reg_val(i);
+                if (ret)
+                    break;
+            }
+        } finally { // never leave the button dead after an error
+            document.getElementById('dev_read_all').disabled = false;
         }
-        document.getElementById('dev_read_all').disabled = false;
     };
 
     document.getElementById('dev_write_all').onclick = async function() {
         document.getElementById('dev_write_all').disabled = true;
-        for (let i = 0; i < csa.reg.reg_w.length; i++) {
-            let ret = await write_reg_val(i);
-            if (ret)
-                break;
+        try {
+            for (let i = 0; i < csa.reg.reg_w.length; i++) {
+                let ret = await write_reg_val(i);
+                if (ret)
+                    break;
+            }
+        } finally {
+            document.getElementById('dev_write_all').disabled = false;
         }
-        document.getElementById('dev_write_all').disabled = false;
     };
     
     document.getElementById(`keep_read`).onclick = period_read;

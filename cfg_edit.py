@@ -119,11 +119,14 @@ def _members(s, i):
 
 
 def _member(s, i, key):
-    """i is at '{'. Return (val_start, val_end, key_start) of `key`, or None."""
+    """i is at '{'. Return (val_start, val_end, key_start) of `key`, or None.
+    A key the object names twice is read back by json5 as the last one, so that is the
+    one found: editing the first would leave the file reading exactly as before."""
+    found = None
     for k, k_start, v_start, v_end in _members(s, i):
         if k == key:
-            return v_start, v_end, k_start
-    return None
+            found = (v_start, v_end, k_start)
+    return found
 
 
 def _item(s, i, n):
@@ -253,9 +256,12 @@ def _edit(s, path, val, nl):
     if s[p_start] != '{':
         raise ValueError(f'not an object: {".".join(map(str, path[:-1]))}')
     members = list(_members(s, p_start))
+    hit = None
     for k, k_start, v_start, v_end in members:
         if k == last:
-            return v_start, v_end, _fmt(val, style, _col(s, k_start), nl)
+            hit = (v_start, v_end, k_start) # the last one, as json5 reads it
+    if hit:
+        return hit[0], hit[1], _fmt(val, style, _col(s, hit[2]), nl)
 
     # the key is not in the file yet, add it to the end of the object
     if members:
@@ -288,7 +294,18 @@ def update_cfg(cfg_dir, name, vals):
     for start, end, new in sorted(edits, reverse=True):
         text = text[:start] + new + text[end:]
 
-    json5.loads(text) # never leave a file we cannot read back
+    # never leave a file we cannot read back, and never report a value as saved that the
+    # page would not read back: the scanner and json5 have to agree on where each value is
+    parsed = json5.loads(text)
+    for v in vals:
+        got = parsed
+        try:
+            for p in v['path']:
+                got = got[p]
+        except (KeyError, IndexError, TypeError):
+            raise ValueError(f'value not found after writing it: {".".join(map(str, v["path"]))}')
+        if got != v['val']:
+            raise ValueError(f'value reads back differently after writing it: {".".join(map(str, v["path"]))}')
 
     tmp = full + '.tmp'
     try:

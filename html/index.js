@@ -98,7 +98,9 @@ async function init_cfg_list() {
                 alert('Empty not allowed');
                 return;
             }
-            window.open(`ctrl.html?tgt=${t}&cfg=${c}&name=${n}`, "_blank");
+            // the name is free text, a & or # in it would cut the args short
+            window.open(`ctrl.html?tgt=${encodeURIComponent(t)}&cfg=${encodeURIComponent(c)}` +
+                        `&name=${encodeURIComponent(n)}`, "_blank");
         };
         
         document.getElementById(`cfg${i}.name`).onchange =

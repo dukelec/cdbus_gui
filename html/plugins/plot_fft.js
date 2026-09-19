@@ -23,6 +23,30 @@ let overlay = {
 };
 
 
+// one missing sample (null, or NaN / ±Infinity from the device) turns the whole spectrum into NaN:
+// bridge each run of them in a straight line from its neighbours, hold the nearest one at either
+// end; null when nothing is left to go by
+function fill_missing(signal) {
+    let len = signal.length;
+    let out = signal;
+    let last = -1; // the last good sample
+    for (let i = 0; i <= len; i++) {
+        if (i < len && !Number.isFinite(signal[i]))
+            continue;
+        if (i - last > 1) {
+            if (last < 0 && i == len)
+                return null;
+            if (out === signal)
+                out = Array.from(signal);
+            for (let j = last + 1; j < i; j++)
+                out[j] = last < 0 ? signal[i] : i == len ? signal[last] :
+                         signal[last] + (signal[i] - signal[last]) * (j - last) / (i - last);
+        }
+        last = i;
+    }
+    return out;
+}
+
 function preprocess_signal(signal) {
     const len = signal.length;
     let mean = 0;
@@ -44,6 +68,9 @@ async function plot_fft(idx, dat) {
     const fft_obj = csa.plot.plot_fft[idx];
     if (dat.length > fft_obj.size)
         dat = dat.slice(dat.length - fft_obj.size);
+    dat = fill_missing(dat);
+    if (!dat)
+        return null;
     dat = preprocess_signal(dat);
     
     const input_ptr = fft_mod._calloc(fft_obj.size, 4);
@@ -83,7 +110,7 @@ async function plot_fft_cal(idx, plot_dat) {
     for (let i = 1; i < plot_dat.length; i++) {
         if (uplot.series[i].show) {
             let mags = await plot_fft(idx, plot_dat[i]);
-            fft_dat.push(mags);
+            fft_dat.push(mags || []);
         } else {
             fft_dat.push([]);
         }

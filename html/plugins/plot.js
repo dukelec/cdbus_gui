@@ -40,9 +40,142 @@ async function plot_update(idx) {
             plot_dat = less_dat;
         }
     }
-    if (csa.plot.plot_fft_en[idx])
+    let spectrum = csa.plot.plot_fft_en[idx];
+    if (spectrum)
         plot_dat = await plot_fft_cal(idx, plot_dat);
-    csa.plot.plots[idx].setData(plot_dat);
+    plot_set_dat(idx, plot_dat, spectrum);
+}
+
+// csa.plot.dat keeps what the device sent (the formulas, the export and the api see that),
+// uPlot is handed a copy fit to draw, and the x counter jumps in it are looked up
+function plot_set_dat(idx, dat, spectrum = false) {
+    csa.plot.brk[idx] = spectrum ? [] : find_breaks(idx, dat[0]);
+    csa.plot.plots[idx].setData(finite_dat(dat));
+}
+
+// uPlot takes NaN / ±Infinity (a float channel can carry them) for numbers: it draws a straight
+// line over them, and one as the first point in view turns the shared y range into NaN, which
+// blanks the whole plot. Null is a gap instead. Only the series that have any are copied
+function finite_dat(dat) {
+    return dat.map(d => d.includes(NaN) || d.includes(Infinity) || d.includes(-Infinity) ?
+                        d.map(v => v !== v || v === Infinity || v === -Infinity ? null : v) : d);
+}
+
+// with a shared x counter ("H5": each sample 5 on from the one before) x only jumps where samples
+// are missing, e.g. packets lost on the way; per sample x ("H") has no fixed step to go by
+function find_breaks(idx, xs) {
+    let f = csa.plot.fmt[idx];
+    let step = f[1] == '.' ? 0 : parseInt(f.split('.')[0].slice(1));
+    let brk = []; // index of the first sample after each jump
+    if (step > 0) {
+        for (let i = 1; i < xs.length; i++)
+            if (xs[i] - xs[i-1] != step)
+                brk.push(i);
+    }
+    return brk;
+}
+
+// no line may run across a jump in view. The ways uPlot offers both made a redraw several times
+// slower: leaving it out as a gap clips the whole line, drawing each piece on its own drops
+// the folding of the samples in one pixel column into one stroke. So with a jump in view the line
+// is drawn here, as uPlot's linear() does with many samples, only lifting the pen at each jump,
+// and over nulls. A series with nulls (a NaN sent, a formula that failed) is drawn here too:
+// uPlot clips each null gap out, it comes out the same, only slower.
+// A jump within one pixel is left alone, the line looks the same there
+function plot_paths(idx, linear, u, si, i0, i1) {
+    let xs = u.data[0], ys = u.data[si];
+    // canvas pixels on the linear scales, worked out as uPlot's valToPos() does
+    let b = u.bbox, sx = u.scales.x, sy = u.scales[u.series[si].scale];
+    let px = v => Math.round(b.left + b.width * ((v - sx.min) / (sx.max - sx.min)));
+    let py = v => Math.round(b.top + b.height * (1 - (v - sy.min) / (sy.max - sy.min)));
+    let cuts = csa.plot.brk[idx].filter(c => c > i0 && c <= i1 && c < xs.length && px(xs[c]) > px(xs[c-1]));
+    if (!cuts.length && !ys.includes(null))
+        return linear(u, si, i0, i1);
+    let stroke = new Path2D();
+    // the pixel column being folded (null: pen up), kept out of closures: this loop runs per sample
+    let accX = null, nextX = 0, inY = 0, outY = 0, minY = 0, maxY = 0;
+    let ci = 0, next_cut = cuts[0]; // (reading past the end of cuts would be slow)
+    for (let i = i0; i <= i1; i++) {
+        let y = ys[i];
+        let cut = i === next_cut;
+        if (cut)
+            next_cut = ++ci < cuts.length ? cuts[ci] : Infinity;
+        if ((cut || y == null) && accX != null) {
+            plot_fold(stroke, accX, py(minY), py(maxY), py(inY), py(outY));
+            accX = null;
+        }
+        if (y == null)
+            continue;
+        let x = accX != null && xs[i] < nextX ? accX : px(xs[i]);
+        if (x === accX) {
+            outY = y;
+            if (y < minY)
+                minY = y;
+            else if (y > maxY)
+                maxY = y;
+            continue;
+        }
+        if (accX == null) {
+            stroke.moveTo(x, py(y));
+        } else {
+            plot_fold(stroke, accX, py(minY), py(maxY), py(inY), py(outY));
+            stroke.lineTo(x, py(y));
+        }
+        accX = x;
+        nextX = sx.min + (sx.max - sx.min) * ((x + 1 - b.left) / b.width); // x is in this column up to here
+        inY = outY = minY = maxY = y;
+    }
+    if (accX != null)
+        plot_fold(stroke, accX, py(minY), py(maxY), py(inY), py(outY));
+    return { stroke, fill: null, clip: null, band: null, gaps: null, flags: 1 }; // 1: BAND_CLIP_FILL
+}
+
+// uPlot's drawAcc: from the first sample of a pixel column to its extremes, ending at its last
+function plot_fold(stroke, x, lo, hi, iy, oy) {
+    if (lo != hi) {
+        if (iy != lo && oy != lo)
+            stroke.lineTo(x, lo);
+        if (iy != hi && oy != hi)
+            stroke.lineTo(x, hi);
+        stroke.lineTo(x, oy);
+    }
+}
+
+// and join the two ends of each jump with a dashed line in its place
+function plot_draw_breaks(idx, u, si) {
+    let brk = csa.plot.brk[idx];
+    if (!brk.length)
+        return;
+    let s = u.series[si];
+    let xs = u.data[0], ys = u.data[si];
+    let px = v => Math.round(u.valToPos(v, 'x', true));
+    let py = v => Math.round(u.valToPos(v, s.scale, true));
+    let width = s.width * uPlot.pxRatio;
+    let ctx = u.ctx;
+    ctx.save(); // uPlot caches the ctx style it set, leave it as it was
+    // as uPlot draws a line: half a pixel over, else a level line comes out blurred, and clipped
+    // half a line width out of the plot, else a line on the edge (the min / max in view) is lost
+    if (s.pxAlign == 1 && width % 2)
+        ctx.translate((width % 2) / 2, (width % 2) / 2);
+    ctx.beginPath();
+    ctx.rect(u.bbox.left - width / 2, u.bbox.top - width / 2, u.bbox.width + width, u.bbox.height + width);
+    ctx.clip();
+    ctx.strokeStyle = typeof s.stroke == 'function' ? s.stroke(u, si) : s.stroke;
+    ctx.lineWidth = width;
+    ctx.setLineDash([4 * uPlot.pxRatio, 3 * uPlot.pxRatio]);
+    ctx.beginPath();
+    for (let b of brk) {
+        if (b >= xs.length || ys[b-1] == null || ys[b] == null ||
+                xs[b] < u.scales.x.min || xs[b-1] > u.scales.x.max)
+            continue;
+        let x0 = px(xs[b-1]), x1 = px(xs[b]);
+        if (x1 > x0) { // else left alone by plot_paths
+            ctx.moveTo(x0, py(ys[b-1]));
+            ctx.lineTo(x1, py(ys[b]));
+        }
+    }
+    ctx.stroke();
+    ctx.restore();
 }
 
 function append_cal_val(idx, start) {
@@ -308,9 +441,14 @@ function make_chart(idx, name, series) {
         hooks: {
             setSeries: [
                 async (u, seriesIdx, show) => { await plot_update(idx); }
+            ],
+            drawSeries: [
+                (u, si) => plot_draw_breaks(idx, u, si)
             ]
         }
     };
+    let linear = uPlot.paths.linear(); // what uPlot draws a series with by default
+    series.forEach((s, i) => { if (i) s.paths = (u, si, i0, i1) => plot_paths(idx, linear, u, si, i0, i1); });
 
     console.log(opts, idx);
     return new uPlot(opts, null, document.getElementById(`plot${idx}`));
@@ -743,7 +881,7 @@ async function plot_reconfig(idx, label, cal) {
         csa.plot.fmt[idx] = bk.fmt;
         csa.plot.reg_val[idx] = bk.reg_val;
         plot_init_series(idx);
-        csa.plot.plots[idx].setData(csa.plot.dat[idx]);
+        plot_set_dat(idx, csa.plot.dat[idx]);
         if (was_en) {
             checkbox.checked = true;
             await plot_apply_en(idx);
@@ -769,7 +907,7 @@ async function plot_reconfig(idx, label, cal) {
 function plot_clear_dat(i) {
     for (let s = 0; s < csa.plot.dat[i].length; s++)
         csa.plot.dat[i][s] = [];
-    csa.plot.plots[i].setData(csa.plot.dat[i]);
+    plot_set_dat(i, csa.plot.dat[i]);
     csa.plot.x_ofs[i] = 0;
 }
 
@@ -781,7 +919,8 @@ function is_float(n) {
 function plot_init_series(idx) {
     let f_fmt = csa.plot.fmt[idx];
     let f_label = csa.plot.label[idx];
-    let series_num = f_fmt.split('.')[1].length + 1;
+    // no data channels when they did not resolve ('' fmt), the plot stays, empty
+    let series_num = (f_fmt.split('.')[1] || '').length + 1;
     f_label = f_label.slice(0, series_num);
     if (f_label.length < series_num)
         f_label[series_num-1] = '~';
@@ -1046,6 +1185,7 @@ async function init_plot() {
     csa.plot.plot_fft = [];
     csa.plot.x_ofs = [];
     csa.plot.fmt = [];
+    csa.plot.brk = [];
     csa.plot.label = [];
     csa.plot.reg_val = [];
     csa.plot.parse_error_reported = [];
@@ -1061,6 +1201,7 @@ async function init_plot() {
         csa.plot.plot_fft.push({});
         csa.plot.x_ofs.push(0);
         csa.plot.fmt.push('');
+        csa.plot.brk.push([]);
         csa.plot.label.push([]);
         csa.plot.reg_val.push(null);
         csa.plot.parse_error_reported.push(false);
@@ -1189,7 +1330,7 @@ async function init_plot() {
         for (let i = 0; i < csa.plot.plots.length; i++) {
             let padding = Math.max(csa.plot.dat[i].length - dat[i].length, 0);
             csa.plot.dat[i] = dat[i].concat(Array(padding).fill([]));
-            csa.plot.plots[i].setData(csa.plot.dat[i]);
+            plot_set_dat(i, csa.plot.dat[i]);
         }
     };
 }

@@ -14,6 +14,10 @@ import { val2hex } from '../utils/helper.js?v=__V__';
 async function plot_reg_w(idx) {
     let reg_val = csa.plot.reg_val[idx];
     let reg_name = csa.cfg.plot.plots[idx].cfg_reg;
+    if (!reg_val) { // its channels did not resolve, the config error says why
+        alert(`${L('Config file error, related functions may not work:')} Plot${idx}`);
+        return -1;
+    }
     for (let i = 0; true; i++) {
         if (`reg.${reg_name}.${i}` in csa.reg.elm)
             reg_set_str(csa.reg.elm[`reg.${reg_name}.${i}`], '0x0000 0x00');
@@ -100,7 +104,8 @@ function _get_reg_ofs_len(name_a, skip_overlay=false) {
             }
         }
     }
-    if (!match_item)
+    // an overlay on a register that is not in the list has no address
+    if (!match_item || item_val(match_item, R_ADDR) == null)
         return null;
     
     if (name_a.length == 1) {
@@ -181,6 +186,9 @@ function cfg_reg_slots(name) {
 function plot_reg_w_init(idx) {
     let list = [];
     console.log(`plot_reg_w_init ${idx}`);
+    // nothing left over from an earlier config, should this one fail
+    csa.plot.fmt[idx] = '';
+    csa.plot.reg_val[idx] = null;
     const label = csa.cfg.plot.plots[idx].label;
     if (!label || label.length < 2)
         return L('label list is empty.');
@@ -188,7 +196,10 @@ function plot_reg_w_init(idx) {
         let ret = get_reg_ofs_len(label[i]);
         if (!ret) {
             console.warn(`plot label not found: ${label[i]}`);
-            return L('data register not found: %s').replace('%s', `${label[i]}`);
+            let names = split_indexes(label[i]).map(a => a[0]);
+            let ov = (csa.cfg.plot.reg_overlay || []).find(o => names.includes(o[4]));
+            let what = ov && item_val(ov, R_ADDR) == null ? `${label[i]} (reg_overlay: ${ov[0]})` : label[i];
+            return L('data register not found: %s').replace('%s', what);
         }
         if (ret[2].length == 1) {
             ret.push(label[i]);

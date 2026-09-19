@@ -87,7 +87,7 @@ test('both plots refresh and respect buffer limits when packets arrive together'
     let receiver;
     const counts = [0,0];
     const csa = { cfg: { plot: { plots: [{},{}] } }, plot: {
-        fmt: ['B.B','B.B'], dat: [[[],[]],[[],[]]], x_ofs: [0,0], cal_fn: [[],[]],
+        fmt: ['B.B','B.B'], dat: [[[],[]],[[],[]]], x_ofs: [0,0], cal_fn: [[],[]], brk: [[],[]],
         parse_dat_len_bk: [[],[]], plot_max_len: [1,1], plot_less_en: [], plot_fft_en: [],
         plots: [0,1].map(i => ({ setData() { counts[i]++; } })),
         dbg_raw_sock: { recvfrom: () => messages.length ? Promise.resolve(messages.shift()) : new Promise(r => receiver = r) }
@@ -215,4 +215,31 @@ test('Re-Calc displays config errors and retains the current plot config', async
     await vm.runInContext('plot_cal_update(0)', ctx);
     assert.deepEqual(errors, ['err: invalid json']);
     assert.equal(csa.cfg.plot.plots[0], cfg);
+});
+
+test('a reg_overlay on a register missing from the list is reported when the plot config loads', () => {
+    const list = [[0x26,16,'{H,H}',1,'dbg_raw[0]',''], [0x78,4,'f',0,'pid_pos_kp',''], [0x2cc,4,'i',0,'cur_pos','']];
+    const plot = overlay => ({ reg_overlay: overlay,
+        plots: [{ cfg_reg: 'dbg_raw[0]', x_fmt: 'H1', label: ['N', 'pid target', 'i_term', 'cur_pos'] }] });
+    const csa = { cfg: { reg: { list } }, plot: { fmt: [], label: [[]], reg_val: [] } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/plugins/reg_rw.js') + source('html/plugins/plot_reg_w.js'), ctx);
+    csa.cfg.plot = plot([['pid_pos_ki',20,4,'i','pid target'], ['pid_pos_ki',24,4,'f','i_term']]);
+    assert.equal(vm.runInContext('plot_reg_w_init(0)', ctx), 'data register not found: pid target (reg_overlay: pid_pos_ki)');
+    assert.equal(csa.plot.fmt[0], '');
+    assert.equal(csa.plot.reg_val[0], null);
+    csa.cfg.plot = plot([['pid_pos_kp',24,4,'i','pid target'], ['pid_pos_kp',28,4,'f','i_term']]);
+    csa.plot.label = [[]];
+    assert.equal(vm.runInContext('plot_reg_w_init(0)', ctx), null);
+    assert.equal(csa.plot.fmt[0], 'H1.ifi');
+    assert.deepEqual(Array.from(csa.plot.reg_val[0], r => r[0]), [0x90, 0x2cc]);
+});
+
+test('a plot whose channels did not resolve still gets an empty chart', () => {
+    const csa = { cfg: { plot: { plots: [{ label: ['N', 'pid target'] }] } },
+        plot: { fmt: [''], label: [[]], cal_fn: [], dat: [] } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/plugins/reg_rw.js') + source('html/plugins/plot.js'), ctx);
+    assert.equal(vm.runInContext('plot_init_series(0)', ctx).length, 1);
+    assert.equal(csa.plot.dat[0].length, 1);
 });

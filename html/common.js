@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.11';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.12';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -235,16 +235,26 @@ function topbar_update() {
     bar.classList.toggle('is-single', shown < 2);   // nothing to reorder, no arrows
 }
 
-// show a sticky notification at the top of the page, same id replaces the previous one
+// show a sticky notification at the top of the page, same id replaces the previous one.
+// They stack up in one sticky box, the newest on top: each sticky on its own, they all stuck
+// at the top once the page was scrolled, and the older ones covered the newer ones
 function show_banner(id, html, cls='is-danger') {
     let elem = document.getElementById(id);
     if (!elem) {
+        let box = document.getElementById('banner_box');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'banner_box';
+            box.style.cssText = 'position: sticky; top: 0; z-index: 100;';
+            document.body.prepend(box);
+        }
         elem = document.createElement('div');
         elem.id = id;
-        elem.style.cssText = 'position: sticky; top: 0; z-index: 100; margin: 0; border-radius: 0; white-space: pre-wrap; ' +
+        elem.style.cssText = 'margin: 0; border-radius: 0; white-space: pre-wrap; ' +
+                             'border-bottom: 1px solid #0000001a; ' +
                              'background-color: #F5B7B180; backdrop-filter: blur(8px); ' +
                              '-webkit-backdrop-filter: blur(8px);';
-        document.body.prepend(elem);
+        box.prepend(elem);
     }
     elem.className = `notification ${cls}`;
     elem.innerHTML = html;

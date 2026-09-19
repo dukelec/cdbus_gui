@@ -87,7 +87,7 @@ test('both plots refresh and respect buffer limits when packets arrive together'
     let receiver;
     const counts = [0,0];
     const csa = { cfg: { plot: { plots: [{},{}] } }, plot: {
-        fmt: ['B.B','B.B'], dat: [[[],[]],[[],[]]], x_ofs: [0,0], cal_fn: [[],[]], brk: [[],[]],
+        fmt: ['B.B','B.B'], dat: [[[],[]],[[],[]]], x_ofs: [0,0], cal_fn: [[],[]], brk: [[],[]], raw: [[],[]],
         parse_dat_len_bk: [[],[]], plot_max_len: [1,1], plot_less_en: [], plot_fft_en: [],
         plots: [0,1].map(i => ({ setData() { counts[i]++; } })),
         dbg_raw_sock: { recvfrom: () => messages.length ? Promise.resolve(messages.shift()) : new Promise(r => receiver = r) }
@@ -242,4 +242,20 @@ test('a plot whose channels did not resolve still gets an empty chart', () => {
     vm.runInContext(source('html/plugins/reg_rw.js') + source('html/plugins/plot.js'), ctx);
     assert.equal(vm.runInContext('plot_init_series(0)', ctx).length, 1);
     assert.equal(csa.plot.dat[0].length, 1);
+});
+
+test('the legend names NaN and ±Infinity behind a gap, and formula NaN is kept for it', () => {
+    const csa = { plot: { raw: [[[0,1,2,3,4], [1.5, NaN, Infinity, -Infinity, null]]], cal_fn: [[
+        _d => NaN, _d => _d[9].at(-1), _d => 2 ]], cal_error_reported: [false] } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js') + source('html/plugins/plot.js'), ctx);
+    const legend = i => vm.runInContext(`plot_legend_val(0, ${i == 0 ? 1.5 : 'null'}, 1, ${i})`, ctx);
+    assert.deepEqual([0, 1, 2, 3, 4].map(legend), ['1.500', 'NaN', 'Infinity', '-Infinity', null]);
+    assert.equal(vm.runInContext('plot_legend_val(0, null, 1, null)', ctx), null); // cursor off the plot
+    csa.plot.dat = [[[0], [], [], [], [], []]];
+    csa.plot.dat[0][9] = [];
+    vm.runInContext('append_cal_val(0, 1)', ctx);
+    assert.ok(Number.isNaN(csa.plot.dat[0][1][0]));
+    assert.equal(csa.plot.dat[0][2][0], null);   // undefined from an empty series
+    assert.equal(csa.plot.dat[0][3][0], 2);
 });

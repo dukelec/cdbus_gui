@@ -47,10 +47,22 @@ async function plot_update(idx) {
 }
 
 // csa.plot.dat keeps what the device sent (the formulas, the export and the api see that),
-// uPlot is handed a copy fit to draw, and the x counter jumps in it are looked up
+// uPlot is handed a copy fit to draw, and the x counter jumps in it are looked up. raw is what
+// the copy was made from, same indexes, for the legend to name what a gap stands for
 function plot_set_dat(idx, dat, spectrum = false) {
     csa.plot.brk[idx] = spectrum ? [] : find_breaks(idx, dat[0]);
+    csa.plot.raw[idx] = dat;
     csa.plot.plots[idx].setData(finite_dat(dat));
+}
+
+// the legend value. Where the plot has a gap it names what was there: NaN, Infinity or
+// -Infinity, and only with no value at all it is left to uPlot's '--'
+function plot_legend_val(idx, val, si, i) {
+    if (val == null) {
+        let v = i == null ? null : csa.plot.raw[idx]?.[si]?.[i];
+        return typeof v == 'number' ? String(v) : null;
+    }
+    return is_float(val) ? readable_float(val) : val;
 }
 
 // uPlot takes NaN / ±Infinity (a float channel can carry them) for numbers: it draws a straight
@@ -200,7 +212,9 @@ function append_cal_val(idx, start) {
             }
             val = NaN;
         }
-        _d[start+i].push(isNaN(val) ? null : val);
+        // NaN is kept, so the legend can name it (the plot leaves a gap either way);
+        // what is no number at all, such as undefined from an empty series, is not
+        _d[start+i].push(typeof val == 'number' || !isNaN(val) ? val : null);
     }
 }
 
@@ -944,7 +958,7 @@ function plot_init_series(idx) {
             label = '~';
         else
             label = label.trim();
-        series.push({ label, stroke: color, value: (_, val) => is_float(val) ? readable_float(val) : val });
+        series.push({ label, stroke: color, value: (u, val, si, i) => plot_legend_val(idx, val, si, i) });
         csa.plot.dat[idx].push([]);
     }
     return series;
@@ -1186,6 +1200,7 @@ async function init_plot() {
     csa.plot.x_ofs = [];
     csa.plot.fmt = [];
     csa.plot.brk = [];
+    csa.plot.raw = [];
     csa.plot.label = [];
     csa.plot.reg_val = [];
     csa.plot.parse_error_reported = [];
@@ -1202,6 +1217,7 @@ async function init_plot() {
         csa.plot.x_ofs.push(0);
         csa.plot.fmt.push('');
         csa.plot.brk.push([]);
+        csa.plot.raw.push([]);
         csa.plot.label.push([]);
         csa.plot.reg_val.push(null);
         csa.plot.parse_error_reported.push(false);

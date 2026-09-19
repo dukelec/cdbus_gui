@@ -259,3 +259,19 @@ test('the legend names NaN and ±Infinity behind a gap, and formula NaN is kept 
     assert.equal(csa.plot.dat[0][2][0], null);   // undefined from an empty series
     assert.equal(csa.plot.dat[0][3][0], 2);
 });
+
+test('button groups sent through the api are checked, and come back in address order', () => {
+    const csa = { cfg: { reg: { list: [[0,1,'B',0,'a'], [1,2,'H',0,'b'], [4,4,'{BBBB}',0,'c'], [8,1,'B',0,'d']] } } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    const parse = list => JSON.parse(vm.runInContext(`JSON.stringify(groups_parse(${JSON.stringify(list)}, 'w'))`, ctx));
+    assert.deepEqual(parse([['d'], ['a', 'b']]), [[0, 3], [8, 1]]);
+    assert.deepEqual(parse([['b', 'd']]), [[1, 8]]);    // over the gap at 3, as the page allows
+    assert.deepEqual(parse([]), []);
+    assert.throws(() => parse([['b', 'a']]), /a comes before b/);
+    assert.throws(() => parse([['a', 'b'], ['b']]), /overlap/);
+    assert.throws(() => parse([['x']]), /unknown reg: x$/);
+    assert.throws(() => parse([['c.1']]), /whole register: c/);
+    for (const bad of [[['a', 'b', 'd']], [[]], ['a'], [[1]], 'a'])
+        assert.throws(() => parse(bad), /group/);
+});

@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.13';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.14';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -278,7 +278,7 @@ function ws_closed(evt) {
     }
 }
 
-let cfg_errors = [];
+let cfg_errors = [];     // what the banner lists, the api hands it to scripts as well
 
 // report a device config file problem, all problems share one banner
 function show_cfg_error(msg) {
@@ -297,6 +297,31 @@ function show_faults(faults) {
     }
     let list = faults.map(f => escape_html(f)).join('\n');
     show_banner('fault_banner', `<b>${L('Backend fault, communication may be broken. Please check the backend log and restart it.')}</b>\n${list}`);
+}
+
+// answer the commands the backend relays from the external api (api_serve.py) with the functions
+// of `cmds`, one at a time: one finishes before the next starts
+async function api_serve(sock, cmds) {
+    let queue = Promise.resolve();
+    while (true) {
+        let [dat, src] = await sock.recvfrom();
+        if (!dat || !dat.cmd) { // answer of our 'hello', or api not enabled
+            console.log('api: backend ret', dat);
+            continue;
+        }
+        queue = queue.then(async () => {
+            let rep = { id: dat.id, err: null, ret: null };
+            try {
+                if (!Object.hasOwn(cmds, dat.cmd))
+                    throw new Error(`unknown cmd: ${dat.cmd}`);
+                rep.ret = await cmds[dat.cmd](dat.args || {}); // the backend prints it in the log
+            } catch (err) {
+                rep.err = `${err.message || err}`;
+                console.error('api:', dat.cmd, err);
+            }
+            await sock.sendto(rep, src);
+        }).catch(err => console.error('api:', err));
+    }
 }
 
 // query backend faults once, then keep listening for fault broadcasts
@@ -318,4 +343,5 @@ async function init_sys() {
 
 export { csa, VERSION, init_nav, PIN_SVG,
          topbar_slot, topbar_update, topbar_take, topbar_give_back,
-         alloc_port, save_cfg_file, show_banner, show_cfg_error, ws_closed, show_faults, init_sys };
+         alloc_port, save_cfg_file, show_banner, show_cfg_error, cfg_errors, ws_closed, show_faults, init_sys,
+         api_serve };

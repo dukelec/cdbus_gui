@@ -171,13 +171,14 @@ async function mode_groups(mode) {
 }
 
 // offer reg plus every set that has at least one group, keeping the page's choice when it is
-// still there; with only reg left there is nothing to choose, so the select is locked
-async function update_mode_select() {
+// still there; with only reg left there is nothing to choose, so the select is locked. `keep` is
+// offered in any case: a set the api has just given groups to, without saving them
+async function update_mode_select(keep=null) {
     let sel = document.getElementById('reg_mode');
     let names = [];
     for (let m of mode_names()) {
         let [r, w] = await mode_groups(m);
-        if (m == 'reg' || (r && r.length) || (w && w.length))
+        if (m == 'reg' || m == keep || (r && r.length) || (w && w.length))
             names.push(m);
     }
     sel.innerHTML = names.map(m => `<option value="${m}">${m}</option>`).join('');
@@ -602,6 +603,89 @@ async function reg_save_file() {
     }
 }
 
+// ---- the external api ------------------------------------------------------------------
+
+// groups sent through the api, written the way the config file writes them: [first, last] or
+// [name], whole registers only. The page never builds a bad one, so check them all here; they
+// come back as [addr, len] in address order.
+function groups_parse(list, rw) {
+    if (!Array.isArray(list))
+        throw new Error(`${rw} must be a list of groups: [["first", "last"], ["name"], ...]`);
+    let ret = [];
+    for (let g of list) {
+        if (!Array.isArray(g) || g.length < 1 || g.length > 2 || g.some(n => typeof n != 'string'))
+            throw new Error(`${rw}: a group is ["first", "last"] or ["name"], not ${JSON.stringify(g)}`);
+        let idx = g.map(reg_idx_by_name);
+        for (let n = 0; n < g.length; n++) {
+            if (idx[n] != null)
+                continue;
+            let m = g[n].match(/^(.+)\.\d+$/); // an element of a {} register, as the reg api names it
+            throw new Error(`${rw}: unknown reg: ${g[n]}` + (m && reg_idx_by_name(m[1]) != null ?
+                            `, a group takes the whole register: ${m[1]}` : ''));
+        }
+        if (idx.at(-1) < idx[0])
+            throw new Error(`${rw}: ${g[1]} comes before ${g[0]} in the reg list`);
+        let r0 = csa.cfg.reg.list[idx[0]];
+        let r1 = csa.cfg.reg.list[idx.at(-1)];
+        ret.push({ g, addr: r0[R_ADDR], len: r1[R_ADDR] + r1[R_LEN] - r0[R_ADDR] });
+    }
+    ret.sort((a, b) => a.addr - b.addr);
+    for (let i = 1; i < ret.length; i++) {
+        if (ret[i].addr < ret[i-1].addr + ret[i-1].len)
+            throw new Error(`${rw}: groups overlap: ${JSON.stringify(ret[i-1].g)} and ${JSON.stringify(ret[i].g)}`);
+    }
+    return ret.map(x => [x.addr, x.len]);
+}
+
+function check_mode(mode) {
+    let names = mode_names();
+    if (!names.includes(mode))
+        throw new Error(`unknown group set: ${mode}, the config file has: ${names.join(', ')}`);
+    return names;
+}
+
+// the groups of a set, as the config file writes them. For the set in use that is what the page
+// runs on right now, which the api may have changed without saving it.
+async function groups_get(mode=null) {
+    mode ??= cur_mode();
+    let names = check_mode(mode);
+    let r = csa.reg.reg_r, w = csa.reg.reg_w;
+    if (mode != cur_mode())
+        [r, w] = (await mode_groups(mode)).map(reg_cfg2reg_rw);
+    return { set: mode, sets: names, r: reg_rw2reg_cfg(r), w: reg_rw2reg_cfg(w) };
+}
+
+// Button Edit for the api: switch the set in use to a.set, and give it the groups a.r / a.w. A
+// side left out stays as it is, null puts back the config file's. Nothing is kept unless a.save,
+// a reload goes back to what the user had; with a.save the set in use and both of its sides are
+// kept the way Button Edit keeps them, only what differs from the config file.
+async function groups_set(a) {
+    if (in_button_edit())
+        throw new Error('the groups are being edited on the page (Button Edit is on), try again once that is done');
+    let mode = a.set ?? cur_mode();
+    check_mode(mode);
+    let cur = mode == cur_mode() ? [csa.reg.reg_r, csa.reg.reg_w] :
+                                   (await mode_groups(mode)).map(reg_cfg2reg_rw);
+    let [reg_r, reg_w] = ['r', 'w'].map((rw, i) =>  // all checked before anything changes
+            a[rw] === undefined ? cur[i] :
+            a[rw] === null ? reg_cfg2reg_rw(csa.cfg.reg[`${mode}_${rw}`]) : groups_parse(a[rw], rw));
+    
+    csa.reg.mode = mode;
+    csa.reg.reg_r = reg_r;
+    csa.reg.reg_w = reg_w;
+    if (a.save) {
+        await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, mode);
+        await save_reg_db(`${mode}_r`, reg_rw2reg_cfg(reg_r));
+        await save_reg_db(`${mode}_w`, reg_rw2reg_cfg(reg_w));
+    }
+    await update_mode_select(mode);
+    update_reg_rw_btn('r');
+    update_reg_rw_btn('w');
+    layout_reg_rows();
+    build_pin_bar();
+    return await groups_get(mode);
+}
+
 // ---- the top bar ----------------------------------------------------------------------
 
 // the pinned registers in address order, split into runs of registers that sit next to each
@@ -861,6 +945,7 @@ async function init_reg() {
     document.getElementById('reg_mode').onchange = async () => {
         csa.reg.mode = cur_mode();
         await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, csa.reg.mode);
+        await update_mode_select();     // drops a set the api filled without saving it
         await init_reg_rw();
     };
     document.getElementById('read_period').oninput = async () => {
@@ -942,4 +1027,4 @@ async function init_reg() {
 }
 
 
-export { init_reg, cal_reg_rw, reg_idx_by_name };
+export { init_reg, cal_reg_rw, reg_idx_by_name, in_button_edit, groups_get, groups_set };

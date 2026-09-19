@@ -14,7 +14,7 @@ Args:
   --local-mac LOCAL_MAC # default: 0
   --http-port HTTP_PORT # default: 8910
   --api-port API_PORT   # external api, default: 8911, 0: disable
-  --api-iap             # allow the external api to start iap
+  --api-no-iap          # refuse iap through the external api
 """
 
 import os, sys, re
@@ -56,7 +56,7 @@ csa['net'] = int(args.get("--local-net", dft="0x00"), 0)
 csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
 http_port = int(args.get("--http-port", dft="8910"), 0)
 api_port = int(args.get("--api-port", dft="8911"), 0)
-api_iap = args.get("--api-iap") != None
+api_iap = args.get("--api-no-iap") == None
 
 if args.get("--verbose", "-v") != None:
     logger_init(logging.VERBOSE)

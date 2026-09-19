@@ -9,7 +9,7 @@ import { escape_html, date2num, timestamp, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js?v=__V__';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js?v=__V__';
 import { Idb } from './utils/idb.js?v=__V__';
-import { csa, init_nav, alloc_port, show_banner, ws_closed, init_sys } from './common.js?v=__V__';
+import { csa, init_nav, alloc_port, show_banner, ws_closed, init_sys, api_serve } from './common.js?v=__V__';
 import { init_dbg } from './plugins/dbg.js?v=__V__';
 
 
@@ -52,13 +52,15 @@ async function init_serial_cfg() {
         baud.value = ser_cfg.baud;
     }
     
-    port.onchange = baud.onchange = async () => {
-        await csa.db.set('tmp', '_index_/ser.cfg', {
-            port: port.value,
-            baud: baud.value
-        });
-    };
+    port.onchange = baud.onchange = save_serial_cfg;
     baud.oninput = update_baud_hint;
+}
+
+async function save_serial_cfg() {
+    await csa.db.set('tmp', '_index_/ser.cfg', {
+        port: document.getElementById('dev_port').value,
+        baud: document.getElementById('dev_baud').value
+    });
 }
 
 async function init_cfg_list() {
@@ -136,7 +138,9 @@ function init_ws() {
         
         await init_cfg_list();
         await init_serial_cfg();
-        await document.getElementById('btn_dev_get').onclick();
+        await dev_get();
+        csa.api_sock = new CDWebSocket(csa.ws_ns, 'api');
+        api_serve(csa.api_sock, api_cmds);
     }
     ws.onmessage = async function(evt) {
         let dat = await blob2dat(evt.data);
@@ -173,28 +177,46 @@ function update_baud_hint() {
     }
 }
 
-    
-document.getElementById('btn_dev_get').onclick = async function() {
+// one request to the backend's serial service at a time: the buttons and the api share cmd_sock,
+// and two requests in flight would take each other's replies
+let dev_lock = Promise.resolve();
+
+async function dev_req(req) {
+    let unlock;
+    let prev = dev_lock;
+    dev_lock = new Promise(resolve => unlock = resolve);
+    await prev;
+    try {
+        csa.cmd_sock.flush();
+        await csa.cmd_sock.sendto(req, ['server', 'dev']);
+        return await csa.cmd_sock.recvfrom(1000);
+    } finally {
+        unlock();
+    }
+}
+
+// Refresh: show what the backend has open, and the ports there are; the reply is kept in
+// csa.dev_st as well, null when there was none
+async function dev_get() {
     console.log('start get');
     let status = document.getElementById('dev_status');
     let list = document.getElementById('dev_list');
     document.getElementById('btn_dev_get').disabled = true;
     status.style.background = list.style.background = '#D5F5E3';
     
-    csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(1000);
+    let dat = await dev_req({'action': 'get'});
     console.log('btn_dev_get ret', dat);
+    csa.dev_st = dat ? dat[0] : null;
     if (!dat) {
         status.innerHTML = `<span style="color: #c00">${L('Reply timeout, please Refresh again. If it persists, check the backend log.')}</span>`;
         status.style.background = list.style.background = '';
         document.getElementById('btn_dev_get').disabled = false;
-        return;
+        return null;
     }
     if (dat[0] == 'udp') {
         console.log('udp mode!');
         document.getElementById('dev_ctrl_hide').style.display = 'none';
-        return;
+        return dat[0];
     }
     let online_str = L('Offline');
     if (dat[0].online == 1)
@@ -223,36 +245,113 @@ document.getElementById('btn_dev_get').onclick = async function() {
     status.style.background = list.style.background = '#D5F5E360';
     setTimeout(() => { status.style.background = list.style.background = ''; }, 100);
     document.getElementById('btn_dev_get').disabled = false;
-};
+    return dat[0];
+}
 
-document.getElementById('btn_dev_open').onclick = async function() {
+// Open the port the two boxes name. Why it did not open is alerted, or returned for the api,
+// which has no one to click the alert away.
+async function dev_open(alert_err=true) {
     console.log('start open');
     let port = document.getElementById('dev_port').value;
     let baud = parseInt(document.getElementById('dev_baud').value);
     if (!port || !baud) {
-        alert('Empty not allowed');
-        return;
+        if (alert_err)
+            alert('Empty not allowed');
+        return 'the port and the baud rate must not be empty';
     }
     document.getElementById('btn_dev_open').disabled = true;
-    csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'open', 'port': port, 'baud': baud}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(1000);
-    console.log('btn_dev_open ret', dat);
-    if (dat && typeof dat[0] == 'string' && dat[0].startsWith('err'))
-        alert(L('Serial port already opened, please close it first, then open again to apply new settings.'));
-    await document.getElementById('btn_dev_get').onclick();
-    document.getElementById('btn_dev_open').disabled = false;
-};
+    let err = null;
+    try {
+        let dat = await dev_req({'action': 'open', 'port': port, 'baud': baud});
+        console.log('btn_dev_open ret', dat);
+        if (!dat)
+            err = 'no reply from the backend';
+        else if (typeof dat[0] == 'string' && dat[0].startsWith('err')) {
+            err = `${dat[0]}`.replace(/^err:\s*(dev:\s*)?/, '');
+            if (alert_err)
+                alert(L('Serial port already opened, please close it first, then open again to apply new settings.'));
+        }
+        await dev_get();
+    } finally {
+        document.getElementById('btn_dev_open').disabled = false;
+    }
+    return err;
+}
 
-document.getElementById('btn_dev_close').onclick = async function() {
+async function dev_close() {
     console.log('start close');
     document.getElementById('btn_dev_close').disabled = true;
-    csa.cmd_sock.flush();
-    await csa.cmd_sock.sendto({'action': 'close'}, ['server', 'dev']);
-    let dat = await csa.cmd_sock.recvfrom(1000);
-    console.log('btn_dev_close ret', dat);
-    await document.getElementById('btn_dev_get').onclick();
-    document.getElementById('btn_dev_close').disabled = false;
+    try {
+        let dat = await dev_req({'action': 'close'});
+        console.log('btn_dev_close ret', dat);
+        await dev_get();
+    } finally {
+        document.getElementById('btn_dev_close').disabled = false;
+    }
+}
+
+document.getElementById('btn_dev_get').onclick = dev_get;
+document.getElementById('btn_dev_open').onclick = () => dev_open();
+document.getElementById('btn_dev_close').onclick = dev_close;
+
+
+// ---- the external api (api_serve.py): the serial port, the same way the buttons above do it
+
+const DEV_STATES = ['offline', 'online', 'connecting', 'dead'];
+
+function serial_status() {
+    let d = csa.dev_st;
+    if (d == null)
+        throw new Error('no reply from the backend, see its log');
+    if (d == 'udp')
+        throw new Error('the backend talks udp (main_udp.py), there is no serial port to set up');
+    return {
+        port: d.port, baud: d.baud, state: DEV_STATES[d.online] ?? `${d.online}`,
+        input: { port: document.getElementById('dev_port').value,
+                 baud: document.getElementById('dev_baud').value },
+        ports: d.ports, net: d.net, mac: d.mac
+    };
+}
+
+const api_cmds = {
+
+async serial_get() {
+    await dev_get();
+    return serial_status();
+},
+
+// fill in the boxes (kept, as if typed in), then Open; either one left out keeps what the box has
+async serial_open(a) {
+    await dev_get();
+    serial_status();    // the backend has no serial port at all
+    if (a.port != null && (typeof a.port != 'string' || !a.port.trim()))
+        throw new Error('port must be a non-empty string: a device path, or any part of a line of "ports"');
+    let baud = a.baud == null ? null : Number(a.baud);
+    if (baud != null && !(Number.isInteger(baud) && baud > 0))
+        throw new Error(`baud must be a positive integer, not ${JSON.stringify(a.baud)}`);
+    if (a.port != null)
+        document.getElementById('dev_port').value = a.port.trim();
+    if (baud != null)
+        document.getElementById('dev_baud').value = `${baud}`;
+    if (a.port != null || baud != null) {
+        await save_serial_cfg();
+        update_baud_hint();
+    }
+    let err = await dev_open(false);
+    if (err) {
+        let d = csa.dev_st;
+        throw new Error(d && d.port ? `${err} (open now: ${d.port} @ ${d.baud})` : err);
+    }
+    return serial_status();
+},
+
+async serial_close() {
+    await dev_get();
+    serial_status();
+    await dev_close();
+    return serial_status();
+}
+
 };
 
 window.addEventListener('load', async function() {

@@ -15,10 +15,12 @@
 
 import { timestamp } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
-import { csa } from '../common.js?v=__V__';
+import { csa, cfg_errors, api_serve } from '../common.js?v=__V__';
 import { fmt_size, read_reg_val, write_reg_val,
          reg_set_str, R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 import { cfg_reg_slots } from './plot_reg_w.js?v=__V__';
+import { in_button_edit, groups_get as reg_groups_get,
+         groups_set as reg_groups_set } from './reg.js?v=__V__';
 
 
 // ------------------------------------------------------------ reg helpers
@@ -114,6 +116,7 @@ async info() {
     return {
         tgt: csa.arg.tgt, name: csa.arg.name, cfg: csa.arg.cfg,
         info: document.getElementById('dev_info').innerText,
+        cfg_errors,
         reg_overlay: (csa.cfg.plot && csa.cfg.plot.reg_overlay) || [],
         regs, plots
     };
@@ -147,7 +150,7 @@ async reg_write(a) {
     for (let e of entries) {
         let i = grp_idx('w', e.addr, e.len);
         if (i == null)
-            throw new Error(`reg write disabled: ${e.name}`);
+            throw new Error(`reg write disabled: ${e.name}, it is in no W group, see GET /api/dev/{dev}/groups`);
         if (!idxs.includes(i))
             idxs.push(i);
     }
@@ -183,6 +186,25 @@ async log_read(a) {
 
 async log_clear() {
     csa.dbg.log_clear();
+    return 0;
+},
+
+// the R / W button groups, which decide what reg_read and reg_write can reach
+async groups_get(a) {
+    return await reg_groups_get(a.set ?? null);
+},
+
+async groups_set(a) {
+    return await reg_groups_set(a);
+},
+
+// the backend has checked that the config file loads, and waits for the new page to say hello
+async reload() {
+    if (csa.iap && !csa.iap.stop)
+        throw new Error('iap is running, a reload would break it off');
+    if (in_button_edit())
+        throw new Error('the groups are being edited on the page (Button Edit is on), a reload would drop the edit');
+    setTimeout(() => location.reload(), 200);   // once this reply is out
     return 0;
 },
 
@@ -323,45 +345,18 @@ function csv_field(s) {
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-async function handle(dat, src) {
-    let rep = { id: dat.id, err: null, ret: null };
-    let args = dat.args || {};
-    try {
-        if (!(dat.cmd in cmds))
-            throw new Error(`unknown cmd: ${dat.cmd}`);
-        rep.ret = await cmds[dat.cmd](args); // the backend prints it in the log
-    } catch (err) {
-        rep.err = `${err.message || err}`;
-        console.error('api:', dat.cmd, err);
-    }
-    await csa.api.sock.sendto(rep, src);
-}
-
-
-async function api_service() {
-    let queue = Promise.resolve();
-    while (true) {
-        let msg = await csa.api.sock.recvfrom();
-        let dat = msg[0];
-        if (!dat || !dat.cmd) { // answer of our 'hello', or api not enabled
-            console.log('api: backend ret', dat);
-            continue;
-        }
-        queue = queue.then(() => handle(dat, msg[1])).catch(err => console.error('api:', err));
-    }
-}
-
-
 async function init_api() {
     csa.api = {};
     csa.api.sock = new CDWebSocket(csa.ws_ns, 'api');
-    api_service();
+    api_serve(csa.api.sock, cmds);
 
     // tell the backend which device this page serves, so a script can address
-    // it by name; no need to wait, the api is optional
+    // it by name; no need to wait, the api is optional. Coming last, it also
+    // tells a reload that is waiting for it that the page is up again, and
+    // whatever the config file got wrong has been found by now.
     let plots = csa.plot ? csa.plot.plots.length : 0;
     await csa.api.sock.sendto({ 'cmd': 'hello',
-        'args': { tgt: csa.arg.tgt, name: csa.arg.name, cfg: csa.arg.cfg, plots }
+        'args': { tgt: csa.arg.tgt, name: csa.arg.name, cfg: csa.arg.cfg, plots, cfg_errors }
     }, ['server', 'api']);
 }
 

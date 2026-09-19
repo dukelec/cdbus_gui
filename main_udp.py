@@ -16,7 +16,7 @@ Args:
   --port-base BASE      # default: 0xcd00
   --http-port HTTP_PORT # default: 8910
   --api-port API_PORT   # external api, default: 8911, 0: disable
-  --api-iap             # allow the external api to start iap
+  --api-no-iap          # refuse iap through the external api
 """
 
 import os, sys, re
@@ -58,7 +58,7 @@ udp_ip_prefix = args.get("--ip6-prefix", dft="fdcd::")
 udp_port_base = int(args.get("--port-base", dft="0xcd00"), 0)
 http_port = int(args.get("--http-port", dft="8910"), 0)
 api_port = int(args.get("--api-port", dft="8911"), 0)
-api_iap = args.get("--api-iap") != None
+api_iap = args.get("--api-no-iap") == None
 
 cdnet_local_addr = [
     f"00:{csa['net']:02x}:{csa['mac']:02x}",

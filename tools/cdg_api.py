@@ -22,12 +22,16 @@ import urllib.error
 
 
 class CdgApi:
-    def __init__(self, dev, url='http://localhost:8911', timeout=70):
-        self.base = f'{url.rstrip("/")}/api/dev/{urllib.parse.quote(dev)}'
+    def __init__(self, dev=None, url='http://localhost:8911', timeout=70):
+        """`dev` may be left out for the serial port calls, which are not per device."""
+        self.url = url.rstrip('/')
+        self.base = f'{self.url}/api/dev/{urllib.parse.quote(dev)}' if dev else None
         self.timeout = timeout
 
-    def _req(self, method, path, query=None, body=None):
-        url = self.base + path
+    def _req(self, method, path, query=None, body=None, dev=True):
+        if dev and not self.base:
+            raise ValueError('no device given to CdgApi()')
+        url = (self.base if dev else f'{self.url}/api') + path
         if query:
             url += '?' + urllib.parse.urlencode({k: v for k, v in query.items() if v is not None})
         dat = None if body is None else (body if isinstance(body, bytes) else str(body).encode())
@@ -61,6 +65,48 @@ class CdgApi:
 
     def log_clear(self):
         self._req('DELETE', '/log')
+
+    def reload(self):
+        """Reload the page, e.g. after editing its config file, and wait until
+        it is back. Returns 'ok', or 'ok, but ...' with the config file errors
+        the page reports. The log and the waveforms start over."""
+        return self._req('POST', '/reload').strip()
+
+    # ---------------------------------------------------------- serial port
+
+    def serial(self):
+        """{'port': in use or None, 'baud':, 'state': 'online' | 'connecting' |
+        'offline' | 'dead', 'input': {'port':, 'baud':}, 'ports': [...], ...}"""
+        return json.loads(self._req('GET', '/serial', dev=False))
+
+    def serial_open(self, port=None, baud=None):
+        """Fill in the index page and click Open; left out keeps the box's value.
+        Refused while a port is open, close it first. Returns what serial() does."""
+        body = {k: v for k, v in (('port', port), ('baud', baud)) if v is not None}
+        return json.loads(self._req('POST', '/serial/open', None, json.dumps(body), dev=False))
+
+    def serial_close(self):
+        return json.loads(self._req('POST', '/serial/close', None, '', dev=False))
+
+    # ---------------------------------------------------------- groups
+
+    def groups(self, gset=None):
+        """R / W button groups of the set in use, or of set `gset`:
+        {'set': 'reg', 'sets': [...], 'r': [[first, last], [name], ...], 'w': [...]}"""
+        return json.loads(self._req('GET', '/groups', {'set': gset} if gset else None))
+
+    def set_groups(self, r=..., w=..., gset=None, save=False):
+        """Replace the R and / or W groups; a side left out stays as it is,
+        None puts back the config file's. `gset` switches to that set first.
+        Not kept across a page reload unless `save`. Returns what groups() does."""
+        body = {'save': save}
+        if gset is not None:
+            body['set'] = gset
+        if r is not ...:
+            body['r'] = r
+        if w is not ...:
+            body['w'] = w
+        return json.loads(self._req('POST', '/groups', None, json.dumps(body)))
 
     # ---------------------------------------------------------- plot
 

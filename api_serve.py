@@ -14,10 +14,14 @@
 # step the script takes is printed in the page log window.
 #
 # Only one page is allowed per device address, so "the page" is unambiguous.
+# The serial port is set up on the index page, of which there is only one as
+# well, so /api/serial goes there.
 
+import os
 import asyncio
 import datetime
 import json
+import json5
 import logging
 from aiohttp import web
 from cd_ws import CDWebSocket
@@ -30,8 +34,9 @@ api = {
     'sock': None,   # CDWebSocket on port 'api'
     'pages': {},    # ws path: {'tgt': , 'name': , 'cfg': , 'plots': }
     'waits': {},    # req id: future
+    'backs': {},    # ws path: [future], waiting for a reloaded page to say hello
     'id': 0,
-    'allow_iap': False
+    'allow_iap': True
 }
 
 
@@ -62,21 +67,37 @@ def brief(v, n=100):
 
 async def api_log(path, text, err=False):
     """Print what the api is doing into the device page log and into the index
-    page log, the same two places a device debug message goes."""
+    page log, the same two places a device debug message goes. What is done on
+    the index page itself goes to its log only."""
     ts = datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]
-    addr = path.lstrip('/')
+    addr = path.lstrip('/') or 'serial'
     body = f'\x1b[0;{"31" if err else "36"}m[api] {text}\x1b[0m\n'
     src = (addr, 'api')
-    await api['sock'].sendto({'src': src, 'dat': f'{ts}: {body}'.encode()}, (path, 9))
+    if path != '/':
+        await api['sock'].sendto({'src': src, 'dat': f'{ts}: {body}'.encode()}, (path, 9))
     await api['sock'].sendto({'src': src, 'dat': f'{ts} [{addr}]: {body}'.encode()}, ('/', 9))
 
 
-async def call(dev, cmd, args=None, timeout=20):
+def page_of(dev):
     path = find_page(dev)
     if not path:
         opened = [i.get('name') or i.get('tgt') for i in list_pages().values()]
         raise web.HTTPNotFound(text=f'err: no page opened for device "{dev}", opened: {opened}\n')
+    return path
 
+
+async def call(dev, cmd, args=None, timeout=20):
+    return await call_path(page_of(dev), cmd, args, timeout)
+
+
+async def call_index(cmd, args=None, timeout=10):
+    if '/' not in ws_ns.connections:
+        raise web.HTTPNotFound(text='err: the index page is not opened, the serial port is set up '
+                                    'there, open the tool\'s start page in the browser\n')
+    return await call_path('/', cmd, args, timeout)
+
+
+async def call_path(path, cmd, args=None, timeout=20):
     await api_log(path, f'{cmd} {brief(args or {})}')
 
     api['id'] = (api['id'] + 1) & 0xffffff
@@ -108,9 +129,13 @@ async def api_service():
             continue
 
         if dat.get('cmd') == 'hello':
-            api['pages'][src[0]] = dat.get('args') or {}
-            logger.info(f'api: page online: {src[0]}: {api["pages"][src[0]]}')
+            info = dat.get('args') or {}
+            api['pages'][src[0]] = info
+            logger.info(f'api: page online: {src[0]}: {info}')
             await sock.sendto({'allow_iap': api['allow_iap']}, src)
+            for fut in api['backs'].pop(src[0], []):   # a reload is over
+                if not fut.done():
+                    fut.set_result(info)
             continue
 
         fut = api['waits'].get(dat.get('id'))
@@ -176,7 +201,8 @@ async def h_reg_get_one(request):
     name = request.match_info['name']
     ret = await call(request.match_info['dev'], 'reg_read', {'names': [name]})
     if ret.get(name) is None:
-        raise web.HTTPBadRequest(text=f'err: reg read disabled: {name}\n')
+        raise web.HTTPBadRequest(text=f'err: reg read disabled: {name}, it is in no R group, '
+                                      f'see GET /api/dev/{{dev}}/groups\n')
     return as_text(ret[name])
 
 
@@ -258,9 +284,101 @@ async def h_plot_clear(request):
     return as_text('ok')
 
 
+async def h_groups_get(request):
+    args = {'set': request.query.get('set') or None}
+    return web.json_response(await call(request.match_info['dev'], 'groups_get', args))
+
+
+async def h_groups_post(request):
+    try:
+        body = json.loads(await request.text())
+    except Exception as err:
+        raise web.HTTPBadRequest(text=f'err: body is not json: {err}\n')
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text='err: body must be a json object: '
+                                      '{"r": [["first", "last"], ["name"]], "w": [...]}\n')
+    args = {k: body[k] for k in ('set', 'r', 'w', 'save') if k in body}  # null means the file's
+    return web.json_response(await call(request.match_info['dev'], 'groups_set', args, timeout=30))
+
+
+def cfg_load_err(cfg):
+    """Why the page could not load its config file, read the way the backend reads it for the page."""
+    if not cfg:
+        return None
+    try:
+        with open(os.path.join('configs', cfg)) as c_file:
+            json5.load(c_file)
+    except (OSError, ValueError) as err:
+        return f'{cfg}: {err}'
+    return None
+
+
+async def h_reload(request):
+    """Reload the page, to take in an edited config file for one, and return once the new page
+    is up and has said hello. The page is left alone when its config file does not load: it
+    would come back as a dead page with nothing but an error banner."""
+    dev = request.match_info['dev']
+    path = page_of(dev)
+    err = await asyncio.get_running_loop().run_in_executor(
+            None, cfg_load_err, api['pages'][path].get('cfg'))
+    if err:
+        await api_log(path, f'reload refused: {err}', True)
+        raise web.HTTPBadRequest(text=f'err: the config file does not load, page not reloaded: {err}\n')
+
+    back = asyncio.get_running_loop().create_future()
+    api['backs'].setdefault(path, []).append(back)
+    old = api['pages'][path]
+    timeout = 30
+    try:
+        await call(dev, 'reload')
+        # gone until it says hello again, or for good if it can't; the new page's hello may
+        # in theory already be in, so drop only the entry of the page that was told to go
+        if api['pages'].get(path) is old:
+            del api['pages'][path]
+        try:
+            info = await asyncio.wait_for(back, timeout)
+        except asyncio.TimeoutError:
+            raise web.HTTPGatewayTimeout(text=f'err: the page did not come back within {timeout}s '
+                                              'of the reload, see the page in the browser for why\n')
+    finally:
+        backs = api['backs'].get(path, [])
+        if back in backs:
+            backs.remove(back)
+        if not backs:
+            api['backs'].pop(path, None)
+
+    errs = info.get('cfg_errors') or []
+    if errs:
+        await api_log(path, f'reloaded, config errors: {brief(errs)}', True)
+        return as_text('ok, but the page reports config file errors, related functions may not work:\n' +
+                       ''.join(f'  {e}\n' for e in errs))
+    await api_log(path, 'reloaded')
+    return as_text('ok')
+
+
+async def h_serial_get(request):
+    return web.json_response(await call_index('serial_get'))
+
+
+async def h_serial_open(request):
+    body = (await request.text()).strip()
+    try:
+        args = json.loads(body) if body else {}
+    except Exception as err:
+        raise web.HTTPBadRequest(text=f'err: body is not json: {err}\n')
+    if not isinstance(args, dict):
+        raise web.HTTPBadRequest(text='err: body must be a json object: {"port": "ACM0", "baud": 115200}\n')
+    args = {k: args[k] for k in ('port', 'baud') if k in args}
+    return web.json_response(await call_index('serial_open', args))
+
+
+async def h_serial_close(request):
+    return web.json_response(await call_index('serial_close'))
+
+
 async def h_iap_post(request):
     if not api['allow_iap']:
-        raise web.HTTPForbidden(text='err: iap is disabled, start the backend with --api-iap\n')
+        raise web.HTTPForbidden(text='err: iap is disabled, the backend was started with --api-no-iap\n')
     try:
         args = json.loads(await request.text())
     except Exception as err:
@@ -282,6 +400,12 @@ HELP = '''\
 CDBUS GUI external API. A page for the device must be opened in the browser.
 {dev} is the device address (e.g. 80:00:fe) or the name set on the index page.
 
+  GET    /api/serial                      serial port in use, its state, the
+                                          ports there are (index page opened)
+  POST   /api/serial/open                 body {"port":"ACM0","baud":115200},
+                                          fills in the index page and opens,
+                                          either one left out keeps the box's
+  POST   /api/serial/close                close the serial port
   GET    /api/devs                        list opened device pages
   GET    /api/dev/{dev}/info              device info, reg list, plot list
   GET    /api/dev/{dev}/reg               read all readable regs      [?names=a,b]
@@ -302,7 +426,18 @@ CDBUS GUI external API. A page for the device must be opened in the browser.
                                           [?tail=N | ?start=X&end=X]
                                           [&step=N&digits=N&series=a,b&fmt=json]
   DELETE /api/dev/{dev}/plot/{idx}        clear waveform buffer
+  GET    /api/dev/{dev}/groups            R / W button groups of the set in use
+                                          [?set=less]
+  POST   /api/dev/{dev}/groups            change them, body
+                                          {"r":[["first","last"],["name"]],"w":[...]}
+                                          a side left out stays, null puts back the
+                                          config file's, "set":"less" switches the
+                                          set first, "save":true keeps it all in
+                                          the browser across page reloads
+  POST   /api/dev/{dev}/reload            reload the page, e.g. after editing its
+                                          config file, returns once it is back
   POST   /api/dev/{dev}/iap               body {"path":..,"action":..,"check":..}
+                                          refused if the backend runs --api-no-iap
   GET    /api/dev/{dev}/iap               iap progress
   DELETE /api/dev/{dev}/iap               stop a running iap
 '''
@@ -317,6 +452,9 @@ async def start_api(addr, port):
     app.add_routes([
         web.get('/', h_help),
         web.get('/api', h_help),
+        web.get('/api/serial', h_serial_get),
+        web.post('/api/serial/open', h_serial_open),
+        web.post('/api/serial/close', h_serial_close),
         web.get('/api/devs', h_devs),
         web.get('/api/dev/{dev}/info', h_info),
         web.get('/api/dev/{dev}/reg', h_reg_get),
@@ -329,6 +467,9 @@ async def start_api(addr, port):
         web.post('/api/dev/{dev}/plot/{idx}/cfg', h_plot_cfg),
         web.get('/api/dev/{dev}/plot/{idx}', h_plot_get),
         web.delete('/api/dev/{dev}/plot/{idx}', h_plot_clear),
+        web.get('/api/dev/{dev}/groups', h_groups_get),
+        web.post('/api/dev/{dev}/groups', h_groups_post),
+        web.post('/api/dev/{dev}/reload', h_reload),
         web.post('/api/dev/{dev}/iap', h_iap_post),
         web.get('/api/dev/{dev}/iap', h_iap_get),
         web.delete('/api/dev/{dev}/iap', h_iap_stop),
@@ -342,7 +483,7 @@ async def start_api(addr, port):
         await asyncio.sleep(3600)
 
 
-def api_init(csa, addr='localhost', port=8911, allow_iap=False):
+def api_init(csa, addr='localhost', port=8911, allow_iap=True):
     api['allow_iap'] = allow_iap
     api['sock'] = CDWebSocket(ws_ns, 'api')
     cd_watch.create_task(api_service(), 'api_service')

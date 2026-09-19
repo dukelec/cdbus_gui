@@ -122,9 +122,10 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 
 ### External API
 
-Lets a script (or an AI agent) drive the tool from outside: read and write
-registers, read the log, start and stop waveforms, fetch waveform data, and
-run an IAP upgrade.
+Lets a script (or an AI agent) drive the tool from outside: open and close
+the serial port, read and write registers, change the R / W button groups,
+read the log, start and stop waveforms, fetch waveform data, reload the page
+and run an IAP upgrade.
 
 Requests are relayed to the device page in the browser, and the page does the
 real work, the same way it does when you click a button. So a script and the
@@ -135,12 +136,16 @@ it easy to watch what a script is doing.
 
 The page for the device must be opened in the browser. The server listens on
 `localhost:8911` by default, use `--api-port` to change it, `--api-port 0` to
-disable it. IAP is refused unless the backend is started with `--api-iap`.
+disable it. IAP is allowed, start the backend with `--api-no-iap` to refuse it.
 
 `{dev}` below is the device address (e.g. `00:00:fe`) or the name you gave it
 on the index page. `GET http://localhost:8911/` prints this list.
 
 ```
+GET    /api/serial                      serial port in use, its state, the
+                                        ports there are (index page opened)
+POST   /api/serial/open                 body {"port":"ACM0","baud":115200}
+POST   /api/serial/close                close the serial port
 GET    /api/devs                        list opened device pages
 GET    /api/dev/{dev}/info              device info, reg list, plot list
 GET    /api/dev/{dev}/reg               read all readable regs      [?names=a,b]
@@ -159,10 +164,38 @@ GET    /api/dev/{dev}/plot/{idx}        waveform as csv
                                         [?tail=N | ?start=X&end=X]
                                         [&step=N&digits=N&series=a,b&fmt=json]
 DELETE /api/dev/{dev}/plot/{idx}        clear waveform buffer
+GET    /api/dev/{dev}/groups            R / W button groups of the set in use
+                                        [?set=less]
+POST   /api/dev/{dev}/groups            change them, body
+                                        {"r":[["first","last"],["name"]],"w":[...],
+                                         "set":"less", "save":false}
+POST   /api/dev/{dev}/reload            reload the page, e.g. after editing its
+                                        config file, returns once it is back
 POST   /api/dev/{dev}/iap               body {"path":..,"action":..,"check":..}
+                                        refused if the backend runs --api-no-iap
 GET    /api/dev/{dev}/iap               iap progress
 DELETE /api/dev/{dev}/iap               stop a running iap
 ```
+
+The serial port is set up on the index page, so `/api/serial` needs the index
+page opened, the way a device call needs the device page. It does what the
+`Open` and `Close` buttons there do: `open` fills in the two boxes, which are
+kept as if typed in, and opens; a field left out keeps what its box has.
+`port` is matched the way the box matches it, a device path or any part of a
+line of `ports`. A port that is already open is not replaced, close it first,
+e.g. to change the baud rate. Each call returns the state after it:
+
+```shell
+curl -X POST localhost:8911/api/serial/close
+curl -X POST localhost:8911/api/serial/open -d '{"port":"ACM0","baud":921600}'
+{"port": "/dev/ttyACM0", "baud": 921600, "state": "online",
+ "input": {"port": "ACM0", "baud": "921600"}, "ports": [...], "net": 0, "mac": 0}
+```
+
+`state` is `online`, `connecting` (the port is not there, it is retried every
+half second, as it is when a USB device is unplugged), `offline` (nothing is
+open) or `dead` (the thread reading the port has died, close and open again).
+A backend started as `main_udp.py` has no serial port, the calls are refused.
 
 A script can also choose what a plot samples, without editing the config file
 or reloading the page. `label` is the channel list, the same thing the `plot`
@@ -197,6 +230,39 @@ with a channel list the API changed.
 curl -X POST localhost:8911/api/dev/motor/plot/0/cfg \
      -d '{"label":["N","tgt_pos","meas_pos"],"cal":{"err":"_d[1].at(-1)-_d[2].at(-1)"}}'
 ```
+
+A register can only be read or written through a group that covers it, the
+same as on the page, where a register outside every group has a dead `R` or
+`W` button. `GET .../info` flags each register with `r` and `w`, and
+`GET .../groups` lists the groups of the set in use, written the way the
+config file writes them: `["first", "last"]` covers every register from
+`first` to `last`, `["name"]` a single one. A group takes whole registers, not
+one element of a `{}` register. `POST .../groups` replaces them: send `r`
+and / or `w`, a side left out stays as it is, `null` puts back what the config
+file has. `"set": "less"` switches the page to that set first, the same as
+picking it in the drop-down. The groups are checked before anything changes:
+an unknown register, a group whose `last` comes before its `first`, or two
+groups that overlap are refused. The reply is the groups now in use.
+
+```shell
+curl -X POST localhost:8911/api/dev/motor/groups \
+     -d '{"w":[["tc_pos"],["tc_speed","tc_accel"],["pid_pos_kp","pid_pos_kd"]]}'
+```
+
+As with the plot channels, a change is not kept: a page reload goes back to
+the groups the user has. `"save": true` keeps the set in use and its groups in
+the browser, which is what `Button Edit` does. Writing them into the config
+file is left to `Update Config File` on the page. While the user has
+`Button Edit` on, a change is refused.
+
+`POST .../reload` reloads the device page, which is how a config file edited
+on disk takes effect. It checks the config file first, and one that does not
+load is reported and the page is left running as it is. Otherwise the call
+returns once the reloaded page is back, with the config file problems the page
+reports, if any, the same ones its error banner lists (`GET .../info` has them
+as `cfg_errors`). A reload starts the log and the waveforms over, drops what
+the API changed without saving, and is refused while an IAP is running or
+`Button Edit` is on.
 
 Waveform data can be large, so narrow it down on the server side with `tail`
 or an `start`/`end` range, thin it with `step`, and cut the precision with

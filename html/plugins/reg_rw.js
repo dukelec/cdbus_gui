@@ -437,7 +437,7 @@ async function read_reg_val(r_idx, read_dft=false) {
 function str2reg(dat, ofs, fmt, show, str, s_idx) {
     let dv = new DataView(dat.buffer);
     let f = fmt.replace(/\W/g, ''); // remove non-word chars
-    let str_a = str.split(' ');
+    let str_a = str.trim().split(/\s+/);
     for (let i = 0; i < f.length; i++) {
         switch (f[i]) {
         case 'c':
@@ -523,21 +523,37 @@ function group_regs(addr, len) {
     return ret;
 }
 
-// every value of a write group against the ranges of its regs
-function check_group_range(addr, len) {
-    for (let r of group_regs(addr, len)) {
-        let count = r[R_FMT][0] == '{' ? Math.trunc(r[R_LEN] / fmt_size(r[R_FMT])) : 0;
-        if (count) {
-            for (let n = 0; n < count; n++) {
-                let err = reg_range_check(r, csa.reg.elm[`reg.${r[R_ID]}.${n}`].value);
-                if (err)
-                    return err;
-            }
-        } else {
-            let err = reg_range_check(r, csa.reg.elm[`reg.${r[R_ID]}`].value);
-            if (err)
-                return err;
+// Capture the input strings once: validation and packing must use the same values,
+// even if the user or a periodic read changes the boxes during read-before-write.
+function group_inputs(addr, len) {
+    let inputs = [];
+    for (let reg of group_regs(addr, len)) {
+        let size = fmt_size(reg[R_FMT]);
+        let count = Math.trunc(reg[R_LEN] / size);
+        let struct = reg[R_FMT][0] == '{';
+        for (let n = 0; n < (struct ? count : 1); n++) {
+            let key = `reg.${reg[R_ID]}` + (struct ? `.${n}` : '');
+            inputs.push({ reg, str: csa.reg.elm[key].value,
+                          ofs: reg[R_ADDR] - addr + (struct ? size * n : 0),
+                          count: reg[R_FMT][0] == '[' ? count : 1, size });
         }
+    }
+    return inputs;
+}
+
+function check_group_inputs(inputs) {
+    for (let {reg, str, count} of inputs) {
+        // Text arrays may be shorter than the register, and are zero padded.
+        if (!(reg[R_SHOW] == 0 && reg[R_FMT].includes('c'))) {
+            let expected = reg[R_FMT].replace(/[^a-zA-Z]/g, '').length * count;
+            let actual = str.trim() ? str.trim().split(/\s+/).length : 0;
+            if (actual != expected)
+                return L('%s: expected %s values, got %s').replace('%s', reg[R_ID])
+                        .replace('%s', expected).replace('%s', actual);
+        }
+        let err = reg_range_check(reg, str);
+        if (err)
+            return err;
     }
     return null;
 }
@@ -548,18 +564,18 @@ async function write_reg_val(w_idx, alert_err=true) {
         return -1;
     let [addr, len] = grp;
     set_input_bg('w', w_idx, '#D6EAF8');
-    let has_empty = false;
     csa.reg.last_err = null;
     
     // refuse a value the config does not allow before the read-before-write round trip:
     // no point going out to the bus just to reject it here afterwards
-    let bad_range = check_group_range(addr, len);
-    if (bad_range) {
-        console.log('write reg: out of range:', bad_range);
-        csa.reg.last_err = bad_range;
+    let inputs = group_inputs(addr, len);
+    let input_err = check_group_inputs(inputs);
+    if (input_err) {
+        console.log('write reg: invalid input:', input_err);
+        csa.reg.last_err = input_err;
         set_input_bg('w', w_idx, '#F5B7B180');
         if (alert_err)
-            alert(bad_range);
+            alert(input_err);
         return -1;
     }
     
@@ -592,56 +608,19 @@ async function write_reg_val(w_idx, alert_err=true) {
     
     console.info('before write reg:', dat2hex(dat, ' '));
 
-    let start = addr;
-    let found_start = false;
-    for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-        let r = csa.cfg.reg.list[i];
-        
-        if (!found_start) {
-            if (start == r[R_ADDR]) {
-                found_start = true;
-            } else {
-                continue;
-            }
-        }
-        
-        let ofs = r[R_ADDR] - start;
-        if (ofs >= len)
-            break;
-        
-        if (r[R_FMT][0] == '{') {
-            let one_size = fmt_size(r[R_FMT]);
-            let count = Math.trunc(r[R_LEN] / one_size);
-            for (let n = 0; n < count; n++) {
-                let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
-                if (elem.value == '')
-                    has_empty = true;
-                str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, 0);
-            }
-        } else if (r[R_FMT][0] == '[') {
-            let one_size = fmt_size(r[R_FMT]);
-            let count = Math.trunc(r[R_LEN] / one_size);
-            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-            if (elem.value == '' && r[R_FMT] != '[c]')
-                has_empty = true;
+    try {
+        for (let {reg, str, ofs, count, size} of inputs) {
             for (let n = 0; n < count; n++)
-                str2reg(dat, r[R_ADDR]-start+one_size*n+3, r[R_FMT], r[R_SHOW], elem.value, n);
-            
-        } else {
-            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-            if (elem.value == '')
-                has_empty = true;
-            str2reg(dat, r[R_ADDR]-start+3, r[R_FMT], r[R_SHOW], elem.value, 0);
+                str2reg(dat, ofs + size * n + 3, reg[R_FMT], reg[R_SHOW], str, n);
         }
-        
-    }
-    
-    if (has_empty) {
-        console.log('write reg: input empty');
+    } catch (err) {
+        csa.reg.last_err = `${err.message || err}`;
         set_input_bg('w', w_idx, '#F5B7B180');
+        if (alert_err)
+            alert(csa.reg.last_err);
         return -1;
     }
-    
+
     console.info('write reg:', dat2hex(dat, ' '));
     console.log('write reg wait ret');
     let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);

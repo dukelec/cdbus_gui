@@ -128,6 +128,7 @@ let trans_zh_cn = {
     'range min must not be above max: %s': '范围的最小值不能大于最大值：%s',
     'range step must be above 0: %s': '范围的步长必须大于 0：%s',
     '%s: "%s" is not a number': '%s："%s" 不是数字',
+    '%s: expected %s values, got %s': '%s：需要 %s 个值，实际为 %s 个',
     '%s: %s is outside %s': '%s：%s 超出允许范围 %s',
     'reg.pin must be a list of register names.': 'reg.pin 必须是寄存器名称的列表。',
     'Register list is empty.': '寄存器列表为空。',

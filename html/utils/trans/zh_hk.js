@@ -127,6 +127,7 @@ let trans_zh_hk = {
     'range min must not be above max: %s': '範圍的最小值不能大於最大值：%s',
     'range step must be above 0: %s': '範圍的步長必須大於 0：%s',
     '%s: "%s" is not a number': '%s："%s" 不是數字',
+    '%s: expected %s values, got %s': '%s：需要 %s 個值，實際為 %s 個',
     '%s: %s is outside %s': '%s：%s 超出允許範圍 %s',
     'reg.pin must be a list of register names.': 'reg.pin 必須是暫存器名稱的列表。',
     'Register list is empty.': '寄存器列表為空。',

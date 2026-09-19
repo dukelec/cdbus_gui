@@ -213,9 +213,13 @@ async def cfgs_service(): # read configs
             await sock.sendto(csa['cfgs'], src)
         
         elif dat['action'] == 'get_cfg':
-            with open(os.path.join('configs', dat['cfg'])) as c_file:
-                c = json5.load(c_file)
-                await sock.sendto(c, src)
+            try:
+                with open(os.path.join('configs', dat['cfg'])) as c_file:
+                    c = json5.load(c_file)
+            except (OSError, ValueError) as err:
+                logger.warning(f'cfgs: get_cfg {dat.get("cfg")}: {err}')
+                c = f'err: {err}'
+            await sock.sendto(c, src)
         
         elif dat['action'] == 'set_cfg':
             # write the values edited on the web page back into the json5 file

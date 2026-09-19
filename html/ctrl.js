@@ -36,6 +36,10 @@ function init_ws() {
             return;
         }
         console.log('get_cfg ret', dat[0]);
+        if (typeof dat[0] == 'string' && dat[0].startsWith('err:')) {
+            show_banner('ws_banner', `<b>${escape_html(dat[0])}</b>`);
+            return;
+        }
         csa.cfg = dat[0];
         
         await init_sys();

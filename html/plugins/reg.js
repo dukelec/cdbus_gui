@@ -241,6 +241,10 @@ function update_reg_rw_btn(rw='r') {
         btn.style['margin-top'] = '';
         btn.style['margin-bottom'] = '';
         btn.onclick = null;
+        if (rw == 'w') {
+            for (let sfx of reg_val_sfx(reg))
+                csa.reg.elm[`reg.${sfx}`].onkeydown = null;
+        }
         
         if (rw_idx != null) {
             btn.style['background'] = color;
@@ -755,23 +759,30 @@ async function init_reg_rw() {
 
 
 let read_timer = null;
+let read_running = false;
 async function period_read() {
+    clearTimeout(read_timer);
+    read_timer = null;
     if (!document.getElementById('keep_read').checked) {
-        if (read_timer)
-            clearTimeout(read_timer);
-        read_timer = null;
         return;
     }
+    if (read_running)
+        return; // the pending round will schedule the next one if still enabled
+    read_running = true;
+    let ms = 200;
     try {
         await document.getElementById('dev_read_all').onclick();
+        // Keep the last good period when the box is empty or invalid.
+        ms = Number(document.getElementById('read_period').value);
+        if (!Number.isFinite(ms) || ms <= 0)
+            ms = Number(await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`));
     } catch (err) { // one bad round must not end the periodic read for good
         console.error('period read:', err);
+    } finally {
+        read_running = false;
+        if (document.getElementById('keep_read').checked)
+            read_timer = setTimeout(period_read, Number.isFinite(ms) && ms > 0 ? ms : 200);
     }
-    // an empty or bad box would mean no delay at all: keep the last good period instead
-    let ms = Number(document.getElementById('read_period').value);
-    if (!(ms > 0))
-        ms = Number(await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`)) || 200;
-    read_timer = setTimeout(period_read, ms);
 }
 
 

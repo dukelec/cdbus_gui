@@ -209,7 +209,7 @@ function parse_raw_dat(idx, dat) {
 }
 
 async function dbg_raw_service() {
-    let timer_pending = false;
+    let timer_pending = new Set();
     
     while (true) {
         let msg = await csa.plot.dbg_raw_sock.recvfrom();
@@ -237,11 +237,16 @@ async function dbg_raw_service() {
             continue;
         }
         
-        if (!timer_pending) {
-            timer_pending = true;
+        if (!timer_pending.has(idx)) {
+            timer_pending.add(idx);
             setTimeout(async () => {
-                await plot_update(idx);
-                timer_pending = false;
+                try {
+                    await plot_update(idx);
+                } catch (err) {
+                    console.error(`Plot${idx}: update failed`, err);
+                } finally {
+                    timer_pending.delete(idx);
+                }
             }, 100);
         }
     }
@@ -813,6 +818,10 @@ async function plot_cal_update(idx) {
     csa.plot.proxy_sock.flush();
     await csa.plot.proxy_sock.sendto({'action': 'get_cfg', 'cfg': csa.arg.cfg}, ['server', 'cfgs']);
     let dat = await csa.plot.proxy_sock.recvfrom(2000);
+    if (dat && typeof dat[0] == 'string' && dat[0].startsWith('err:')) {
+        show_cfg_error(dat[0]);
+        return;
+    }
     if (dat && dat[0] && dat[0].plot.plots[idx]) {
         csa.cfg.plot.plots[idx] = dat[0].plot.plots[idx];
         console.log('get_cfg ret', csa.cfg.plot.plots[idx]);

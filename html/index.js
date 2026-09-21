@@ -100,8 +100,9 @@ async function init_cfg_list() {
                 alert('Empty not allowed');
                 return;
             }
-            // the name is free text, a & or # in it would cut the args short
-            window.open(`ctrl.html?tgt=${encodeURIComponent(t)}&cfg=${encodeURIComponent(c)}` +
+            // tgt goes in as typed, to stay readable in the url; the name is free text,
+            // a & or # in it would cut the args short
+            window.open(`ctrl.html?tgt=${t}&cfg=${encodeURIComponent(c)}` +
                         `&name=${encodeURIComponent(n)}`, "_blank");
         };
         

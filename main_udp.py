@@ -10,8 +10,7 @@ Args:
   --help    | -h        # this help message
   --verbose | -v        # debug level: verbose
   --debug   | -d        # debug level: debug
-  --local-net LOCAL_NET # default: 0
-  --local-mac LOCAL_MAC # default: 0
+  --local-ip6 ADDRS     # local bind addresses, comma separated, default: :: (any)
   --ip6-prefix PREFIX   # default: fdcd::
   --port-base BASE      # default: 0xcd00
   --http-port HTTP_PORT # default: 8910
@@ -39,9 +38,7 @@ from cdnet.utils.cd_args import CdArgs
 csa = {
     'async_loop': None,
     'udp': False,
-    'udp_socks': {},    # port: [sock_00, sock_80, ...]
-    'net': 0x00,        # local net
-    'mac': 0x00,        # local mac
+    'udp_socks': {},    # port: {local_ip: sock}
     'proxy': None,      # cdbus frame proxy socket
     'cfgs': [],         # config list
     'palloc': {},       # ports alloc, url_path: []
@@ -52,18 +49,12 @@ if args.get("--help", "-h") != None:
     print(__doc__)
     exit()
 
-csa['net'] = int(args.get("--local-net", dft="0x00"), 0)
-csa['mac'] = int(args.get("--local-mac", dft="0x00"), 0)
+udp_local_ips = [str(ipaddress.IPv6Address(a.strip())) for a in args.get("--local-ip6", dft="::").split(',')]
 udp_ip_prefix = args.get("--ip6-prefix", dft="fdcd::")
 udp_port_base = int(args.get("--port-base", dft="0xcd00"), 0)
 http_port = int(args.get("--http-port", dft="8910"), 0)
 api_port = int(args.get("--api-port", dft="8911"), 0)
 api_iap = args.get("--api-no-iap") == None
-
-cdnet_local_addr = [
-    f"00:{csa['net']:02x}:{csa['mac']:02x}",
-    f"80:{csa['net']:02x}:{csa['mac']:02x}"
-]
 
 if args.get("--verbose", "-v") != None:
     logger_init(logging.VERBOSE)
@@ -75,6 +66,13 @@ else:
 logging.getLogger('websockets').setLevel(logging.WARNING)
 logger = logging.getLogger(f'cdgui')
 
+
+# a cdnet address is 3 bytes, level:net:mac, mapped onto the last 3 bytes of the ipv6 address
+udp_ip_net = ipaddress.IPv6Network(f'{udp_ip_prefix}0:0/104', strict=False)
+
+# level byte of each local address, None: any address
+udp_local_lv = {ip: None if ipaddress.IPv6Address(ip).is_unspecified else ipaddress.IPv6Address(ip).packed[13]
+                for ip in udp_local_ips}
 
 def addr_ip2cdnet(addr):
     full_ip = ipaddress.IPv6Address(addr).exploded
@@ -98,8 +96,9 @@ async def proxy_rx_rpt(rx):
         if src[1] == 0x1:
             dat4idx += b'\n'
         await csa['proxy'].sendto({'src': src, 'dat': dat4idx}, (f'/', 0x9))
-        dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
-        dat = time_str + b': ' + dat
+        if dst_port == 0x9:
+            dat = re.sub(b'\n(?!$)', b'\n' + b' ' * 14, dat)
+            dat = time_str + b': ' + dat
     ret = await csa['proxy'].sendto({'src': src, 'dat': dat}, (f'/{src[0]}', dst_port))
     if ret:
         logger.warning(f'rx_rpt err: {ret}: /{src[0]}:{dst_port}, {dat}')
@@ -123,17 +122,28 @@ async def udp_socks_update(remove=False):
                 new_ports.append(p)
     for p in list(csa['udp_socks'].keys()):
         if p not in new_ports:
-            for s in csa['udp_socks'][p]:
+            for s in csa['udp_socks'][p].values():
                 s.close()
             del(csa['udp_socks'][p])
+    # a level 0 answer comes back to the l0 address of the tun (e.g. fdcd::) and a level 1
+    # answer to the l1 one (e.g. fdcd::80:00), bind both, or :: (the default) for any
+    all_bound = True
     for p in new_ports:
-        if p not in csa['udp_socks']:
-            csa['udp_socks'][p] = []
-            for caddr in cdnet_local_addr:
-                ip_addr = addr_cdnet2ip(caddr)
-                s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-                s.bind((ip_addr, p + udp_port_base))
-                csa['udp_socks'][p].append(s)
+        socks = csa['udp_socks'].setdefault(p, {})
+        for ip in udp_local_ips:
+            if ip in socks:
+                continue
+            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            try:
+                s.bind((ip, p + udp_port_base))
+                socks[ip] = s
+            except OSError as err:
+                s.close()
+                all_bound = False
+                cd_watch.report_fault('udp', f'bind [{ip}]:{p + udp_port_base}: {err}')
+    if all_bound:
+        cd_watch.clear_fault('udp') # a failed address is retried on the next port alloc
     if remove:
         proxy_rx_pause = False
         await asyncio.sleep(0.1)
@@ -149,12 +159,15 @@ def proxy_rx():
                 time.sleep(0.1)
                 continue
             proxy_rx_paused = False
-            socks = [x for v in csa['udp_socks'].values() for x in v]
+            socks = [x for v in csa['udp_socks'].values() for x in v.values()]
             readable, _, _ = select.select(socks, [], [], 0.2)
             if not readable:
                 continue
             for s in readable:
                 dat, src_addr = s.recvfrom(256)
+                if ipaddress.IPv6Address(src_addr[0]) not in udp_ip_net:
+                    logger.debug(f'proxy_rx: skip src: {src_addr}')
+                    continue
                 dst_port = s.getsockname()[1] - udp_port_base
                 src_ip = addr_ip2cdnet(src_addr[0])
                 src_port = src_addr[1]
@@ -162,6 +175,17 @@ def proxy_rx():
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
         except Exception as err:
             logger.warning(f'proxy_rx: err: {err}')
+
+# send from a local address of the same level as the dst, else from the first one
+def udp_sock_pick(socks, dst):
+    if not socks:
+        return None
+    l0 = dst.startswith('00:')
+    for ip, s in socks.items():
+        lv = udp_local_lv[ip]
+        if lv == None or (lv == 0) == l0:
+            return s
+    return next(iter(socks.values()))
 
 # proxy to dev, ('/x0:00:dev_mac', host_port) -> ('server', 'proxy'): { 'dst': dst, 'dat': payloads }
 async def cdbus_proxy_service():
@@ -178,10 +202,10 @@ async def cdbus_proxy_service():
             dst_ip = addr_cdnet2ip(wc_dat['dst'][0])
             dst_port = wc_dat['dst'][1]
             src_port = wc_src[1]
-            if wc_src[0][1:3] == '00':
-                s = csa['udp_socks'][src_port][0]
-            else:
-                s = csa['udp_socks'][src_port][1]
+            s = udp_sock_pick(csa['udp_socks'].get(src_port), wc_dat['dst'][0])
+            if not s:
+                logger.warning(f'proxy_tx: port {src_port:#x} not bound')
+                continue
             s.sendto(wc_dat['dat'], (dst_ip, dst_port))
         except Exception as err:
             logger.warning(f'proxy_tx: err: {err}')

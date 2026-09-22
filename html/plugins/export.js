@@ -77,8 +77,13 @@ function import_data() {
         
             let file = files[0];
             let data = await read_file(file);
-            let prj = msgpack.deserialize(data);
-            if (!prj || !prj.version || !prj.version.startsWith('cdgui')) {
+            let prj = null;
+            try {
+                prj = msgpack.deserialize(data);
+            } catch (err) {
+                console.error('import:', err);
+            }
+            if (!prj || typeof prj.version != 'string' || !prj.version.startsWith('cdgui')) {
                 alert(L('Format error'));
                 this.value = '';
                 return;
@@ -94,7 +99,7 @@ function import_data() {
             
             for (let p of csa.plugins) {
                 console.log(`import: p: ${p}`);
-                if ('dat_import' in csa[p]) {
+                if ('dat_import' in csa[p] && prj[p] != null) { // a file from a page without this plugin
                     csa[p].dat_import(prj[p]);
                 }
             }

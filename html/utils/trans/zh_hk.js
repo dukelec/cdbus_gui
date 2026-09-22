@@ -150,7 +150,12 @@ let trans_zh_hk = {
     'Saved to %s, the previous version is kept as a .bak file.':
         '已寫入 %s，原檔案已備份為同名的 .bak 檔案。',
     'Saved plot channels no longer fit the config file, the default was restored.':
-        '保存的波形通道與配置文件不符，已恢復預設。'
+        '保存的波形通道與配置文件不符，已恢復預設。',
+    'CDNET address must be 3 hex bytes, e.g. 80:00:fe, not: %s': 'CDNET 地址須為 3 個十六進制位元組，如 80:00:fe，而不是：%s',
+    '"%s" is not an integer': '"%s" 不是整數',
+    '"%s" does not fit in %s bits': '"%s" 超出 %s 位元的範圍',
+    '"%s" is not a number': '"%s" 不是數字',
+    'The plot config register %s is in no W group, add one with Button Edit.': '波形配置寄存器 %s 不在任何 W 分組中，請用「按鍵編輯」添加。'
 };
 
 export { trans_zh_hk };

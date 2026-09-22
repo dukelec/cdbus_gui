@@ -80,8 +80,8 @@ async function init_cfg_list() {
         let html = `
             <div id="device_grp${i}">
                 <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 1px 0;">
-                    <input type="text" placeholder="Name Label" value="${name}" id="cfg${i}.name">
-                    <input type="text" placeholder="CDNET IP" value="${tgt}" id="cfg${i}.tgt">
+                    <input type="text" placeholder="Name Label" value="${escape_html(`${name}`)}" id="cfg${i}.name">
+                    <input type="text" placeholder="CDNET IP" value="${escape_html(`${tgt}`)}" id="cfg${i}.tgt">
                     <select id="cfg${i}.cfg" value="${cfg}">${sel_ops}</select>
                     <button class="button is-small" id="cfg${i}.btn">${L('Open Window')}</button>
                 </div>
@@ -100,7 +100,15 @@ async function init_cfg_list() {
                 alert('Empty not allowed');
                 return;
             }
-            // tgt goes in as typed, to stay readable in the url; the name is free text,
+            // the backend routes a device's answers to the page named by the address as its
+            // parser prints it, two lower case hex digits per byte, so that is the one form the
+            // page may be opened under: 80:00:FE went out fine and never heard anything back
+            t = t.trim().toLowerCase();
+            if (!/^[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$/.test(t)) {
+                alert(L('CDNET address must be 3 hex bytes, e.g. 80:00:fe, not: %s').replace('%s', t));
+                return;
+            }
+            // tgt goes in as is, to stay readable in the url; the name is free text,
             // a & or # in it would cut the args short
             window.open(`ctrl.html?tgt=${t}&cfg=${encodeURIComponent(c)}` +
                         `&name=${encodeURIComponent(n)}`, "_blank");
@@ -269,8 +277,9 @@ async function dev_open(alert_err=true) {
             err = 'no reply from the backend';
         else if (typeof dat[0] == 'string' && dat[0].startsWith('err')) {
             err = `${dat[0]}`.replace(/^err:\s*(dev:\s*)?/, '');
-            if (alert_err)
-                alert(L('Serial port already opened, please close it first, then open again to apply new settings.'));
+            if (alert_err) // the backend now reports why an open failed, not only "already opened"
+                alert(err.includes('already opened') ?
+                      L('Serial port already opened, please close it first, then open again to apply new settings.') : err);
         }
         await dev_get();
     } finally {

@@ -319,6 +319,20 @@ function grp_same(rw, idx, addr, len) {
     return !!g && g[0] == addr && g[1] == len;
 }
 
+// The bytes a write group sends for the addresses no register of the list covers come from a
+// read of the whole group, done once before its first write (read-before-write) and kept. Every
+// later read that spans the group renews them, so with the periodic read on the gaps go out as
+// the device has them now, not as they were at that first write
+function rbw_refresh(addr, len, dat) {
+    if (!csa.reg.reg_w)
+        return;
+    for (let i = 0; i < csa.reg.reg_w.length; i++) {
+        let [a, l] = csa.reg.reg_w[i];
+        if (a >= addr && a + l <= addr + len)
+            csa.reg.reg_rbw[i] = dat.slice(a - addr, a - addr + l);
+    }
+}
+
 function in_editing(elem) { // skip update the input box being edited during periodic read
     if (!document.getElementById('keep_read')?.checked)
         return false;
@@ -344,9 +358,13 @@ async function read_reg_val(r_idx, read_dft=false) {
     console.log('read reg wait ret');
     let ret = await reg_xfer(csa.reg.proxy_sock_regr, dat);
     console.log('read reg ret', ret);
-    if (ret && (ret[0].dat[0] & 0xf) == 0) {
+    // the status byte, then the bytes asked for: a short answer would end in a RangeError half
+    // way through filling in the boxes
+    if (ret && (ret[0].dat[0] & 0xf) == 0 && ret[0].dat.length >= 1 + len) {
         if (read_dft)
             csa.reg.reg_dft_r[r_idx] = true;
+        else
+            rbw_refresh(addr, len, ret[0].dat.slice(1));
         
         let start = addr;
         let found_start = false;
@@ -414,6 +432,12 @@ async function read_reg_val(r_idx, read_dft=false) {
             }
             
         }
+    } else if (read_dft) {
+        // the values are in, only the defaults for the tooltips did not come. A device that has
+        // no answer to that request is not asked again: Read All stopped at this group every
+        // round and painted it red, over values it had read fine
+        console.warn('read reg default err, not asked again');
+        csa.reg.reg_dft_r[r_idx] = true;
     } else {
         console.warn('read reg err');
         if (grp_same('r', r_idx, addr, len))
@@ -434,6 +458,27 @@ async function read_reg_val(r_idx, read_dft=false) {
 }
 
 
+// A number typed into a register box, or an error naming what is wrong with it. parseInt() and
+// parseFloat() took whatever digits they found and wrote 0 for none: abc went out as 0, 1e3 as 1
+// and 300 into a byte as 44, without a word. The bounds take the type either way, signed or as
+// the hex the H display shows, so 0xff and -1 both go into a byte
+function str_int(tok, bits) {
+    let v = to_num(tok);
+    if (v == null || !Number.isInteger(v))
+        throw new Error(L('"%s" is not an integer').replace('%s', tok ?? ''));
+    if (v < -(2 ** (bits - 1)) || v > 2 ** bits - 1)
+        throw new Error(L('"%s" does not fit in %s bits').replace('%s', tok).replace('%s', bits));
+    return v;
+}
+function str_float(tok) {
+    if (/^[-+]?(NaN|Infinity)$/.test(tok ?? ''))   // a float register can hold these
+        return Number(tok);
+    let v = to_num(tok);
+    if (v == null)
+        throw new Error(L('"%s" is not a number').replace('%s', tok ?? ''));
+    return v;
+}
+
 function str2reg(dat, ofs, fmt, show, str, s_idx) {
     let dv = new DataView(dat.buffer);
     let f = fmt.replace(/\W/g, ''); // remove non-word chars
@@ -442,7 +487,7 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
         switch (f[i]) {
         case 'c':
             switch (show) {
-            case 1:  dv.setInt8(ofs, parseInt(str_a[s_idx]), true); break;
+            case 1:  dv.setInt8(ofs, str_int(str_a[s_idx], 8), true); break;
             default:
                 let str_dat = str2dat(str); // handle utf8
                 let str_idx = str_dat.slice(s_idx,s_idx+1);
@@ -453,30 +498,30 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'b':
-            dv.setInt8(ofs, parseInt(str_a[s_idx]), true);
+            dv.setInt8(ofs, str_int(str_a[s_idx], 8), true);
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'B':
             switch (show) {
             case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
-            default: dv.setUint8(ofs, parseInt(str_a[s_idx]), true);
+            default: dv.setUint8(ofs, str_int(str_a[s_idx], 8), true);
             }
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);
             break;
         case 'h':
-            dv.setInt16(ofs, parseInt(str_a[s_idx]), true);
+            dv.setInt16(ofs, str_int(str_a[s_idx], 16), true);
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
             break;
         case 'H':
-            dv.setUint16(ofs, parseInt(str_a[s_idx]), true);
+            dv.setUint16(ofs, str_int(str_a[s_idx], 16), true);
             ofs += isNaN(f[i+1]) ? 2 : Number(f[++i]);
             break;
         case 'i':
-            dv.setInt32(ofs, parseInt(str_a[s_idx]), true);
+            dv.setInt32(ofs, str_int(str_a[s_idx], 32), true);
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
             break;
         case 'I':
-            dv.setUint32(ofs, parseInt(str_a[s_idx]), true);
+            dv.setUint32(ofs, str_int(str_a[s_idx], 32), true);
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
             break;
         case 'q':
@@ -490,14 +535,14 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
         case 'f':
             switch (show) {
             case 1:  dv.setFloat32(ofs, hex2float(str_a[s_idx]), true); break;
-            default: dv.setFloat32(ofs, parseFloat(str_a[s_idx]), true);
+            default: dv.setFloat32(ofs, str_float(str_a[s_idx]), true);
             }
             ofs += isNaN(f[i+1]) ? 4 : Number(f[++i]);
             break;
         case 'd':
             switch (show) {
             case 1:  dv.setFloat64(ofs, hex2float(str_a[s_idx]), true); break;
-            default: dv.setFloat64(ofs, parseFloat(str_a[s_idx]), true);
+            default: dv.setFloat64(ofs, str_float(str_a[s_idx]), true);
             }
             ofs += isNaN(f[i+1]) ? 8 : Number(f[++i]);
             break;
@@ -542,7 +587,7 @@ function group_inputs(addr, len) {
 }
 
 function check_group_inputs(inputs) {
-    for (let {reg, str, count} of inputs) {
+    for (let {reg, str, count, size} of inputs) {
         // Text arrays may be shorter than the register, and are zero padded.
         if (!(reg[R_SHOW] == 0 && reg[R_FMT].includes('c'))) {
             let expected = reg[R_FMT].replace(/[^a-zA-Z]/g, '').length * count;
@@ -550,6 +595,15 @@ function check_group_inputs(inputs) {
             if (actual != expected)
                 return L('%s: expected %s values, got %s').replace('%s', reg[R_ID])
                         .replace('%s', expected).replace('%s', actual);
+        }
+        // pack it into a scratch buffer: a value that is no number of its type is refused here,
+        // with the register named, before the read-before-write round trip
+        try {
+            let buf = new Uint8Array(size * count);
+            for (let n = 0; n < count; n++)
+                str2reg(buf, size * n, reg[R_FMT], reg[R_SHOW], str, n);
+        } catch (err) {
+            return `${reg[R_ID]}: ${err.message || err}`;
         }
         let err = reg_range_check(reg, str);
         if (err)
@@ -591,8 +645,8 @@ async function write_reg_val(w_idx, alert_err=true) {
             console.log('read-before-write: group changed');
             return -1;
         }
-        if (ret && (ret[0].dat[0] & 0xf) == 0) {
-            csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1);
+        if (ret && (ret[0].dat[0] & 0xf) == 0 && ret[0].dat.length >= 1 + len) {
+            csa.reg.reg_rbw[w_idx] = ret[0].dat.slice(1, 1 + len);
         } else {
             console.log('read-before-write err');
             set_input_bg('w', w_idx, '#F5B7B180');

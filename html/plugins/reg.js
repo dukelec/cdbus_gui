@@ -20,7 +20,7 @@ function check_reg_list() {
     let list = csa.cfg.reg ? csa.cfg.reg.list : null;
     if (!list || !list.length) {
         show_cfg_error(L('Register list is empty.'));
-        return;
+        return false;
     }
     let bad = [];
     for (let i = 1; i < list.length; i++) {
@@ -37,6 +37,7 @@ function check_reg_list() {
         if (err)
             show_cfg_error(`${reg[R_ID]}: ${err}`);
     }
+    return true;
 }
 
 // the value boxes one register has: a single one, or one per element of a {..} array
@@ -924,7 +925,8 @@ async function init_reg() {
     `;
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
     
-    check_reg_list();
+    if (!check_reg_list())  // nothing to build a list from, the banner says so
+        return;
     init_reg_list();
     await init_pin();
     // the group set (reg by default) and the read period are remembered per device page,

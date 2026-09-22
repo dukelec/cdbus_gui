@@ -216,9 +216,9 @@ def _fmt(val, style, indent, nl='\n'):
 
 # ---------------------------------------------------------------- write
 
-def cfg_path(cfg_dir, name):
+def cfg_path(cfg_dir, name, write=True):
     """Resolve a config name inside cfg_dir, refuse anything that escapes it."""
-    if not name or not name.endswith('.json'):
+    if not isinstance(name, str) or not name or not name.endswith('.json'):
         raise ValueError(f'not a config file name: {name}')
     root = os.path.realpath(cfg_dir)
     full = os.path.realpath(os.path.join(root, name))
@@ -226,7 +226,7 @@ def cfg_path(cfg_dir, name):
         raise ValueError(f'config file is outside {cfg_dir}: {name}')
     if not os.path.isfile(full):
         raise ValueError(f'config file not found: {name}')
-    if not os.access(full, os.W_OK):
+    if write and not os.access(full, os.W_OK):
         raise ValueError(f'config file is not writable: {name}')
     return full
 

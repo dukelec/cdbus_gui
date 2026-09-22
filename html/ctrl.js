@@ -9,7 +9,7 @@ import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from './utils/helper.js?v=__V__';
 import { CDWebSocket, CDWebSocketNS } from './utils/cd_ws.js?v=__V__';
 import { Idb } from './utils/idb.js?v=__V__';
-import { csa, init_nav, alloc_port, show_banner, ws_closed, init_sys } from './common.js?v=__V__';
+import { csa, init_nav, alloc_port, show_banner, show_cfg_error, ws_closed, init_sys } from './common.js?v=__V__';
 import { init_reg } from './plugins/reg.js?v=__V__';
 import { init_plot } from './plugins/plot.js?v=__V__';
 import { init_dbg } from './plugins/dbg.js?v=__V__';
@@ -44,13 +44,18 @@ function init_ws() {
         
         await init_sys();
         await alloc_port('clr_all');
-        await init_reg();
-        await init_dbg();
-        await init_plot();
-        await init_pic();
-        await init_iap();
-        await init_export();
-        await init_api();
+        // a plugin the config file trips up must not take the ones after it down with it: the
+        // log and the api still come up, the api's hello tells a waiting reload that the page
+        // is back, and the error is in the banner and among the cfg_errors the api reports
+        for (let [name, init] of [['reg', init_reg], ['dbg', init_dbg], ['plot', init_plot], ['pic', init_pic],
+                                  ['iap', init_iap], ['export', init_export], ['api', init_api]]) {
+            try {
+                await init();
+            } catch (err) {
+                console.error(`init_${name}:`, err);
+                show_cfg_error(`${name}: ${err.message || err}`);
+            }
+        }
         
         let port = await alloc_port();
         csa.proxy_sock_info = new CDWebSocket(csa.ws_ns, port);
@@ -123,7 +128,9 @@ window.addEventListener('load', async function() {
     
     let url_arg = new URLSearchParams(location.search);
 
-    csa.arg.tgt = url_arg.get('tgt')
+    // the backend routes the device's answers to the page named by the address as its parser
+    // prints it, lower case, so a hand typed 80:00:FE in the url has to become that
+    csa.arg.tgt = (url_arg.get('tgt') || '').trim().toLowerCase();
     csa.arg.cfg = url_arg.get('cfg')
     csa.arg.name = url_arg.get('name')
     if (!csa.arg.tgt || !csa.arg.cfg) {

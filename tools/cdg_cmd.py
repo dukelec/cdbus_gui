@@ -160,7 +160,7 @@ def list_all_reg():
         top_name = r[4]
         top_addr = r[0]
         top_len = r[1]
-        top_desc = r[4]
+        top_desc = r[5] if len(r) > 5 else ''
         fmt_len = fmt_size(fmt)
         if top_len == fmt_len or fmt.startswith('['):
             #print(top_name)

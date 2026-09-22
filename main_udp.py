@@ -107,29 +107,35 @@ async def proxy_rx_rpt(rx):
 proxy_rx_pause = False
 proxy_rx_paused = False
 
+# wait for the receive thread to say it is paused (or running again), a bounded wait: were the
+# thread dead the watchdog has said so already, hanging the port service too would help no one
+async def proxy_rx_wait(paused, timeout=2.0):
+    for _ in range(int(timeout / 0.05)):
+        if proxy_rx_paused == paused:
+            return
+        await asyncio.sleep(0.05)
+    logger.warning(f'proxy_rx did not {"pause" if paused else "resume"} in {timeout}s')
+
 async def udp_socks_update(remove=False):
     global proxy_rx_pause
-    if remove:
+    if remove: # a socket is only closed while the thread is not selecting on it
         proxy_rx_pause = True
-        while True:
-            await asyncio.sleep(0.1)
-            if proxy_rx_paused:
-                break
+        await proxy_rx_wait(True)
     new_ports = []
     for url in csa['palloc']:
         for p in csa['palloc'][url]:
             if p not in new_ports:
                 new_ports.append(p)
-    for p in list(csa['udp_socks'].keys()):
-        if p not in new_ports:
-            for s in csa['udp_socks'][p].values():
-                s.close()
-            del(csa['udp_socks'][p])
+    # proxy_rx reads csa['udp_socks'] once per round. It is never changed in place but replaced as
+    # a whole, so the thread sees either the old set or the new one, never a dict changing under
+    # its iteration (which raised "dictionary changed size" on it now and then)
+    old_socks = csa['udp_socks']
+    new_socks = {}
     # a level 0 answer comes back to the l0 address of the tun (e.g. fdcd::) and a level 1
     # answer to the l1 one (e.g. fdcd::80:00), bind both, or :: (the default) for any
     all_bound = True
     for p in new_ports:
-        socks = csa['udp_socks'].setdefault(p, {})
+        socks = new_socks[p] = dict(old_socks.get(p, {}))
         for ip in udp_local_ips:
             if ip in socks:
                 continue
@@ -142,11 +148,16 @@ async def udp_socks_update(remove=False):
                 s.close()
                 all_bound = False
                 cd_watch.report_fault('udp', f'bind [{ip}]:{p + udp_port_base}: {err}')
+    csa['udp_socks'] = new_socks
+    for p in old_socks:
+        if p not in new_socks:
+            for s in old_socks[p].values():
+                s.close()
     if all_bound:
         cd_watch.clear_fault('udp') # a failed address is retried on the next port alloc
     if remove:
         proxy_rx_pause = False
-        await asyncio.sleep(0.1)
+        await proxy_rx_wait(False) # so the next pause starts from a thread known to be running
 
 
 def proxy_rx():
@@ -160,6 +171,9 @@ def proxy_rx():
                 continue
             proxy_rx_paused = False
             socks = [x for v in csa['udp_socks'].values() for x in v.values()]
+            if not socks: # nothing bound before the first page opens; select() on nothing is an error on windows
+                time.sleep(0.2)
+                continue
             readable, _, _ = select.select(socks, [], [], 0.2)
             if not readable:
                 continue
@@ -217,7 +231,7 @@ async def dev_service(): # cdbus tty setup
         dat, src = await sock.recvfrom()
         logger.debug(f'dev ser: {dat}')
         
-        if dat['action'] == 'get':
+        if isinstance(dat, dict) and dat.get('action') == 'get':
             await sock.sendto('udp', src)
         else:
             await sock.sendto('err: dev: unknown cmd', src)
@@ -238,7 +252,7 @@ async def cfgs_service(): # read configs
         
         elif dat['action'] == 'get_cfg':
             try:
-                with open(os.path.join('configs', dat['cfg'])) as c_file:
+                with open(cfg_edit.cfg_path('configs', dat['cfg'], write=False)) as c_file:
                     c = json5.load(c_file)
             except (OSError, ValueError) as err:
                 logger.warning(f'cfgs: get_cfg {dat.get("cfg")}: {err}')
@@ -259,45 +273,51 @@ async def cfgs_service(): # read configs
             await sock.sendto('err: cfgs: unknown cmd', src)
 
 
+async def port_handle(sock, dat, src):
+    path = src[0]
+    if path not in csa['palloc']:
+        csa['palloc'][path] = []
+    
+    if dat['action'] == 'clr_all':
+        logger.debug(f'port clr_all')
+        csa['palloc'][path] = []
+        await udp_socks_update(True)
+        await sock.sendto('successed', src)
+    
+    elif dat['action'] == 'get_port':
+        if dat['port']:
+            if dat['port'] not in csa['palloc'][path]:
+                csa['palloc'][path].append(dat['port'])
+                logger.debug(f'port alloc {dat["port"]}')
+                await udp_socks_update()
+                await sock.sendto(dat['port'], src)
+            else:
+                logger.error(f'port alloc error')
+                await sock.sendto(-1, src)
+        else:
+            p = -1
+            for i in range(0x40, 0x80):
+                if i not in csa['palloc'][path]:
+                    p = i
+                    csa['palloc'][path].append(p)
+                    break
+            logger.debug(f'port alloc: {p}')
+            await udp_socks_update()
+            await sock.sendto(p, src)
+    
+    else:
+        await sock.sendto('err: port: unknown cmd', src)
+
 async def port_service(): # alloc ports
     sock = CDWebSocket(ws_ns, 'port')
     while True:
         dat, src = await sock.recvfrom()
-        path = src[0]
-        logger.debug(f'port ser: {dat}, path: {path}')
-        
-        if path not in csa['palloc']:
-            csa['palloc'][path] = []
-        
-        if dat['action'] == 'clr_all':
-            logger.debug(f'port clr_all')
-            csa['palloc'][path] = []
-            await udp_socks_update(True)
-            await sock.sendto('successed', src)
-        
-        elif dat['action'] == 'get_port':
-            if dat['port']:
-                if dat['port'] not in csa['palloc'][path]:
-                    csa['palloc'][path].append(dat['port'])
-                    logger.debug(f'port alloc {dat["port"]}')
-                    await udp_socks_update()
-                    await sock.sendto(dat['port'], src)
-                else:
-                    logger.error(f'port alloc error')
-                    await sock.sendto(-1, src)
-            else:
-                p = -1
-                for i in range(0x40, 0x80):
-                    if i not in csa['palloc'][path]:
-                        p = i
-                        csa['palloc'][path].append(p)
-                        break
-                logger.debug(f'port alloc: {p}')
-                await udp_socks_update()
-                await sock.sendto(p, src)
-        
-        else:
-            await sock.sendto('err: port: unknown cmd', src)
+        logger.debug(f'port ser: {dat}, path: {src[0]}')
+        try:
+            await port_handle(sock, dat, src)
+        except Exception as err: # one bad request must not take the service down with it
+            logger.warning(f'port ser: {dat}: {err}')
+            await sock.sendto(f'err: port: {err}', src)
 
 
 async def open_brower():

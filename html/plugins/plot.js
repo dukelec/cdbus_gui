@@ -854,7 +854,7 @@ async function plot_cfg_apply(label, cal, overlay) {
 async function plot_reconfig(idx, label, cal) {
     let cfg = csa.cfg.plot.plots[idx];
     let bk = { label: cfg.label, cal: cfg.cal, p_label: csa.plot.label[idx],
-               fmt: csa.plot.fmt[idx], reg_val: csa.plot.reg_val[idx] };
+               fmt: csa.plot.fmt[idx], reg_val: csa.plot.reg_val[idx], dat: csa.plot.dat[idx] };
     let checkbox = document.getElementById(`plot${idx}_en`);
     let was_en = checkbox.checked;
 
@@ -895,6 +895,7 @@ async function plot_reconfig(idx, label, cal) {
         csa.plot.fmt[idx] = bk.fmt;
         csa.plot.reg_val[idx] = bk.reg_val;
         plot_init_series(idx);
+        csa.plot.dat[idx] = bk.dat;     // a rejected config changes nothing, the samples included
         plot_set_dat(idx, csa.plot.dat[idx]);
         if (was_en) {
             checkbox.checked = true;
@@ -923,6 +924,19 @@ function plot_clear_dat(i) {
         csa.plot.dat[i][s] = [];
     plot_set_dat(i, csa.plot.dat[i]);
     csa.plot.x_ofs[i] = 0;
+}
+
+// the samples of an exported file, as many series as this page has: a plot or series the file
+// lacks starts empty, each with an array of its own (one shared [] took the samples of every
+// one of them once the device sent more), one the page lacks is left out
+function plot_import_dat(dat) {
+    for (let i = 0; i < csa.plot.plots.length; i++) {
+        let src = Array.isArray(dat[i]) ? dat[i].slice(0, csa.plot.dat[i].length) : [];
+        while (src.length < csa.plot.dat[i].length)
+            src.push([]);
+        csa.plot.dat[i] = src;
+        plot_set_dat(i, csa.plot.dat[i]);
+    }
 }
 
 
@@ -975,9 +989,17 @@ async function plot_cal_update(idx) {
         show_cfg_error(dat[0]);
         return;
     }
-    if (dat && dat[0] && dat[0].plot.plots[idx]) {
-        csa.cfg.plot.plots[idx] = dat[0].plot.plots[idx];
-        console.log('get_cfg ret', csa.cfg.plot.plots[idx]);
+    if (dat && dat[0] && dat[0].plot && dat[0].plot.plots && dat[0].plot.plots[idx]) {
+        // only the formulas come from the file: the channels stay what the plot samples right
+        // now, which the dialog or the api may have changed and the device keeps sending
+        // (taking the whole entry left the page believing in the file's channels while the
+        // data kept coming in the other layout). The file is the default the dialog compares
+        // against, so it learns the new formulas as well
+        let cal = dat[0].plot.plots[idx].cal || null;
+        csa.cfg.plot.plots[idx].cal = cal;
+        if (plot_dft[idx])
+            plot_dft[idx].cal = cal;
+        console.log('get_cfg ret cal', cal);
     } else {
         console.warn('get_cfg ret', dat);
         return;
@@ -988,7 +1010,7 @@ async function plot_cal_update(idx) {
     let dat_bk = csa.plot.dat[idx];
     let series = plot_init_series(idx);
     let f_fmt = csa.plot.fmt[idx];
-    let f_num = f_fmt.split('.')[1].length + 1;
+    let f_num = (f_fmt.split('.')[1] || '').length + 1; // '' while the channels did not resolve
     for (let i = 0; i < dat_bk[0].length; i++) {
         for (let n = 0; n < f_num; n++)
             csa.plot.dat[idx][n].push(dat_bk[n][i]);
@@ -1342,13 +1364,7 @@ async function init_plot() {
     csa.plot.save_cfg = plot_cfg_save;
 
     csa.plot.dat_export = () => { return csa.plot.dat; };
-    csa.plot.dat_import = (dat) => {
-        for (let i = 0; i < csa.plot.plots.length; i++) {
-            let padding = Math.max(csa.plot.dat[i].length - dat[i].length, 0);
-            csa.plot.dat[i] = dat[i].concat(Array(padding).fill([]));
-            plot_set_dat(i, csa.plot.dat[i]);
-        }
-    };
+    csa.plot.dat_import = plot_import_dat;
 }
 
 

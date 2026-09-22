@@ -236,7 +236,7 @@ if __name__ == "__main__":
                         if ret < 0:
                             print(f'seg {i}: rdat != wdat, {ret}')
                         else:
-                            print(f'seg {i}: rdat != wdat, @{ret:08x} (w: {dat[ret]:02x}, r: {rdat[ret]:02x}')
+                            print(f'seg {i}: rdat != wdat, @{ret:08x} (w: {dat[i][1][ret]:02x}, r: {rdat[ret]:02x}')
                         exit(-1)
                     print(f'seg {i}: succeeded with read back check')
                 elif verify == 'crc':

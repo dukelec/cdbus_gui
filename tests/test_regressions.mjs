@@ -275,3 +275,60 @@ test('button groups sent through the api are checked, and come back in address o
     for (const bad of [[['a', 'b', 'd']], [[]], ['a'], [[1]], 'a'])
         assert.throws(() => parse(bad), /group/);
 });
+
+test('a value that is no number of its type is refused before anything goes out', async () => {
+    for (const [value, why] of [['abc', /not an integer/], ['300', /does not fit in 8 bits/], ['1.5', /not an integer/]]) {
+        const { csa, sent, ctx } = writer([[0,1,'B',0,'x']], { 'reg.x': value }, [[0,1]], [0]);
+        assert.equal(await vm.runInContext('write_reg_val(0, false)', ctx), -1);
+        assert.match(csa.reg.last_err, why);
+        assert.equal(sent.length, 0);
+    }
+    const { sent, ctx } = writer([[0,1,'B',0,'x']], { 'reg.x': '0xff' }, [[0,1]], [0]);
+    assert.equal(await vm.runInContext('write_reg_val(0, false)', ctx), 0);
+    assert.deepEqual(sent[0], [0x20,0,0,0xff]);
+});
+
+test('a failed default read gives the defaults up and keeps Read All going', async () => {
+    const sent = [];
+    const sock = { flush() {}, async sendto(msg) { sent.push([...msg.dat]); },
+        async recvfrom() { return [{ dat: new Uint8Array(sent.at(-1)[0] == 0x01 ? [1] : [0, 42]) }]; } };
+    const elem = { value: '', style: {} };
+    const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'x']] } },
+        reg: { reg_r: [[0,1]], reg_w: [], reg_rbw: [], reg_dft_r: [], proxy_sock_regr: sock,
+               elm: { 'reg.x': elem, 'reg_dft.x': { setAttribute() {} } } } };
+    const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
+    vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);
+    assert.equal(elem.value, '42');
+    assert.deepEqual(sent.map(d => d[0]), [0x00, 0x01]);
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);
+    assert.deepEqual(sent.map(d => d[0]), [0x00, 0x01, 0x00]); // the defaults are not asked for again
+});
+
+test('a read that spans a write group renews its read-before-write bytes, a short answer is refused', async () => {
+    let reply = [0, 1, 2, 3, 4];
+    const sock = { flush() {}, async sendto() {}, async recvfrom() { return [{ dat: new Uint8Array(reply) }]; } };
+    const elm = { 'reg.a': { value: '', style: {} }, 'reg.b': { value: '', style: {} },
+                  'reg_dft.a': { setAttribute() {} }, 'reg_dft.b': { setAttribute() {} } };
+    const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'a'], [2,1,'B',0,'b']] } },
+        reg: { reg_r: [[0,4]], reg_w: [[0,2], [2,2]], reg_rbw: [new Uint8Array([9,9])], reg_dft_r: [true],
+               proxy_sock_regr: sock, elm } };
+    const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
+    vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);
+    assert.deepEqual(Array.from(csa.reg.reg_rbw[0]), [1, 2]);
+    assert.deepEqual(Array.from(csa.reg.reg_rbw[1]), [3, 4]);
+    assert.equal(elm['reg.b'].value, '3');
+    reply = [0, 1]; // two bytes short of the group
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), -1);
+    assert.equal(elm['reg.a'].style.background, '#F5B7B180');
+});
+
+test('importing a file with fewer series gives each missing one an array of its own', () => {
+    const csa = { plot: { fmt: ['B.B'], brk: [[]], raw: [[]], plots: [{ setData() {} }], dat: [[[], [], [], []]] } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/plugins/reg_rw.js') + source('html/plugins/plot.js'), ctx);
+    vm.runInContext('plot_import_dat([[[1, 2], [3, 4]]])', ctx);
+    csa.plot.dat[0][2].push(9);
+    assert.equal(JSON.stringify(csa.plot.dat[0]), '[[1,2],[3,4],[9],[]]'); // (vm arrays are of another realm)
+});

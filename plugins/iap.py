@@ -65,8 +65,9 @@ async def iap_service(): # config r/w
     while True:
         dat, src = await sock.recvfrom()
         logger.debug(f'iap ser: {dat}')
+        action = dat.get('action') if isinstance(dat, dict) else None # a bad request must not end the service
         
-        if dat['action'] == 'get_ihex':
+        if action == 'get_ihex':
             ret = []
             ih = IntelHex()
             try:
@@ -80,7 +81,7 @@ async def iap_service(): # config r/w
                 logger.error(f'parse ihex file error: {err}')
             await sock.sendto(ret, src)
 
-        elif dat['action'] == 'select_ihex':
+        elif action == 'select_ihex':
             try:
                 loop = asyncio.get_running_loop()
                 path = await loop.run_in_executor(None, select_ihex_file)

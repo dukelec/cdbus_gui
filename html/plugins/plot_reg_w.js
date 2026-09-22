@@ -34,7 +34,12 @@ async function plot_reg_w(idx) {
             return -1;
         }
     }
-    return await document.getElementById(`reg_btn_w.${reg_name}`).onclick();
+    let btn = document.getElementById(`reg_btn_w.${reg_name}`);
+    if (!btn || !btn.onclick) { // in no W group of the set in use: its button is dead, as on the page
+        alert(L('The plot config register %s is in no W group, add one with Button Edit.').replace('%s', reg_name));
+        return -1;
+    }
+    return await btn.onclick();
 }
 
 

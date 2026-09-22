@@ -139,40 +139,48 @@ async def cdbus_proxy_service():
             logger.warning(f'proxy_tx: fmt err: {err}')
 
 
+async def dev_handle(sock, dat, src):
+    if dat['action'] == 'get':
+        ports = get_ports()
+        if csa['dev']:
+            online_st = 1 if csa['dev'].online else 2
+            if not csa['dev'].is_alive():
+                online_st = 3 # device thread dead
+            await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'baud': csa['dev'].baud, 'online': online_st,
+                               'net': csa['net'], 'mac': csa['mac']}, src)
+        else:
+            await sock.sendto({'ports': ports, 'port': None, 'baud': None, 'online': 0, 'net': csa['net'], 'mac': csa['mac']}, src)
+    
+    elif dat['action'] == 'open':
+        if csa['dev']:
+            await sock.sendto('err: dev: already opened, close it first to apply new settings', src)
+        else:
+            cd_watch.clear_fault('serial')
+            csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
+            await sock.sendto('successed', src)
+    
+    elif dat['action'] == 'close' and csa['dev']:
+        logger.info('stop dev')
+        # stop() joins the port thread, up to half a second while it is retrying an unplugged
+        # port: not on the event loop, or every page would hang for that long
+        dev, csa['dev'] = csa['dev'], None
+        await asyncio.get_running_loop().run_in_executor(None, dev.stop)
+        logger.info('stop finished')
+        await sock.sendto('successed', src)
+    
+    else:
+        await sock.sendto('err: dev: unknown cmd', src)
+
 async def dev_service(): # cdbus tty setup
     sock = CDWebSocket(ws_ns, 'dev')
     while True:
         dat, src = await sock.recvfrom()
         logger.debug(f'dev ser: {dat}')
-        
-        if dat['action'] == 'get':
-            ports = get_ports()
-            if csa['dev']:
-                online_st = 1 if csa['dev'].online else 2
-                if not csa['dev'].is_alive():
-                    online_st = 3 # device thread dead
-                await sock.sendto({'ports': ports, 'port': csa['dev'].portstr, 'baud': csa['dev'].baud, 'online': online_st,
-                                   'net': csa['net'], 'mac': csa['mac']}, src)
-            else:
-                await sock.sendto({'ports': ports, 'port': None, 'baud': None, 'online': 0, 'net': csa['net'], 'mac': csa['mac']}, src)
-        
-        elif dat['action'] == 'open':
-            if csa['dev']:
-                await sock.sendto('err: dev: already opened, close it first to apply new settings', src)
-            else:
-                cd_watch.clear_fault('serial')
-                csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
-                await sock.sendto('successed', src)
-        
-        elif dat['action'] == 'close' and csa['dev']:
-            logger.info('stop dev')
-            csa['dev'].stop()
-            logger.info('stop finished')
-            csa['dev'] = None
-            await sock.sendto('successed', src)
-        
-        else:
-            await sock.sendto('err: dev: unknown cmd', src)
+        try:
+            await dev_handle(sock, dat, src)
+        except Exception as err: # one bad request must not take the service down with it
+            logger.warning(f'dev ser: {dat}: {err}')
+            await sock.sendto(f'err: dev: {err}', src)
 
 
 async def cfgs_service(): # read configs
@@ -190,7 +198,7 @@ async def cfgs_service(): # read configs
         
         elif dat['action'] == 'get_cfg':
             try:
-                with open(os.path.join('configs', dat['cfg'])) as c_file:
+                with open(cfg_edit.cfg_path('configs', dat['cfg'], write=False)) as c_file:
                     c = json5.load(c_file)
             except (OSError, ValueError) as err:
                 logger.warning(f'cfgs: get_cfg {dat.get("cfg")}: {err}')
@@ -211,42 +219,48 @@ async def cfgs_service(): # read configs
             await sock.sendto('err: cfgs: unknown cmd', src)
 
 
+async def port_handle(sock, dat, src):
+    path = src[0]
+    if path not in csa['palloc']:
+        csa['palloc'][path] = []
+    
+    if dat['action'] == 'clr_all':
+        logger.debug(f'port clr_all')
+        csa['palloc'][path] = []
+        await sock.sendto('successed', src)
+    
+    elif dat['action'] == 'get_port':
+        if dat['port']:
+            if dat['port'] not in csa['palloc'][path]:
+                csa['palloc'][path].append(dat['port'])
+                logger.debug(f'port alloc {dat["port"]}')
+                await sock.sendto(dat['port'], src)
+            else:
+                logger.error(f'port alloc error')
+                await sock.sendto(-1, src)
+        else:
+            p = -1
+            for i in range(0x40, 0x80):
+                if i not in csa['palloc'][path]:
+                    p = i
+                    csa['palloc'][path].append(p)
+                    break
+            logger.debug(f'port alloc: {p}')
+            await sock.sendto(p, src)
+    
+    else:
+        await sock.sendto('err: port: unknown cmd', src)
+
 async def port_service(): # alloc ports
     sock = CDWebSocket(ws_ns, 'port')
     while True:
         dat, src = await sock.recvfrom()
-        path = src[0]
-        logger.debug(f'port ser: {dat}, path: {path}')
-        
-        if path not in csa['palloc']:
-            csa['palloc'][path] = []
-        
-        if dat['action'] == 'clr_all':
-            logger.debug(f'port clr_all')
-            csa['palloc'][path] = []
-            await sock.sendto('successed', src)
-        
-        elif dat['action'] == 'get_port':
-            if dat['port']:
-                if dat['port'] not in csa['palloc'][path]:
-                    csa['palloc'][path].append(dat['port'])
-                    logger.debug(f'port alloc {dat["port"]}')
-                    await sock.sendto(dat['port'], src)
-                else:
-                    logger.error(f'port alloc error')
-                    await sock.sendto(-1, src)
-            else:
-                p = -1
-                for i in range(0x40, 0x80):
-                    if i not in csa['palloc'][path]:
-                        p = i
-                        csa['palloc'][path].append(p)
-                        break
-                logger.debug(f'port alloc: {p}')
-                await sock.sendto(p, src)
-        
-        else:
-            await sock.sendto('err: port: unknown cmd', src)
+        logger.debug(f'port ser: {dat}, path: {src[0]}')
+        try:
+            await port_handle(sock, dat, src)
+        except Exception as err: # one bad request must not take the service down with it
+            logger.warning(f'port ser: {dat}: {err}')
+            await sock.sendto(f'err: port: {err}', src)
 
 
 async def open_brower():

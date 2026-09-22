@@ -36,14 +36,31 @@ let html = `
     </div>`;
 
 let term = null;
-let origin_log = [];
+let origin_log = [];        // every message as it came, for the export and the api
+let origin_base = 0;        // how many entries were dropped off its front; the api cursor counts them
+const LOG_KEEP = 100000;    // entries. The terminal has its scrollback, this list had no bound at all
 
 function write_log(line) {
     const buffer = term.buffer.active;
     term.write(line);
     origin_log.push(line);
+    if (origin_log.length > LOG_KEEP) { // a tenth at a time, not one shift per message
+        let n = origin_log.length - Math.trunc(LOG_KEEP * 0.9);
+        origin_log.splice(0, n);
+        origin_base += n;
+    }
     if(buffer.viewportY + term.rows >= buffer.length)
         term.scrollToBottom();
+}
+
+// the Clear button and the api's log_clear: the terminal, the export and what a script reads
+// back are one log, so they are cleared together (the cursor a script holds stays valid)
+function clear_log() {
+    origin_base += origin_log.length;
+    origin_log = [];
+    term.scrollToBottom(); // workaround for auto-scroll fails after clear
+    term.clear();
+    term.select(0, 0, 0);
 }
 
 function update_max_len() {
@@ -102,11 +119,7 @@ async function dbg_service() {
         e.preventDefault(); // scroll log without scrolling the page
     });
     
-    document.getElementById('dbg_clear').onclick = () => {
-        term.scrollToBottom(); // workaround for auto-scroll fails after clear
-        term.clear();
-        term.select(0, 0, 0);
-    };
+    document.getElementById('dbg_clear').onclick = clear_log;
     document.getElementById('dbg_select_all').onclick = () => {
         term.selectAll();
         term.focus();
@@ -162,22 +175,19 @@ async function init_dbg() {
     
     // for the external API: read back buffered log by cursor
     csa.dbg.log_read = (since=0, max_len=0) => {
-        if (!(since >= 0) || since > origin_log.length)
+        let end = origin_base + origin_log.length;
+        if (!(since >= 0) || since > end)
             since = 0;
-        let text = origin_log.slice(since).join('');
+        since = Math.max(since, origin_base);   // what came before the base is gone, `since` says so
+        let text = origin_log.slice(since - origin_base).join('');
         let cut = 0;
         if (max_len > 0 && text.length > max_len) {
             cut = text.length - max_len;
             text = text.slice(cut);
         }
-        return { since, next: origin_log.length, cut, text };
+        return { since, next: end, cut, text };
     };
-    csa.dbg.log_clear = () => {
-        origin_log = [];
-        term.scrollToBottom(); // workaround for auto-scroll fails after clear
-        term.clear();
-        term.select(0, 0, 0);
-    };
+    csa.dbg.log_clear = clear_log;
     csa.dbg.dat_export = () => { return origin_log.join(''); };
     csa.dbg.dat_import = (dat) => {
         term.write(dat);

@@ -23,10 +23,12 @@ import datetime
 import json
 import json5
 import logging
+from urllib.parse import urlsplit
 from aiohttp import web
 from cd_ws import CDWebSocket
 from web_serve import ws_ns
 import cd_watch
+import cfg_edit
 
 logger = logging.getLogger('cdgui.api')
 
@@ -52,7 +54,7 @@ def find_page(dev):
     """Match a device by its address, or by the name given on the index page."""
     pages = list_pages()
     for path, info in pages.items():
-        if dev == info.get('tgt') or dev == path.lstrip('/'):
+        if dev.lower() in (info.get('tgt'), path.lstrip('/')):   # the page keeps its address in lower case
             return path
     for path, info in pages.items():
         if dev == info.get('name'):
@@ -306,7 +308,7 @@ def cfg_load_err(cfg):
     if not cfg:
         return None
     try:
-        with open(os.path.join('configs', cfg)) as c_file:
+        with open(cfg_edit.cfg_path('configs', cfg, write=False)) as c_file:
             json5.load(c_file)
     except (OSError, ValueError) as err:
         return f'{cfg}: {err}'
@@ -447,8 +449,21 @@ async def h_help(request):
     return web.Response(text=HELP)
 
 
+# A browser sends the Origin of the page a request comes from. Refuse any but a page on this
+# machine, or any website open in the browser could write registers or flash the device through
+# the api: a simple POST needs no preflight, so the request goes out even though its reply is
+# then blocked. curl and the python wrapper send no Origin and go through.
+@web.middleware
+async def same_host_only(request, handler):
+    origin = request.headers.get('Origin')
+    if origin is not None and urlsplit(origin).hostname not in ('localhost', '127.0.0.1', '::1'):
+        logger.warning(f'refused a request from origin {origin}: {request.method} {request.path}')
+        raise web.HTTPForbidden(text=f'err: a request from another origin is refused: {origin}\n')
+    return await handler(request)
+
+
 async def start_api(addr, port):
-    app = web.Application()
+    app = web.Application(middlewares=[same_host_only])
     app.add_routes([
         web.get('/', h_help),
         web.get('/api', h_help),

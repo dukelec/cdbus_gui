@@ -158,7 +158,18 @@ async def ws_handler(ws, path):
         logger.info(f'ws: disconnect, path: {path}')
 
 
-async def start_web(addr='localhost', port=8910):                                                     
-    server = await serve(ws_handler, addr, port, process_request=http_file_server)
+# The browser sends the origin of the page on every websocket handshake, so only a page this
+# server served gets to connect: any other website open in the same browser could otherwise open
+# ws://localhost:8910/<addr> and drive the device through it. A client that is not a browser
+# sends no Origin (None) and is let in, it is a local process.
+def own_origins(port):
+    return [f'http://{h}:{port}' for h in ('localhost', '127.0.0.1', '[::1]')] + [None]
+
+
+async def start_web(addr='localhost', port=8910):
+    # max_size: the page answers an api request in one message, and a whole waveform buffer is a
+    # few MB; the default limit of 1 MB closed the connection (1009) and took the page down
+    server = await serve(ws_handler, addr, port, process_request=http_file_server,
+                         origins=own_origins(port), max_size=None)
     await server.wait_closed()
 

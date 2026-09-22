@@ -17,6 +17,12 @@ The page for the device must be opened in the browser. The server listens on
 `localhost:8911` by default, use `--api-port` to change it, `--api-port 0` to
 disable it. IAP is allowed, start the backend with `--api-no-iap` to refuse it.
 
+The api is for scripts on this machine. A request made by a web page of some
+other site through the browser carries that site's `Origin` header and is
+refused (403), as is a websocket connection to the tool from such a page:
+otherwise any website open in the browser could drive the device. curl and the
+python wrapper send no `Origin` and go through.
+
 `{dev}` below is the device address (e.g. `00:00:fe`) or the name you gave it
 on the index page. `GET http://localhost:8911/` prints this list.
 

@@ -8,6 +8,7 @@ import logging
 import os
 from pathlib import Path
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -51,7 +52,9 @@ class ConfigServiceTests(unittest.IsolatedAsyncioTestCase):
                 fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)
                           and n.name == 'cfgs_service')
                 code = compile(ast.Module(body=[fn], type_ignores=[]), filename, 'exec')
+                # the name check is cfg_edit's, here every name is taken as it is
                 ns = dict(os=os, json5=json5, csa={'cfgs': []}, open=config_open,
+                          cfg_edit=types.SimpleNamespace(cfg_path=lambda d, n, write=True: n),
                           CDWebSocket=Sock, ws_ns=None, logger=logging.getLogger('test.cfgs'))
                 exec(code, ns)
                 with patch('os.listdir', return_value=['broken.json', 'good.json']):

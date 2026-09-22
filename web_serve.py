@@ -25,7 +25,9 @@ import umsgpack
 import logging
 import websockets
 from urllib.parse import parse_qs
-from websockets.server import serve
+from websockets.asyncio.server import serve
+from websockets.http11 import Response
+from websockets.datastructures import Headers
 from http import HTTPStatus
 from cd_ws import CDWebSocket, CDWebSocketNS
 
@@ -78,14 +80,26 @@ def get_asset_ver():
     return _ver_cache['ver']
 
 
-async def http_file_server(path, request):
-    if "upgrade" in request.get("Connection", "").lower():
+# the static files, sent from the websocket server's process_request hook: a request that is
+# not an upgrade gets a plain http response and the connection is closed after it
+def http_reply(status, headers, body=b''):
+    return Response(status.value, status.phrase, Headers(headers), body)
+
+allowed_origins = []    # set by start_web(), see own_origins()
+
+async def http_file_server(connection, request):
+    if "upgrade" in request.headers.get("Connection", "").lower():
+        # the origins= of serve() refuses this as well, but with an error and a traceback in the
+        # log for each attempt; refused here it is one warning line
+        origin = request.headers.get('Origin')
+        if origin not in allowed_origins:
+            logger.warning(f'ws: refused origin {origin} for {request.path}')
+            return connection.respond(HTTPStatus.FORBIDDEN, 'this page is not served by cdbus_gui\n')
         return None
-    path, _, query = path.partition('?')
+    path, _, query = request.path.partition('?')
     if path.endswith('/'):
         path += 'index.html'
     response_headers = [
-        ('Server', 'asyncio'),
         ('Connection', 'close'),
     ]
     full_path = os.path.realpath(os.path.join(HTML, path[1:]))
@@ -95,7 +109,9 @@ async def http_file_server(path, request):
     if os.path.commonpath((HTML, full_path)) != HTML or \
             not os.path.exists(full_path) or not os.path.isfile(full_path):
         logger.warning(f'{log_str} 404 NOT FOUND')
-        return HTTPStatus.NOT_FOUND, response_headers, b'404 NOT FOUND'
+        body = b'404 NOT FOUND'
+        response_headers += [('Content-Length', str(len(body))), ('Content-Type', 'text/plain')]
+        return http_reply(HTTPStatus.NOT_FOUND, response_headers, body)
 
     in_libs = os.path.relpath(full_path, HTML).split(os.sep)[0] == 'libs'
     ext = os.path.splitext(full_path)[1]
@@ -114,17 +130,18 @@ async def http_file_server(path, request):
     response_headers.append(('Cache-Control', IMMUTABLE if (in_libs or 'v' in parse_qs(query)) else 'no-cache'))
     etag = f'"{hashlib.sha1(body).hexdigest()[:20]}"'
     response_headers.append(('ETag', etag))
-    if etag in [t.strip() for t in request.get('If-None-Match', '').split(',')]:
+    if etag in [t.strip() for t in request.headers.get('If-None-Match', '').split(',')]:
         logger.info(f'{log_str} 304 NOT MODIFIED')
-        return HTTPStatus.NOT_MODIFIED, response_headers, b''
+        return http_reply(HTTPStatus.NOT_MODIFIED, response_headers)
 
     logger.info(f'{log_str} 200 OK')
     response_headers.append(('Content-Length', str(len(body))))
     response_headers.append(('Content-Type', content_type))
-    return HTTPStatus.OK, response_headers, body
+    return http_reply(HTTPStatus.OK, response_headers, body)
 
 
-async def ws_handler(ws, path):
+async def ws_handler(ws):
+    path = ws.request.path
     logger.info(f'ws: connect, path: {path}')
     if path in ws_ns.connections:
         logger.warning(f'ws: only allow one connection for: {path}')
@@ -167,9 +184,10 @@ def own_origins(port):
 
 
 async def start_web(addr='localhost', port=8910):
+    allowed_origins[:] = own_origins(port)
     # max_size: the page answers an api request in one message, and a whole waveform buffer is a
     # few MB; the default limit of 1 MB closed the connection (1009) and took the page down
-    server = await serve(ws_handler, addr, port, process_request=http_file_server,
-                         origins=own_origins(port), max_size=None)
-    await server.wait_closed()
+    async with serve(ws_handler, addr, port, process_request=http_file_server,
+                     origins=allowed_origins, max_size=None) as server:
+        await server.serve_forever()
 

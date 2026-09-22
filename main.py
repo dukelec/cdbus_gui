@@ -91,12 +91,13 @@ async def proxy_rx_rpt(rx):
 def proxy_rx():
     logger.info('start proxy_rx')
     while True:
-        if not csa['dev']:
+        dev = csa['dev']    # closed and dropped by the dev service at any time
+        if not dev:
             sleep(0.5)
             continue
         frame = None
         try:
-            frame = csa['dev'].recv(timeout=0.5)
+            frame = dev.recv(timeout=0.5)
             if frame:
                 if frame[3] & 0x80:
                     rx = cdnet_l1.from_frame(frame, csa['net'])

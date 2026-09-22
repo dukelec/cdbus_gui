@@ -490,6 +490,12 @@ function str_float(tok) {
     return v;
 }
 
+function str_hex(tok) {     // one byte the way the B display shows it, e.g. a5
+    if (!/^(0x)?[0-9a-fA-F]{1,2}$/.test(tok ?? ''))
+        throw new Error(L('"%s" is not a hex byte').replace('%s', tok ?? ''));
+    return tok;
+}
+
 function str2reg(dat, ofs, fmt, show, str, s_idx) {
     let dv = new DataView(dat.buffer);
     let f = fmt.replace(/\W/g, ''); // remove non-word chars
@@ -514,7 +520,7 @@ function str2reg(dat, ofs, fmt, show, str, s_idx) {
             break;
         case 'B':
             switch (show) {
-            case 2:  dat.set(hex2dat(str_a[s_idx]).slice(0,1), ofs); break;
+            case 2:  dat.set(hex2dat(str_hex(str_a[s_idx])).slice(0,1), ofs); break;
             default: dv.setUint8(ofs, str_int(str_a[s_idx], 8), true);
             }
             ofs += isNaN(f[i+1]) ? 1 : Number(f[++i]);

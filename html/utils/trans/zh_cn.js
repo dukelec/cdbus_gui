@@ -156,7 +156,9 @@ let trans_zh_cn = {
     '"%s" is not an integer': '"%s" 不是整数',
     '"%s" does not fit in %s bits': '"%s" 超出 %s 位的范围',
     '"%s" is not a number': '"%s" 不是数字',
-    'The plot config register %s is in no W group, add one with Button Edit.': '波形配置寄存器 %s 不在任何 W 分组中，请用“按键编辑”添加。'
+    'The plot config register %s is in no W group, add one with Button Edit.': '波形配置寄存器 %s 不在任何 W 分组中，请用“按键编辑”添加。',
+    '"%s" is not a hex byte': '"%s" 不是十六进制字节',
+    'The button groups are being edited (Button Edit is on), finish that first.': '正在编辑按钮分组（按键编辑 已打开），请先完成。'
 };
 
 export { trans_zh_cn };

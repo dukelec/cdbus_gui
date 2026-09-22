@@ -1025,6 +1025,7 @@ async function plot_cal_update(idx) {
         csa.plot.plots[idx] = u;
     }
     await plot_update(idx);
+    await plot_cfg_save();  // the browser copy follows, or a reload would bring the old formulas back
 }
 
 

@@ -14,6 +14,10 @@ import { val2hex } from '../utils/helper.js?v=__V__';
 async function plot_reg_w(idx) {
     let reg_val = csa.plot.reg_val[idx];
     let reg_name = csa.cfg.plot.plots[idx].cfg_reg;
+    if (csa.reg.editing) { // the W buttons pick registers right now, they do not write
+        alert(L('The button groups are being edited (Button Edit is on), finish that first.'));
+        return -1;
+    }
     if (!reg_val) { // its channels did not resolve, the config error says why
         alert(`${L('Config file error, related functions may not work:')} Plot${idx}`);
         return -1;

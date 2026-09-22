@@ -19,6 +19,7 @@
 import os
 import re
 import hashlib
+import functools
 import asyncio
 import mimetypes
 import umsgpack
@@ -85,14 +86,12 @@ def get_asset_ver():
 def http_reply(status, headers, body=b''):
     return Response(status.value, status.phrase, Headers(headers), body)
 
-allowed_origins = []    # set by start_web(), see own_origins()
-
-async def http_file_server(connection, request):
+async def http_file_server(connection, request, origins):
     if "upgrade" in request.headers.get("Connection", "").lower():
-        # the origins= of serve() refuses this as well, but with an error and a traceback in the
-        # log for each attempt; refused here it is one warning line
+        # only a page this server served may connect, see own_origins(). Checked here rather than
+        # with the origins= of serve(), which logs every refusal as an error with a traceback
         origin = request.headers.get('Origin')
-        if origin not in allowed_origins:
+        if origin not in origins:
             logger.warning(f'ws: refused origin {origin} for {request.path}')
             return connection.respond(HTTPStatus.FORBIDDEN, 'this page is not served by cdbus_gui\n')
         return None
@@ -184,10 +183,9 @@ def own_origins(port):
 
 
 async def start_web(addr='localhost', port=8910):
-    allowed_origins[:] = own_origins(port)
+    process = functools.partial(http_file_server, origins=own_origins(port))
     # max_size: the page answers an api request in one message, and a whole waveform buffer is a
     # few MB; the default limit of 1 MB closed the connection (1009) and took the page down
-    async with serve(ws_handler, addr, port, process_request=http_file_server,
-                     origins=allowed_origins, max_size=None) as server:
+    async with serve(ws_handler, addr, port, process_request=process, max_size=None) as server:
         await server.serve_forever()
 

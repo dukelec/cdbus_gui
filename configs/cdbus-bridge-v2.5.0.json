@@ -22,13 +22,16 @@
             [ 0x0024, 1, "B", 0, "bus_cfg_tx_pre_len", "TE pre-assert time" ],
 
             [ 0x0028, 4, "I", 0, "limit_baudrate0", "Low baudrate limit (sw1 off)" ],
-            [ 0x002c, 4, "I", 0, "limit_baudrate1", "Low baudrate limit (sw1 on)" ]
+            [ 0x002c, 4, "I", 0, "limit_baudrate1", "Low baudrate limit (sw1 on)" ],
+            
+            [ 0x0040, 13, "[B]", 2, "ip_pfx", "IPv6 prefix, first 13 bytes of the /104" ],
+            [ 0x004d, 1, "B", 1, "net", "CDNET net number of the local link" ],
+            [ 0x004e, 1, "B", 1, "router_mac", "Router mac for other nets, 0xff: none" ],
+            [ 0x0050, 2, "H", 1, "port_offset", "Offset of the host side udp port, 0: none" ],
         ],
         
-        "reg_r": [["magic_code","conf_ver"],["conf_from","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_baud_h"],
-                  ["bus_cfg_filter_m","bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"]],
-        "reg_w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac"],["bus_cfg_filter_m"],
-                  ["bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"]]
+        "reg_r": [["magic_code","conf_ver"],["conf_from","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx","port_offset"]],
+        "reg_w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx"],["net","port_offset"]]
     },
     
     

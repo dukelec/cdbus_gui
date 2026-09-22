@@ -70,7 +70,7 @@ test('write uses the validated snapshot when the input changes during read-befor
     const sock = { flush() {}, async sendto(msg) { sent.push([...msg.dat]); },
         recvfrom() { return ++recvCount === 1 ? new Promise(r => release = r) : Promise.resolve([{ dat: new Uint8Array([0]) }]); } };
     const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'x','',[0,10]]] } },
-        reg: { reg_w: [[0,1]], reg_rbw: [], elm: { 'reg.x': elem }, proxy_sock_regw: sock } };
+        reg: { reg_w: [[0,1]], reg_rbw: [], elm: { 'reg.x': elem }, xfer_socks: [sock, sock] } };
     const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
     vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
     const done = vm.runInContext('write_reg_val(0, false)', ctx);
@@ -114,7 +114,7 @@ function writer(regs, values, groups, initial) {
     const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: regs } },
         reg: { reg_w: groups, reg_rbw: [new Uint8Array(initial)],
             elm: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { value, style: {} }])),
-            proxy_sock_regw: sock } };
+            xfer_socks: [sock, sock] } };
     const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
     vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
     return { csa, sent, ctx };
@@ -294,7 +294,7 @@ test('a failed default read gives the defaults up and keeps Read All going', asy
         async recvfrom() { return [{ dat: new Uint8Array(sent.at(-1)[0] == 0x01 ? [1] : [0, 42]) }]; } };
     const elem = { value: '', style: {} };
     const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'x']] } },
-        reg: { reg_r: [[0,1]], reg_w: [], reg_rbw: [], reg_dft_r: [], proxy_sock_regr: sock,
+        reg: { reg_r: [[0,1]], reg_w: [], reg_rbw: [], reg_dft_r: [], xfer_socks: [sock, sock],
                elm: { 'reg.x': elem, 'reg_dft.x': { setAttribute() {} } } } };
     const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
     vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
@@ -312,7 +312,7 @@ test('a read that spans a write group renews its read-before-write bytes, a shor
                   'reg_dft.a': { setAttribute() {} }, 'reg_dft.b': { setAttribute() {} } };
     const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'a'], [2,1,'B',0,'b']] } },
         reg: { reg_r: [[0,4]], reg_w: [[0,2], [2,2]], reg_rbw: [new Uint8Array([9,9])], reg_dft_r: [true],
-               proxy_sock_regr: sock, elm } };
+               xfer_socks: [sock, sock], elm } };
     const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
     vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
     assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);
@@ -331,4 +331,65 @@ test('importing a file with fewer series gives each missing one an array of its 
     vm.runInContext('plot_import_dat([[[1, 2], [3, 4]]])', ctx);
     csa.plot.dat[0][2].push(9);
     assert.equal(JSON.stringify(csa.plot.dat[0]), '[[1,2],[3,4],[9],[]]'); // (vm arrays are of another realm)
+});
+
+test('a timed out register transfer moves to the other port, a late answer lands on the idle one', async () => {
+    const sent = [];
+    const port = (name, reply) => ({ port: name, q: [], flush() { this.q = []; },
+        async sendto(msg) { sent.push(name); if (reply) this.q.push([{ dat: new Uint8Array(reply) }]); },
+        async recvfrom() { return this.q.shift() ?? null; } });
+    const A = port('A', null), B = port('B', [0, 42]);
+    const elem = { value: '', style: {} };
+    const csa = { arg: { tgt: '80:00:01' }, cfg: { reg: { list: [[0,1,'B',0,'x']] } },
+        reg: { reg_r: [[0,1]], reg_w: [], reg_rbw: [], reg_dft_r: [true], xfer_socks: [A, B],
+               elm: { 'reg.x': elem, 'reg_dft.x': { setAttribute() {} } } } };
+    const ctx = context({ csa, document: { getElementById: () => ({ checked: false }) } });
+    vm.runInContext(source('html/utils/helper.js') + source('html/plugins/reg_rw.js'), ctx);
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), -1);   // no answer on A
+    A.q.push([{ dat: new Uint8Array([0, 7]) }]);                         // the late one, on A
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);    // asked on B, B answers
+    assert.equal(elem.value, '42');
+    assert.equal(A.q.length, 1);                                        // and nobody took the late one
+    assert.equal(await vm.runInContext('read_reg_val(0)', ctx), 0);    // B stays in use, no timeout
+    assert.deepEqual(sent, ['A', 'B', 'B']);
+});
+
+test('the edit bar transforms the groups as data and the list is drawn from them', () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b'], [2,2,'H',0,'c'], [8,1,'B',0,'d']];
+    const elm = {};
+    for (const reg of list)
+        for (const k of ['reg', 'reg_btn_r', 'reg_btn_w'])
+            elm[`${k}.${reg[4]}`] = { style: {} };
+    const csa = { cfg: { reg: { list } },
+        reg: { elm, reg_r: [[0,2]], reg_w: [], editing: true, sel: { r: new Set(), w: new Set() } } };
+    const ctx = context({ ...constants, csa });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    const groups = () => JSON.stringify(csa.reg.reg_r);
+    vm.runInContext("update_reg_rw_btn('r')", ctx);
+    elm['reg_btn_r.c'].onclick(); elm['reg_btn_r.d'].onclick();          // a click picks, while editing
+    assert.equal(elm['reg_btn_r.c'].style.color, 'yellow');
+    vm.runInContext("edit_apply(['enable', 'group'])", ctx);              // Enable & Group
+    assert.equal(groups(), '[[0,2],[2,7]]');
+    assert.equal(csa.reg.sel.r.size, 0);
+    assert.equal(elm['reg_btn_r.c'].style.color, '');
+    assert.notEqual(elm['reg_btn_r.d'].style.background, '');
+    elm['reg_btn_r.b'].onclick();
+    vm.runInContext("edit_apply(['disable'])", ctx);                      // Disable b: a is on its own now
+    assert.equal(groups(), '[[0,1],[2,7]]');
+    assert.equal(elm['reg_btn_r.b'].style.background, '');
+    elm['reg_btn_r.c'].onclick(); elm['reg_btn_r.d'].onclick();
+    vm.runInContext("edit_apply(['ungroup'])", ctx);
+    assert.equal(groups(), '[[0,1],[2,2],[8,1]]');
+    vm.runInContext("edit_select(true)", ctx);
+    assert.equal(csa.reg.sel.w.size, 4);
+    vm.runInContext("edit_apply(['enable', 'group'])", ctx);              // one group over the whole list, both sides
+    assert.equal(JSON.stringify(csa.reg.reg_w), '[[0,9]]');
+    assert.equal(groups(), '[[0,9]]');
+    elm['reg_btn_r.b'].onclick();
+    vm.runInContext("edit_apply(['disable'])", ctx);                      // taking b out splits the group
+    assert.equal(groups(), '[[0,1],[2,7]]');
+    csa.reg.editing = false;                                              // back to reading and writing
+    vm.runInContext("update_reg_rw_btn('r')", ctx);
+    assert.equal(typeof elm['reg_btn_r.a'].onclick, 'function');
+    assert.equal(elm['reg_btn_r.b'].onclick, null);
 });

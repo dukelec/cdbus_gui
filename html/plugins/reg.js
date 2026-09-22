@@ -144,10 +144,6 @@ function cur_mode() {
     return document.getElementById('reg_mode').value;
 }
 
-function in_button_edit() {
-    return document.getElementById('button_edit').style.background != '';
-}
-
 // every xxx_r / xxx_w set, in the order the config file first names it (the json5 parser, msgpack
 // and the js object all keep that order); reg is the default and always there, first when the file
 // has neither reg_r nor reg_w
@@ -214,6 +210,8 @@ function update_reg_rw_btn(rw='r') {
     csa.reg.reg_rbw = []; // clean read-before-write buffer
     if (rw == 'r')
         csa.reg.reg_dft_r = []; // the default read flags are per group index too
+    let editing = !!csa.reg.editing;
+    let sel = editing ? csa.reg.sel[rw] : null;
     
     for (let i = 0; i < csa.cfg.reg.list.length; i++) {
         let reg_pre = null;
@@ -243,15 +241,26 @@ function update_reg_rw_btn(rw='r') {
         btn.style['margin-top'] = '';
         btn.style['margin-bottom'] = '';
         btn.onclick = null;
+        btn.style.color = '';
         if (rw == 'w') {
             for (let sfx of reg_val_sfx(reg))
                 csa.reg.elm[`reg.${sfx}`].onkeydown = null;
+        }
+        if (editing) { // the button picks its register for the edit bar; the colours still show the groups
+            let addr = reg[R_ADDR];
+            btn.style.color = sel.has(addr) ? 'yellow' : '';
+            btn.onclick = () => {
+                sel.has(addr) ? sel.delete(addr) : sel.add(addr);
+                btn.style.color = sel.has(addr) ? 'yellow' : '';
+            };
         }
         
         if (rw_idx != null) {
             btn.style['background'] = color;
 
-            if (rw == 'w') {
+            if (editing) {
+                // the buttons pick, they do not read or write
+            } else if (rw == 'w') {
                 if (reg[R_FMT][0] == '{') {
                     for (let n = 0; n < Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])); n++) {
                         csa.reg.elm[`reg.${reg[R_ID]}.${n}`].onkeydown = async (event) => {
@@ -303,25 +312,6 @@ function set_rw_btn_style(btn, edge_pre, edge_next, reg_pre, reg, reg_next) {
                                 `${edge_next == 'end' ? '0.1px' : '0'} 0.1px`;
     btn.style['border-radius'] = round_pre ? (round_next ? '6px' : '6px 6px 0 0')
                                            : (round_next ? '0 0 6px 6px' : '0');
-}
-
-function cal_reg_rw(rw='r') {
-    let reg_rw = [];
-    let start = null;
-    
-    for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-        let reg = csa.cfg.reg.list[i];
-        let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
-        
-        if (btn.style['background'] != '') {
-            if (btn.style['margin-top'] == '' )
-                start = reg[R_ADDR];
-            if (btn.style['margin-bottom'] == '' ) {
-                reg_rw.push([start, reg[R_ADDR] + reg[R_LEN] - start]);
-            }
-        }
-    }
-    return reg_rw;
 }
 
 
@@ -389,154 +379,112 @@ function reg_rw2reg_cfg(list) {
 }
 
 
-// edit
+// ---- Button Edit ------------------------------------------------------------------------
+// The groups are the data: [addr, len] per group in address order, csa.reg.reg_r / reg_w. While
+// editing there is also the set of picked buttons per side, csa.reg.sel. Every button of the edit
+// bar transforms that data and the list is drawn from it again by update_reg_rw_btn(); nothing is
+// read back from what is on screen.
+
+function in_button_edit() {
+    return !!csa.reg.editing;
+}
+
+// the groups of one side as a mark per register of the list: `on` when a group covers it, `join`
+// when the register after it in the list is in the same group. A group is a contiguous stretch
+// of the list, so the two are the whole shape of it
+function groups_to_marks(groups) {
+    let list = csa.cfg.reg.list;
+    return list.map((reg, i) => {
+        let g = in_reg_rw(groups, reg[R_ADDR]);
+        return { on: g != null,
+                 join: g != null && i + 1 < list.length && in_reg_rw(groups, list[i+1][R_ADDR]) === g };
+    });
+}
+
+function marks_to_groups(marks) {
+    let list = csa.cfg.reg.list;
+    let groups = [];
+    let start = null;
+    for (let i = 0; i < list.length; i++) {
+        if (!marks[i].on)
+            continue;
+        start ??= list[i][R_ADDR];
+        if (!(marks[i].join && i + 1 < list.length && marks[i+1].on)) {
+            groups.push([start, list[i][R_ADDR] + list[i][R_LEN] - start]);
+            start = null;
+        }
+    }
+    return groups;
+}
+
+// one button of the edit bar over the picked registers: enable or disable a register, or group /
+// ungroup it with the next one in the list, when that one is picked and enabled as well. A
+// disabled register is cut loose from both of its neighbours
+function edit_marks(marks, sel, op) {
+    let list = csa.cfg.reg.list;
+    let picked = i => i < list.length && sel.has(list[i][R_ADDR]);
+    for (let i = 0; i < list.length; i++) {
+        if (!picked(i))
+            continue;
+        if (op == 'enable') {
+            marks[i].on = true;
+        } else if (op == 'disable') {
+            marks[i].on = marks[i].join = false;
+            if (i > 0)
+                marks[i-1].join = false;
+        } else if (picked(i + 1) && marks[i].on && marks[i+1].on) {
+            marks[i].join = op == 'group';
+        }
+    }
+    return marks;
+}
+
+// run the edit bar's buttons over the picked registers of both sides, then drop the pick
+function edit_apply(ops) {
+    for (let rw of ['r', 'w']) {
+        let marks = groups_to_marks(rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w);
+        for (let op of ops)
+            edit_marks(marks, csa.reg.sel[rw], op);
+        csa.reg[rw == 'r' ? 'reg_r' : 'reg_w'] = marks_to_groups(marks);
+        csa.reg.sel[rw].clear();
+        update_reg_rw_btn(rw);
+    }
+}
+
+// pick every register on both sides, or none
+function edit_select(all) {
+    for (let rw of ['r', 'w']) {
+        csa.reg.sel[rw] = new Set(all ? csa.cfg.reg.list.map(r => r[R_ADDR]) : []);
+        update_reg_rw_btn(rw);
+    }
+}
+
+function render_edit_bar() {
+    document.getElementById('button_edit').style.background = csa.reg.editing ? 'yellow' : '';
+    document.getElementById('button_subs').style.display = csa.reg.editing ? 'inline' : 'none';
+}
 
 async function button_edit() {
-    if (document.getElementById('button_edit').style.background == '') {
-        document.getElementById('button_edit').style.background = 'yellow';
-        document.getElementById('button_subs').style.display = 'inline';
-        layout_reg_rows();
-        build_pin_bar();
-        
-        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-            let reg = csa.cfg.reg.list[i];
-            let btn_r = csa.reg.elm[`reg_btn_r.${reg[R_ID]}`];
-            let btn_w = csa.reg.elm[`reg_btn_w.${reg[R_ID]}`];
-            btn_r.onclick = () => {
-                btn_r.style.color = btn_r.style.color ? '' : 'yellow';
-            };
-            btn_w.onclick = () => {
-                btn_w.style.color = btn_w.style.color ? '' : 'yellow';
-            };
-        }
-        
-    } else {
-        document.getElementById('button_edit').style.background = '';
-        document.getElementById('button_subs').style.display = 'none';
+    if (!csa.reg.editing) {
+        csa.reg.editing = true;
+        csa.reg.sel = { r: new Set(), w: new Set() };
+        render_edit_bar();
+        layout_reg_rows();  // every register, so one can be added to a group
+        build_pin_bar();    // the bar steps aside, its R / W would mean something else now
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
+    } else {
+        csa.reg.editing = false;
+        render_edit_bar();
         // save to idb, only what differs from the config file
         let mode = cur_mode();
         await save_reg_db(`${mode}_r`, reg_rw2reg_cfg(csa.reg.reg_r));
         await save_reg_db(`${mode}_w`, reg_rw2reg_cfg(csa.reg.reg_w));
-        console.log(`new ${mode}_r values:`);
-        console.log(JSON.stringify(csa.reg.reg_r));
-        console.log(JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
-        console.log(`new ${mode}_w values:`);
-        console.log(JSON.stringify(csa.reg.reg_w));
-        console.log(JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
+        console.log(`new ${mode}_r values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
+        console.log(`new ${mode}_w values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
         // the edit may have emptied a set, or Load Default refilled one
         await update_mode_select();
         await init_reg_rw();
-    }
-}
-
-function set_group(on) {
-    for (let rw of ['r', 'w']) {
-        let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
-        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
-        
-        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-            let reg = csa.cfg.reg.list[i];
-            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
-            let btn_next = null;
-            
-            let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
-            if (i < csa.cfg.reg.list.length - 1) {
-                let reg_next = csa.cfg.reg.list[i+1];
-                btn_next = csa.reg.elm[`reg_btn_${rw}.${reg_next[R_ID]}`];
-            }
-            
-            if (btn.style.background && btn.style.color) {
-                if (on) { // has margin
-                    if (btn_next && btn_next.style.background && btn_next.style.color) { // next selected
-                        btn.style['margin-bottom'] = '0';
-                        btn_next.style['margin-top'] = '0';
-                    }
-                } else {
-                    if (btn_next && btn_next.style.background && btn_next.style.color) { // next selected
-                        btn.style['margin-bottom'] = '';
-                        btn_next.style['margin-top'] = '';
-                    }
-                }
-            }
-        }
-    }
-    
-    csa.reg.reg_r = cal_reg_rw('r');
-    update_reg_rw_btn('r');
-    csa.reg.reg_w = cal_reg_rw('w');
-    update_reg_rw_btn('w');
-    // re-install onclick callback:
-    document.getElementById('button_edit').style.background = '';
-    button_edit();
-}
-
-function set_enable(on) {
-    for (let rw of ['r', 'w']) {
-        let color = rw == 'r' ? '#D5F5E3' : '#D6EAF8';
-        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
-        
-        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-            let reg = csa.cfg.reg.list[i];
-            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
-            let btn_pre = null;
-            let btn_next = null;
-            
-            let rw_idx = in_reg_rw(reg_rw, reg[R_ADDR]);
-            if (i > 0) {
-                let reg_pre = csa.cfg.reg.list[i-1];
-                btn_pre = csa.reg.elm[`reg_btn_${rw}.${reg_pre[R_ID]}`];
-            }
-            if (i < csa.cfg.reg.list.length - 1) {
-                let reg_next = csa.cfg.reg.list[i+1];
-                btn_next = csa.reg.elm[`reg_btn_${rw}.${reg_next[R_ID]}`];
-            }
-            
-            if (btn.style.color) {
-                if (!on) {
-                    btn.style['margin-top'] = '';
-                    btn.style['margin-bottom'] = '';
-                    if (btn_pre)
-                        btn_pre.style['margin-bottom'] = '';
-                    if (btn_next)
-                        btn_next.style['margin-top'] = '';
-                }
-                btn.style.background = on ? color : '';
-            }
-        }
-    }
-    
-    csa.reg.reg_r = cal_reg_rw('r');
-    update_reg_rw_btn('r');
-    csa.reg.reg_w = cal_reg_rw('w');
-    update_reg_rw_btn('w');
-    // re-install onclick callback:
-    document.getElementById('button_edit').style.background = '';
-    button_edit();
-}
-
-function button_all() {
-    for (let rw of ['r', 'w']) {
-        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
-        
-        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-            let reg = csa.cfg.reg.list[i];
-            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
-            btn.style.color = 'yellow';
-        }
-    }
-}
-
-function button_none() {
-    for (let rw of ['r', 'w']) {
-        let reg_rw = rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w;
-        
-        for (let i = 0; i < csa.cfg.reg.list.length; i++) {
-            let reg = csa.cfg.reg.list[i];
-            let btn = csa.reg.elm[`reg_btn_${rw}.${reg[R_ID]}`];
-            btn.style.color = '';
-        }
     }
 }
 
@@ -547,11 +495,7 @@ async function button_def() {
     csa.reg.reg_w = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_w`]);
     await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_r`, null);
     await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_w`, null);
-    update_reg_rw_btn('r');
-    update_reg_rw_btn('w');
-    // re-install onclick callback:
-    document.getElementById('button_edit').style.background = '';
-    button_edit();
+    edit_select(false);
     alert('Load default succeeded.');
 }
 
@@ -878,17 +822,18 @@ async function init_reg() {
         reg_dft_r: [],  // first read flag
         reg_rbw: [],    // read before write data
         elm: {},        // cache dom elements
+        editing: false, // Button Edit is on
+        sel: { r: new Set(), w: new Set() },    // the picked buttons of each side while editing
         pin: { ids: [], elm: {}, slot: null }   // the rows mirrored in the top bar
     };
     csa.plugins.push('reg');
     
-    let port = await alloc_port();
-    console.log(`init_reg, alloc port: ${port}`);
-    csa.reg.proxy_sock_regr = new CDWebSocket(csa.ws_ns, port);
-    
-    port = await alloc_port();
-    console.log(`init_reg, alloc port: ${port}`);
-    csa.reg.proxy_sock_regw = new CDWebSocket(csa.ws_ns, port);
+    csa.reg.xfer_socks = [];    // two ports for the register transfers, see reg_xfer()
+    for (let n = 0; n < 2; n++) {
+        let port = await alloc_port();
+        console.log(`init_reg, alloc port: ${port}`);
+        csa.reg.xfer_socks.push(new CDWebSocket(csa.ws_ns, port));
+    }
     
     let html = `
         <div class="container">
@@ -937,13 +882,13 @@ async function init_reg() {
     await update_mode_select();
     await init_reg_rw();
     
-    document.getElementById(`button_edit`).onclick = () => { button_edit(); button_none(); };
-    document.getElementById(`group_on`).onclick = () => { set_enable(true); set_group(true); button_none(); };
-    document.getElementById(`group_off`).onclick = () => { set_group(false); button_none(); };
-    document.getElementById(`enable_on`).onclick = () => { set_enable(true); button_none(); };
-    document.getElementById(`enable_off`).onclick = () => { set_enable(false); button_none(); };
-    document.getElementById(`button_all`).onclick = button_all;
-    document.getElementById(`button_def`).onclick = () => { button_none(); button_def(); };
+    document.getElementById(`button_edit`).onclick = button_edit;
+    document.getElementById(`group_on`).onclick = () => edit_apply(['enable', 'group']);
+    document.getElementById(`group_off`).onclick = () => edit_apply(['ungroup']);
+    document.getElementById(`enable_on`).onclick = () => edit_apply(['enable']);
+    document.getElementById(`enable_off`).onclick = () => edit_apply(['disable']);
+    document.getElementById(`button_all`).onclick = () => edit_select(true);
+    document.getElementById(`button_def`).onclick = button_def;
     document.getElementById('reg_mode').onchange = async () => {
         csa.reg.mode = cur_mode();
         await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, csa.reg.mode);
@@ -1029,4 +974,4 @@ async function init_reg() {
 }
 
 
-export { init_reg, cal_reg_rw, reg_idx_by_name, in_button_edit, groups_get, groups_set };
+export { init_reg, reg_idx_by_name, in_button_edit, groups_get, groups_set };

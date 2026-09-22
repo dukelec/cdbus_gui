@@ -254,20 +254,31 @@ function reg2str(dat, ofs, fmt, show) {
     return [ret, ofs];
 }
 
-// Serialize reg transactions. The r/w sockets are each shared by the periodic
-// read, the R/W buttons and the external api, so a concurrent transaction
-// would mix the replies up. One lock for both, they talk to the same device.
+// Register transfers go one at a time: the periodic read, the R / W buttons and the external
+// api all share them, and two in flight would take each other's answers. The protocol has no
+// transaction id, so an answer that comes in after its request timed out cannot be told from
+// the answer to the request after it. What tells them apart is the port: the device answers to
+// the port a request came from, so a timeout moves the transfers to the other of the two ports
+// and the late answer lands on the one now idle, where nothing takes it for its own. It is
+// flushed when that port's turn comes round again, which takes another timeout.
 let reg_lock = Promise.resolve();
+let xfer_cur = 0;
 
-async function reg_xfer(sock, dat, timeout=1000) {
+async function reg_xfer(dat, timeout=1000) {
     let unlock;
     let prev = reg_lock;
     reg_lock = new Promise(resolve => unlock = resolve);
     await prev;
+    let sock = csa.reg.xfer_socks[xfer_cur];
     try {
         sock.flush();
         await sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': dat}, ['server', 'proxy']);
-        return await sock.recvfrom(timeout);
+        let ret = await sock.recvfrom(timeout);
+        if (!ret) {
+            xfer_cur = (xfer_cur + 1) % csa.reg.xfer_socks.length;
+            console.warn(`reg xfer: no answer, moving to port ${csa.reg.xfer_socks[xfer_cur].port}`);
+        }
+        return ret;
     } finally {
         unlock();
     }
@@ -356,7 +367,7 @@ async function read_reg_val(r_idx, read_dft=false) {
     dv.setUint16(1, addr, true);
 
     console.log('read reg wait ret');
-    let ret = await reg_xfer(csa.reg.proxy_sock_regr, dat);
+    let ret = await reg_xfer(dat);
     console.log('read reg ret', ret);
     // the status byte, then the bytes asked for: a short answer would end in a RangeError half
     // way through filling in the boxes
@@ -639,7 +650,7 @@ async function write_reg_val(w_idx, alert_err=true) {
         dv.setUint16(1, addr, true);
         
         console.log('read-before-write wait ret');
-        let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
+        let ret = await reg_xfer(dat);
         console.log('read-before-write ret', ret);
         if (!grp_same('w', w_idx, addr, len)) { // the groups changed meanwhile, give up
             console.log('read-before-write: group changed');
@@ -677,7 +688,7 @@ async function write_reg_val(w_idx, alert_err=true) {
 
     console.info('write reg:', dat2hex(dat, ' '));
     console.log('write reg wait ret');
-    let ret = await reg_xfer(csa.reg.proxy_sock_regw, dat);
+    let ret = await reg_xfer(dat);
     console.log('write reg ret', ret);
     let same = grp_same('w', w_idx, addr, len); // else the rows are another group's now
     if (ret && (ret[0].dat[0] & 0xf) == 0) {

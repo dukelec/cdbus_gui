@@ -138,6 +138,8 @@ window.addEventListener('load', async function() {
         return;
     }
     document.getElementById('tgt_name').innerText = ` - ${csa.arg.name} < ${csa.arg.tgt} | ${csa.arg.cfg} >`;
+    // tell the tabs apart: the last byte of the address and the cfg name without .json first
+    document.title = `${csa.arg.tgt.split(':').pop()} ${csa.arg.cfg.replace(/\.json$/, '')} - CDBUS Tools`;
     
     csa.ws_ns = new CDWebSocketNS(`/${csa.arg.tgt}`);
     csa.cmd_sock = new CDWebSocket(csa.ws_ns, 'cmd');

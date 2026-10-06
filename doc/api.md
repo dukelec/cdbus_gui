@@ -107,7 +107,7 @@ backend, no page needs to be opened. A start while one is running is refused,
 as is a mark while none is. Each call returns the state after it, which `GET`
 also gives, `path` being the file of the recording, or of the last one once
 stopped. The file opens in Wireshark with the `wireshark/cdbus.lua` of
-[cdbus_tools](https://github.com/dukelec/cdbus_tools), see the Readme. A backend started as `main_udp.py` has no bus, the calls are refused.
+[cdbus_tools](https://github.com/dukelec/cdbus_tools), see the Readme. `main_udp.py` records as well, the frames rebuilt from its UDP packets.
 
 ```shell
 curl -X POST localhost:8911/api/rec/start -d '{"comment":"pid step test"}'

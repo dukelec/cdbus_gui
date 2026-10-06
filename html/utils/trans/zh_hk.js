@@ -45,6 +45,19 @@ let trans_zh_hk = {
     'last': '上次',
     'Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.':
         '總線上的每一幀都會寫入 records/*.pcapng；在任一日誌窗口按回車會在記錄中插入一個標記。用 Wireshark 載入 cdbus_tools 裡的 cdbus.lua 後即可打開該檔案。',
+    'Replay': '回放',
+    'Load': '載入',
+    'Play to': '播放到',
+    'at once': '瞬間',
+    'Play': '播放',
+    'Pause': '暫停',
+    'Rewind': '回到開頭',
+    'No file loaded': '未載入檔案',
+    'addresses': '地址',
+    'page open': '頁面已打開',
+    'no page open': '頁面未打開',
+    'Set Play to this time': '將「播放到」設為此時刻',
+    'Open the pages of the devices first, then play: the index log gets every device, each device page its own log and waveforms, and the registers as they were at the time played to. Play on for a later time, or Rewind and play again for an earlier one.': '先打開各設備的頁面再播放：首頁日誌匯總全部設備，每個設備頁面得到自己的日誌和波形，暫存器顯示為播放到該時刻時的值。要看更晚的時刻就繼續播放，要看更早的時刻就回到開頭再播放。',
     'Open Window': '打開頁面',
     
     // ctrl

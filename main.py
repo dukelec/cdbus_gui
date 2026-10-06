@@ -38,6 +38,7 @@ from cdnet.utils.serial_get_port import get_ports
 from cdnet.utils.crc import modbus_crc
 from cdnet.dispatch import *
 from cdnet.parser import *
+import cd_replay # after the path to pycdnet is set
 
 csa = {
     'async_loop': None,
@@ -46,6 +47,7 @@ csa = {
     'mac': 0x00,    # local mac
     'proxy': None,  # cdbus frame proxy socket
     'rec': None,    # pcapng recorder (cd_pcap.Recorder)
+    'replay': None, # pcapng replayer (cd_replay.Replayer)
     'cfgs': [],     # config list
     'palloc': {},   # ports alloc, url_path: []
 }
@@ -83,11 +85,13 @@ def dev_str(): # goes into the recording's interface description
 
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
-async def proxy_rx_rpt(rx):
+# ts_ns: the time of the packet when it is replayed from a recording, else now
+async def proxy_rx_rpt(rx, ts_ns=None):
     src, dst, dat = rx
     logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
     if dst[1] == 0x9 or src[1] == 0x1:
-        time_str = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3].encode()
+        now = datetime.datetime.fromtimestamp(ts_ns / 1e9) if ts_ns else datetime.datetime.now()
+        time_str = now.strftime("%H:%M:%S.%f")[:-3].encode()
         # dbg and dev_info msg also send to index.html 
         dat4idx = re.sub(b'\n(?!$)', b'\n' + b' ' * 25, dat) # except the end '\n'
         dat4idx = time_str + b' [' + src[0].encode() + b']' + b': ' + dat4idx
@@ -291,6 +295,7 @@ if __name__ == "__main__":
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
     csa['rec'] = cd_pcap.Recorder(app=f'cdbus_gui {get_asset_ver()}')
+    csa['replay'] = cd_replay.Replayer(csa, ws_ns, proxy_rx_rpt)
     cd_watch.init(csa['async_loop'])
     cd_watch.start_thread(proxy_rx, 'proxy_rx')
     cd_watch.create_task(start_web(port=http_port), 'web_server', fatal=True)
@@ -298,6 +303,7 @@ if __name__ == "__main__":
     cd_watch.create_task(dev_service(), 'dev_service')
     cd_watch.create_task(port_service(), 'port_service')
     cd_watch.create_task(cd_pcap.rec_service(csa['rec'], ws_ns, dev_str), 'rec_service')
+    cd_watch.create_task(cd_replay.replay_service(csa['replay'], ws_ns), 'replay_service')
     cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
     cd_watch.create_task(cd_watch.watch_service(dev_check), 'watch_service')
     

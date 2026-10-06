@@ -31,19 +31,6 @@
 
         <br>
         <div class="container">
-            <h1 class="title is-size-4"><span>${L('Record')}</span> <span class="is-size-6">pcapng</span></h1>
-            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
-                <button class="button is-small" id="btn_rec_start">${L('Start')}</button>
-                <button class="button is-small" id="btn_rec_stop">${L('Stop')}</button>
-                <span id="rec_status"></span>
-            </div>
-            <div class="container">
-                <span class="has-text-grey is-size-7">${L('Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.')}</span>
-            </div>
-        </div>
-
-        <br>
-        <div class="container">
             <h1 class="title is-size-4"><span>${L('Available')}</span></h1>
             <div class="content">
                 <ul class="content" id="dev_list">
@@ -53,6 +40,49 @@
         </div>
         <br>
     </div>
+
+    <div class="container">
+        <h1 class="title is-size-4"><span>${L('Record')}</span> <span class="is-size-6">pcapng</span></h1>
+        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+            <button class="button is-small" id="btn_rec_start">${L('Start')}</button>
+            <button class="button is-small" id="btn_rec_stop">${L('Stop')}</button>
+            <span id="rec_status"></span>
+        </div>
+        <div class="container">
+            <span class="has-text-grey is-size-7">${L('Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.')}</span>
+        </div>
+    </div>
+    <br>
+
+
+    <div class="container">
+        <h1 class="title is-size-4"><span>${L('Replay')}</span> <span class="is-size-6">pcapng</span></h1>
+        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; flex-wrap: wrap;">
+            <select id="rp_files"><option value="">--</option></select>
+            <button class="button is-small" id="rp_refresh">${L('Refresh')}</button>
+            <button class="button is-small" id="rp_load">${L('Load')}</button>
+            <button class="button is-small" id="rp_browse">${L('Browse')}</button>
+            <input id="rp_file" type="file" accept=".pcapng" style="display:none;">
+            <span id="rp_info"></span>
+        </div>
+        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; flex-wrap: wrap;">
+            <span>${L('Play to')}</span> <input type="text" size="7" id="rp_to"> s
+            <select id="rp_speed">
+                <option value="0">${L('at once')}</option>
+                <option value="1">1x</option><option value="2">2x</option>
+                <option value="5">5x</option><option value="10">10x</option>
+            </select>
+            <button class="button is-small" id="rp_play">${L('Play')}</button>
+            <button class="button is-small" id="rp_pause">${L('Pause')}</button>
+            <button class="button is-small" id="rp_rewind">${L('Rewind')}</button>
+            <span id="rp_pos"></span>
+        </div>
+        <div id="rp_marks" style="margin: 5px 0;"></div>
+        <div class="container">
+            <span class="has-text-grey is-size-7">${L('Open the pages of the devices first, then play: the index log gets every device, each device page its own log and waveforms, and the registers as they were at the time played to. Play on for a later time, or Rewind and play again for an earlier one.')}</span>
+        </div>
+    </div>
+    <br>
 
     <div class="container">
         <h3 class="title is-size-4"><span>${L('Devices')}</span></h3>

@@ -47,6 +47,18 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
    the blank line goes into the log, so a moment noticed in the log can be found in the capture. The
    recording is done by the backend, so it covers every page and goes on while pages are reloaded.
    See [Wireshark](#wireshark) for reading the file.
+ - "Replay": plays a recording back through the backend, as if the bus were sending it again, so a
+   session can be looked at afterwards, several devices together. Pick a file of `records/` (or
+   `Browse` for one from elsewhere, e.g. off a recorder's card), `Load`, and `Play`: the "Logs"
+   window of the index page gets the interleaved log of every device with the timestamps of the
+   capture, and every device page that is open gets its own log, waveforms and pictures, the same
+   way it does live. The marks come out as `---- mark: ... ----` lines. The registers are rebuilt
+   from the traffic, every read and write seen gives the value a register held at that moment, and
+   when playing stops the device pages show the registers as they were at that time. `Play to` says
+   how far to play: to a time, to the end when left empty, and the buttons under the marks set it to
+   a mark's time. Play on for a later moment, or `Rewind` and play again for an earlier one, at once
+   or paced at 1x to 10x. Open the device pages first (the addresses in the file are listed, grey
+   when no page is open for them) and close the serial port, live frames would mix in.
  - Auto-reconnect supported for serial ports.
  - Modified settings are saved automatically.
  - Supports ANSI color codes.
@@ -155,8 +167,9 @@ The same file also decodes a capture Wireshark takes on the IPv6/UDP side of the
 `fdcd::/104` is taken as a CDNET packet, the last 3 bytes of the IPv6 addresses are shown as the
 CDNET addresses and the UDP ports as the CDNET ports, with the host's `port_offset` (0xcd00) taken
 off, so the `cdnet.*` filters work the same there. The prefix and the offset are preferences next to
-the local net. (The backend in `main_udp.py` mode has no "Record": capture on that interface
-directly, which also gets the packets of every other program on the bus.)
+the local net. (`main_udp.py` records as well, the frames rebuilt from its UDP packets, so a
+recording reads the same whichever backend made it; a capture on the interface itself also gets
+the packets of every other program on the bus.)
 
 
 ### External API

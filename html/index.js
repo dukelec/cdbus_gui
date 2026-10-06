@@ -147,8 +147,9 @@ function init_ws() {
         
         await init_cfg_list();
         await init_serial_cfg();
-        if (await dev_get() != 'udp')
-            await init_rec();
+        await dev_get();
+        await init_rec();       // the udp backend records too, the frames rebuilt from its packets
+        await init_replay();
         csa.api_sock = new CDWebSocket(csa.ws_ns, 'api');
         api_serve(csa.api_sock, api_cmds);
     }
@@ -351,6 +352,108 @@ async function init_rec() {
                 return;
         }
     })();
+}
+
+
+// ---- replay of a pcapng recording, done by the backend (cd_replay.py): this box picks the
+// file, says how far to play and shows where it is. As with the recording, every message on the
+// 'replay' port is a status, the answer to a request or a push while playing, one loop shows it.
+
+let rp_st = null;
+
+function rp_fmt_t(t) {
+    return (Math.round(t * 1000) / 1000).toFixed(3);
+}
+
+function rp_show(st) {
+    rp_st = st;
+    let info = document.getElementById('rp_info');
+    let pos = document.getElementById('rp_pos');
+    let marks = document.getElementById('rp_marks');
+    if (!st.name) {
+        info.innerHTML = `<span class="has-text-grey">${L('No file loaded')}</span>`;
+        pos.innerHTML = '';
+        marks.innerHTML = '';
+    } else {
+        let devs = st.devs.map(d => {
+            let open = st.pages.includes(d);
+            return `<span title="${open ? L('page open') : L('no page open')}" ` +
+                   `style="${open ? '' : 'color: #999'}">${escape_html(d)}</span>`;
+        }).join(', ');
+        info.innerHTML = `${escape_html(st.name)} | ${st.pkts} ${L('packets')}, ${st.marks.length} ${L('marks')}, ` +
+                         `${rp_fmt_t(st.duration)} s | ${L('addresses')}: ${devs}`;
+        pos.innerHTML = `${st.playing ? `<span style="color: #c00">▶</span> ` : ''}` +
+                        `${rp_fmt_t(st.t)} / ${rp_fmt_t(st.duration)} s, ${st.pos} / ${st.pkts}`;
+        marks.innerHTML = st.marks.length ? `${L('marks')}: ` + st.marks.map((m, i) =>
+            `<button class="button is-small" style="margin: 1px;" title="${L('Set Play to this time')}" ` +
+            `data-t="${m.t}">${i + 1}: ${rp_fmt_t(m.t)} s ${escape_html(m.text)}</button>`).join('') : '';
+        for (let b of marks.querySelectorAll('button'))
+            b.onclick = () => { document.getElementById('rp_to').value = rp_fmt_t(Number(b.dataset.t)); };
+    }
+    if (st.err)
+        info.innerHTML += ` <span style="color: #c00">${escape_html(st.err)}</span>`;
+    document.getElementById('rp_play').disabled = !st.name || st.playing;
+    document.getElementById('rp_pause').disabled = !st.playing;
+    document.getElementById('rp_rewind').disabled = !st.name || st.playing;
+}
+
+async function rp_req(req) {
+    await csa.rp_sock.sendto(req, ['server', 'replay']);
+}
+
+// the answer to a 'list' comes back through the same loop as the status messages: one reader
+// on the socket, or the two would take each other's messages
+function rp_fill_files(files) {
+    let sel = document.getElementById('rp_files');
+    let cur = sel.value;
+    sel.innerHTML = '<option value="">--</option>' + files.map(f =>
+        `<option value="${escape_html(f.name)}">${escape_html(f.name)} (${readable_size(f.size)})</option>`).join('');
+    sel.value = cur;
+    if (sel.value == '' && files.length) // the newest, usually the one just recorded
+        sel.value = files[0].name;
+}
+
+async function init_replay() {
+    csa.rp_sock = new CDWebSocket(csa.ws_ns, 'replay');
+    document.getElementById('rp_refresh').onclick = () => rp_req({'action': 'list'});
+    document.getElementById('rp_load').onclick = () => {
+        let name = document.getElementById('rp_files').value;
+        if (name)
+            rp_req({'action': 'load', 'name': name});
+    };
+    document.getElementById('rp_browse').onclick = () => document.getElementById('rp_file').click();
+    document.getElementById('rp_file').onchange = async function() {
+        if (this.files && this.files.length) {
+            let file = this.files[0];
+            let data = await read_file(file);
+            await rp_req({'action': 'load', 'name': file.name, 'data': data});
+        }
+        this.value = '';
+    };
+    document.getElementById('rp_play').onclick = () => {
+        let to = Number(document.getElementById('rp_to').value);
+        if (document.getElementById('rp_to').value.trim() == '' || isNaN(to)) {
+            to = rp_st ? rp_st.duration : 0; // nothing given: to the end
+            document.getElementById('rp_to').value = rp_fmt_t(to);
+        }
+        rp_req({'action': 'play', 'to': to, 'speed': Number(document.getElementById('rp_speed').value)});
+    };
+    document.getElementById('rp_pause').onclick = () => rp_req({'action': 'stop'});
+    document.getElementById('rp_rewind').onclick = () => rp_req({'action': 'rewind'});
+    (async () => {
+        while (true) {
+            let ret = await csa.rp_sock.recvfrom(3000);
+            if (ret) {
+                if (ret[0].files)
+                    rp_fill_files(ret[0].files);
+                else
+                    rp_show(ret[0]);
+            } else if (!('server' in csa.ws_ns.connections))
+                return;
+        }
+    })();
+    await rp_req({'action': 'list'});
+    await rp_req({'action': 'get'});
 }
 
 

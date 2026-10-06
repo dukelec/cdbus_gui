@@ -8,7 +8,7 @@ import { L } from '../utils/lang.js?v=__V__'
 import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
-import { fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
+import { fmt_size, reg2str, reg_fill_one, rbw_refresh, read_reg_val, str2reg, write_reg_val,
          reg_range_err, reg_range_tip, reg_watch, reg_unwatch, reg_notify, reg_set_str,
          R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC } from './reg_rw.js?v=__V__';
 import { csa, alloc_port, save_cfg_file, show_cfg_error,
@@ -953,6 +953,30 @@ async function init_reg() {
         }
         return reg_str;
     };
+    
+    // a replayed recording (index page, Replay): the backend rebuilt what the registers held
+    // at the time played to, as [[address, bytes], ...]; every register that lies whole inside
+    // a stretch is filled in, the rest keep what they show
+    csa.reg.import_sock = new CDWebSocket(csa.ws_ns, 'reg_import');
+    (async () => {
+        while (true) {
+            let [msg] = await csa.reg.import_sock.recvfrom();
+            if (!msg || !msg.mem)
+                continue;
+            let filled = 0;
+            for (let [addr, dat] of msg.mem) {
+                dat = new Uint8Array(dat); // a buffer of its own, reg2str reads it through a DataView
+                rbw_refresh(addr, dat.length, dat);
+                for (let r of csa.cfg.reg.list) {
+                    if (r[R_ADDR] >= addr && r[R_ADDR] + r[R_LEN] <= addr + dat.length) {
+                        reg_fill_one(r, dat, r[R_ADDR] - addr);
+                        filled++;
+                    }
+                }
+            }
+            console.log(`reg import: ${filled} registers at ${msg.t} s of the replay`);
+        }
+    })();
     
     csa.reg.dat_import = (dat) => {
         for (let i = 0; i < csa.cfg.reg.list.length; i++) {

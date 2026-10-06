@@ -34,6 +34,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
 from cdnet.utils.log import *
 from cdnet.utils.cd_args import CdArgs
+from cdnet.utils.crc import modbus_crc
+from cdnet.parser import cdnet_l0, cdnet_l1
+import cd_replay # after the path to pycdnet is set
 
 
 csa = {
@@ -41,6 +44,9 @@ csa = {
     'udp': False,
     'udp_socks': {},    # port: {local_ip: sock}
     'proxy': None,      # cdbus frame proxy socket
+    'rec': None,        # pcapng recorder (cd_pcap.Recorder), the frames rebuilt from the udp packets
+    'replay': None,     # pcapng replayer (cd_replay.Replayer)
+    'net': 0, 'mac': 0, # our own address on the bus, from the first local address that names one
     'cfgs': [],         # config list
     'palloc': {},       # ports alloc, url_path: []
 }
@@ -84,13 +90,43 @@ def addr_cdnet2ip(addr):
     tmp = addr.split(':')
     return f'{udp_ip_prefix}{tmp[0]}:{tmp[1]}{tmp[2]}'
 
+for _ip in udp_local_ips:
+    if udp_local_lv[_ip] != None: # e.g. fdcd::80:00 is 80:00:00, so net 0, mac 0
+        _p = ipaddress.IPv6Address(_ip).packed
+        csa['net'], csa['mac'] = _p[14], _p[15]
+        break
+
+
+# The recording holds cdbus frames, the same as the serial backend's, so a file records
+# the same way whichever backend made it: the frame a packet would be on the bus is rebuilt
+# from the cdnet addresses, ports and data, with the crc. src and dst are (addr, port).
+def rec_frame(src, dst, dat):
+    src_mac = int(src[0].split(':')[2], 16)
+    dst_mac = int(dst[0].split(':')[2], 16)
+    if src[0].startswith('00:'):
+        frame = cdnet_l0.to_frame(src, dst, dat)
+    else:
+        frame = cdnet_l1.to_frame(src, dst, dat, src_mac, dst_mac)
+    return frame + modbus_crc(frame).to_bytes(2, byteorder='little')
+
+# our own address at the level of the other end's: a level 0 packet comes from 00:NN:MM, a
+# local level 1 one from 80:NN:MM, one from another net from a0:NN:MM (and goes back there)
+def own_addr(other):
+    lv = '00' if other.startswith('00:') else ('a0' if other.startswith('a0:') else '80')
+    return f'{lv}:{csa["net"]:02x}:{csa["mac"]:02x}'
+
+def dev_str():
+    return f'udp on {udp_local_ips}, local address 80:{csa["net"]:02x}:{csa["mac"]:02x}'
+
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
-async def proxy_rx_rpt(rx):
+# ts_ns: the time of the packet when it is replayed from a recording, else now
+async def proxy_rx_rpt(rx, ts_ns=None):
     src, dst_port, dat = rx
     logger.debug(f'rx_rpt: src: {src}, dst_port: {dst_port}, dat: {dat}')
     if dst_port == 0x9 or src[1] == 0x1:
-        time_str = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3].encode()
+        now = datetime.datetime.fromtimestamp(ts_ns / 1e9) if ts_ns else datetime.datetime.now()
+        time_str = now.strftime("%H:%M:%S.%f")[:-3].encode()
         # dbg and dev_info msg also send to index.html 
         dat4idx = re.sub(b'\n(?!$)', b'\n' + b' ' * 25, dat) # except the end '\n'
         dat4idx = time_str + b' [' + src[0].encode() + b']' + b': ' + dat4idx
@@ -187,6 +223,11 @@ def proxy_rx():
                 src_ip = addr_ip2cdnet(src_addr[0])
                 src_port = src_addr[1]
                 rx = (src_ip, src_port), dst_port, dat
+                try:
+                    csa['rec'].frame(rec_frame((src_ip, src_port), (own_addr(src_ip), dst_port), dat), outbound=False)
+                except Exception as err: # a packet no frame can hold is not recorded, but still delivered
+                    logger.warning(f'proxy_rx: not recorded, no frame holds it: {src_ip}:{src_port:#x} -> port {dst_port:#x}, '
+                                   f'{len(dat)} bytes ({err!r})')
                 asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
         except Exception as err:
             logger.warning(f'proxy_rx: err: {err}')
@@ -222,6 +263,11 @@ async def cdbus_proxy_service():
                 logger.warning(f'proxy_tx: port {src_port:#x} not bound')
                 continue
             s.sendto(wc_dat['dat'], (dst_ip, dst_port))
+            try:
+                csa['rec'].frame(rec_frame((own_addr(wc_dat['dst'][0]), src_port), wc_dat['dst'], wc_dat['dat']), outbound=True)
+            except Exception as err:
+                logger.warning(f'proxy_tx: not recorded, no frame holds it: port {src_port:#x} -> {wc_dat["dst"]}, '
+                               f'{len(wc_dat["dat"])} bytes ({err!r})')
         except Exception as err:
             logger.warning(f'proxy_tx: err: {err}')
 
@@ -333,13 +379,17 @@ if __name__ == "__main__":
     csa['async_loop'] = asyncio.new_event_loop()
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
+    csa['rec'] = cd_pcap.Recorder(app=f'cdbus_gui {get_asset_ver()}')
     cd_watch.init(csa['async_loop'])
     cd_watch.start_thread(proxy_rx, 'proxy_rx')
     cd_watch.create_task(start_web(port=http_port), 'web_server', fatal=True)
     cd_watch.create_task(cfgs_service(), 'cfgs_service')
     cd_watch.create_task(dev_service(), 'dev_service')
     cd_watch.create_task(port_service(), 'port_service')
-    cd_watch.create_task(cd_pcap.rec_service(None, ws_ns), 'rec_service') # no bus here: marks are dropped, the rest refused
+    cd_watch.create_task(cd_pcap.rec_service(csa['rec'], ws_ns, dev_str), 'rec_service')
+    # the parser's (src, dst, dat) of a replayed frame becomes this backend's (src, dst_port, dat)
+    csa['replay'] = cd_replay.Replayer(csa, ws_ns, lambda rx, ts: proxy_rx_rpt((rx[0], rx[1][1], rx[2]), ts))
+    cd_watch.create_task(cd_replay.replay_service(csa['replay'], ws_ns), 'replay_service')
     cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
     cd_watch.create_task(cd_watch.watch_service(), 'watch_service')
     

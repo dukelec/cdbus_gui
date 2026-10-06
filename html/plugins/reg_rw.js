@@ -355,6 +355,57 @@ function in_editing(elem) { // skip update the input box being edited during per
     return false;
 }
 
+// fill the boxes of register r from dat, whose byte ofs is the register's first byte: the same
+// for an answer the device gave (read_reg_val) and for the image a replay rebuilt (reg.js).
+// read_dft puts the value into the tooltip as the default instead
+function reg_fill_one(r, dat, ofs, read_dft=false) {
+    if (r[R_FMT][0] == '{') {
+        let one_size = fmt_size(r[R_FMT]);
+        let count = Math.trunc(r[R_LEN] / one_size);
+        for (let n = 0; n < count; n++) {
+            let [str, _] = reg2str(dat, ofs + one_size * n, r[R_FMT], r[R_SHOW]);
+            if (read_dft) {
+                let elem = csa.reg.elm[`reg_dft.${r[R_ID]}.${n}`];
+                reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+            } else {
+                let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
+                if (!in_editing(elem))
+                    reg_set_str(elem, str);
+            }
+        }
+    } else if (r[R_FMT][0] == '[') {
+        let one_size = fmt_size(r[R_FMT]);
+        let count = Math.trunc(r[R_LEN] / one_size);
+        let val = '';
+        let join = r[R_FMT][1] == 'c' && r[R_SHOW] == 0 ? '' : ' ';
+        for (let n = 0; n < count; /**/) {
+            let cur_ofs = ofs + one_size * n;
+            let [str, next_ofs] = reg2str(dat, cur_ofs, r[R_FMT], r[R_SHOW]);
+            if (join == '' && str.length == 0) // stop parsing at '\0'
+                break;
+            val = [val, str].filter(Boolean).join(join);
+            n += Math.trunc((next_ofs - cur_ofs) / one_size);
+        }
+        if (read_dft) {
+            reg_set_tip(csa.reg.elm[`reg_dft.${r[R_ID]}`], `Default: ${val}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+        } else {
+            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
+            if (!in_editing(elem))
+                reg_set_str(elem, val);
+        }
+    } else {
+        let [str, _] = reg2str(dat, ofs, r[R_FMT], r[R_SHOW]);
+        if (read_dft) {
+            let elem = csa.reg.elm[`reg_dft.${r[R_ID]}`];
+            reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
+        } else {
+            let elem = csa.reg.elm[`reg.${r[R_ID]}`];
+            if (!in_editing(elem))
+                reg_set_str(elem, str);
+        }
+    }
+}
+
 async function read_reg_val(r_idx, read_dft=false) {
     let grp = csa.reg.reg_r[r_idx];
     if (!grp)
@@ -394,54 +445,7 @@ async function read_reg_val(r_idx, read_dft=false) {
             if (ofs >= len)
                 break;
             
-            if (r[R_FMT][0] == '{') {
-                let one_size = fmt_size(r[R_FMT]);
-                let count = Math.trunc(r[R_LEN] / one_size);
-                for (let n = 0; n < count; n++) {
-                    let [str, ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start + one_size * n, r[R_FMT], r[R_SHOW]);
-                    if (read_dft) {
-                        let elem = csa.reg.elm[`reg_dft.${r[R_ID]}.${n}`];
-                        reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
-                    } else {
-                        let elem = csa.reg.elm[`reg.${r[R_ID]}.${n}`];
-                        if (!in_editing(elem))
-                            reg_set_str(elem, str);
-                    }
-                }
-            } else if (r[R_FMT][0] == '[') {
-                let one_size = fmt_size(r[R_FMT]);
-                let count = Math.trunc(r[R_LEN] / one_size);
-                let val = '';
-                let join = r[R_FMT][1] == 'c' && r[R_SHOW] == 0 ? '' : ' ';
-                for (let n = 0; n < count; /**/) {
-                    let cur_ofs = r[R_ADDR] - start + one_size * n;
-                    let [str, ofs] = reg2str(ret[0].dat.slice(1), cur_ofs, r[R_FMT], r[R_SHOW]);
-                    if (join == '' && str.length == 0) // stop parsing at '\0'
-                        break;
-                    val = [val, str].filter(Boolean).join(join);
-                    n += Math.trunc((ofs - cur_ofs) / one_size);
-                }
-                
-                if (read_dft) {
-                    reg_set_tip(csa.reg.elm[`reg_dft.${r[R_ID]}`], `Default: ${val}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
-                } else {
-                    let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-                    if (!in_editing(elem))
-                        reg_set_str(elem, val);
-                }
-                
-            } else {
-                let [str,ofs] = reg2str(ret[0].dat.slice(1), r[R_ADDR] - start, r[R_FMT], r[R_SHOW]);
-                if (read_dft) {
-                    let elem = csa.reg.elm[`reg_dft.${r[R_ID]}`];
-                    reg_set_tip(elem, `Default: ${str}\nFormat: ${r[R_FMT]}${reg_range_tip(r)}`);
-                } else {
-                    let elem = csa.reg.elm[`reg.${r[R_ID]}`];
-                    if (!in_editing(elem))
-                        reg_set_str(elem, str);
-                }
-            }
-            
+            reg_fill_one(r, ret[0].dat.slice(1), ofs, read_dft);
         }
     } else if (read_dft) {
         // the values are in, only the defaults for the tooltips did not come. A device that has
@@ -757,7 +761,7 @@ function set_input_bg(rw='r', idx, bg) {
 }
 
 export {
-    fmt_size, reg2str, read_reg_val, str2reg, write_reg_val,
+    fmt_size, reg2str, reg_fill_one, rbw_refresh, read_reg_val, str2reg, write_reg_val,
     reg_range_err, reg_range_tip,
     reg_watch, reg_unwatch, reg_notify, reg_set_str,
     R_ADDR, R_LEN, R_FMT, R_SHOW, R_ID, R_DESC, R_RANGE

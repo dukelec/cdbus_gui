@@ -385,7 +385,7 @@ async def h_serial_close(request):
 def recorder():
     rec = (api['csa'] or {}).get('rec')
     if not rec:
-        raise web.HTTPNotFound(text='err: the backend talks udp (main_udp.py), there is no bus to record\n')
+        raise web.HTTPNotFound(text='err: this backend has no recorder\n')
     return rec
 
 

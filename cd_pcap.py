@@ -168,13 +168,13 @@ class Recorder:
             except OSError as err:
                 logger.error(f'rec: write {self.path}: {err}')
 
-    def mark(self, text):
+    def mark(self, text, ts_ns=None):
         text = f'{text}'
         with self.lock:
             if not self.w:
                 return False
             try:
-                self.w.packet(IF_MARK, text.encode(), comment=text)
+                self.w.packet(IF_MARK, text.encode(), ts_ns, comment=text)
                 self.marks += 1
                 self.size = self.w.size
             except OSError as err:

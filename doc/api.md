@@ -2,9 +2,9 @@ CDBUS GUI External API
 =======================================
 
 Lets a script (or an AI agent) drive the tool from outside: open and close
-the serial port, read and write registers, change the R / W button groups,
-read the log, start and stop waveforms, fetch waveform data, reload the page
-and run an IAP upgrade.
+the serial port, record the bus to a pcapng file and put marks into it, read
+and write registers, change the R / W button groups, read the log, start and
+stop waveforms, fetch waveform data, reload the page and run an IAP upgrade.
 
 Requests are relayed to the device page in the browser, and the page does the
 real work, the same way it does when you click a button. So a script and the
@@ -34,6 +34,13 @@ GET    /api/serial                      serial port in use, its state, the
                                         ports there are (index page opened)
 POST   /api/serial/open                 body {"port":"ACM0","baud":115200}
 POST   /api/serial/close                close the serial port
+GET    /api/rec                         pcapng recording: on, file, packets,
+                                        marks, size
+POST   /api/rec/start                   record the bus to records/<time>.pcapng,
+                                        body {"comment": "..."} optional
+POST   /api/rec/stop                    stop recording
+POST   /api/rec/mark                    put a mark into the recording, body is
+                                        its text
 GET    /api/devs                        list opened device pages
 GET    /api/dev/{dev}/info              device info, reg list, plot list
 GET    /api/dev/{dev}/reg               read all readable regs      [?names=a,b]
@@ -87,6 +94,28 @@ curl -X POST localhost:8911/api/serial/open -d '{"port":"ACM0","baud":921600}'
 half second, as it is when a USB device is unplugged), `offline` (nothing is
 open) or `dead` (the thread reading the port has died, close and open again).
 A backend started as `main_udp.py` has no serial port, the calls are refused.
+
+
+### Recording
+
+`/api/rec` is the "Record" box of the index page: `start` records every frame
+on the bus, sent and received, into `records/cdbus_<time>.pcapng` under the
+tool's directory, `stop` ends it, and `mark` puts a mark into the recording,
+the same thing `Enter` in a "Logs" window does, with the body as its text, so
+a step of the script can be found in the capture. The recording is done by the
+backend, no page needs to be opened. A start while one is running is refused,
+as is a mark while none is. Each call returns the state after it, which `GET`
+also gives, `path` being the file of the recording, or of the last one once
+stopped. The file opens in Wireshark with the `wireshark/cdbus.lua` of
+[cdbus_tools](https://github.com/dukelec/cdbus_tools), see the Readme. A backend started as `main_udp.py` has no bus, the calls are refused.
+
+```shell
+curl -X POST localhost:8911/api/rec/start -d '{"comment":"pid step test"}'
+{"on": true, "path": "records/cdbus_20260101_120000.pcapng", "pkts": 0,
+ "marks": 0, "size": 196, "start": "2026-01-01T12:00:00"}
+curl -X POST localhost:8911/api/rec/mark -d 'kp=4.0'
+curl -X POST localhost:8911/api/rec/stop
+```
 
 
 ### Waveform Channels
@@ -182,7 +211,8 @@ curl 'localhost:8911/api/dev/motor/plot/0?tail=500&series=meas_pos&digits=4'
 ### Python Wrapper
 
 `tools/cdg_api.py` wraps the same thing for python, including a `capture()`
-helper and `step_metrics()` for overshoot / rise time / settling time:
+helper and `step_metrics()` for overshoot / rise time / settling time, and
+`rec_start()` / `rec_mark()` / `rec_stop()` for the recording:
 
 ```python
 from cdg_api import CdgApi, col, step_metrics

@@ -41,6 +41,12 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - "Devices": Quickly open the debug page for each device (list expands automatically).
  - "Logs": Aggregates logs from all devices.  
    (Pressing `Enter` inserts a blank line; Holding `Alt` or `Ctrl + Alt` allows block selection.)
+ - "Record": `Start` records every frame on the bus, sent and received, into `records/cdbus_<time>.pcapng`
+   until `Stop`; the line next to the buttons shows the file, the packet count and the size while it runs.
+   Pressing `Enter` in the "Logs" window of any page puts a mark into the recording at the same time as
+   the blank line goes into the log, so a moment noticed in the log can be found in the capture. The
+   recording is done by the backend, so it covers every page and goes on while pages are reloaded.
+   See [Wireshark](#wireshark) for reading the file.
  - Auto-reconnect supported for serial ports.
  - Modified settings are saved automatically.
  - Supports ANSI color codes.
@@ -120,14 +126,48 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Waveform data can also be exported as CSV for AI analysis, with selectable plot, series, X range, decimation step, and significant digits to save tokens.
 
 
+### Wireshark
+
+The `.pcapng` files of "Record" open in Wireshark, with the `wireshark/cdbus.lua` dissector of
+[cdbus_tools](https://github.com/dukelec/cdbus_tools), which also documents the recording format: copy it into the personal Lua
+plugins folder (listed under Help > About Wireshark > Folders: `~/.local/lib/wireshark/plugins/` on
+Linux, `%APPDATA%\Wireshark\plugins\` on Windows, `~/.config/wireshark/plugins/` on macOS) and
+restart Wireshark, or for one run:
+
+```shell
+wireshark -X lua_script:cdbus.lua records/cdbus_20260101_120000.pcapng
+```
+
+Each frame is shown as it is on the wire, the CDBUS header and the CRC (checked), and the CDNET packet
+inside: level 0 or level 1, the addresses as the tool writes them (`00:NN:MM`, `80:NN:MM`, `a0:NN:MM`,
+`90:MH:ML`, `b0:MH:ML`), the ports, and what the packet does on the ports the tool uses: register reads
+and writes with the address, flash commands, the device info and debug text. The Source and Destination
+columns carry the CDNET addresses, the frame's direction (sent or received) is in its frame details, and
+the marks are packets of their own with the mark text, also readable as the packet comment without the
+dissector. A level 0 packet and a local link level 1 packet carry no net, so the dissector shows the one
+set under Edit > Preferences > Protocols > CDNET (the `--local-net` of the backend, 0 by default).
+Useful filters: `cdnet.dst_port == 5`, `cdnet.src == "80:00:fe"`, `cdnet.reg.addr == 0x10`,
+`cdnet.text contains "err"`, `cdmark`, `cdbus.crc.bad`.
+
+The same file also decodes a capture Wireshark takes on the IPv6/UDP side of the bus, the `tun0` of
+[cdnet_tun](https://github.com/dukelec/cdnet_tun) or the `cdbus0` ethernet port of the
+[CDBUS Bridge](https://github.com/dukelec/cdbus_bridge): a UDP packet with an address under
+`fdcd::/104` is taken as a CDNET packet, the last 3 bytes of the IPv6 addresses are shown as the
+CDNET addresses and the UDP ports as the CDNET ports, with the host's `port_offset` (0xcd00) taken
+off, so the `cdnet.*` filters work the same there. The prefix and the offset are preferences next to
+the local net. (The backend in `main_udp.py` mode has no "Record": capture on that interface
+directly, which also gets the packets of every other program on the bus.)
+
+
 ### External API
 
 Lets a script (or an AI agent) drive the tool from outside: open and close the
-serial port, read and write registers, change the R / W button groups, read the
-log, start and stop waveforms, fetch waveform data, reload the page and run an
-IAP upgrade. Requests are relayed to the device page in the browser, and the
-page does the real work, the same way it does when you click a button, so a
-script and the user share one state.
+serial port, record the bus to a pcapng file and put marks into it, read and
+write registers, change the R / W button groups, read the log, start and stop
+waveforms, fetch waveform data, reload the page and run an IAP upgrade. Requests
+are relayed to the device page in the browser, and the page does the real work,
+the same way it does when you click a button, so a script and the user share
+one state.
 
 The server listens on `localhost:8911` by default, `GET http://localhost:8911/`
 prints the endpoint list, and `tools/cdg_api.py` wraps the same thing for

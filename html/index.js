@@ -147,7 +147,8 @@ function init_ws() {
         
         await init_cfg_list();
         await init_serial_cfg();
-        await dev_get();
+        if (await dev_get() != 'udp')
+            await init_rec();
         csa.api_sock = new CDWebSocket(csa.ws_ns, 'api');
         api_serve(csa.api_sock, api_cmds);
     }
@@ -303,6 +304,54 @@ async function dev_close() {
 document.getElementById('btn_dev_get').onclick = dev_get;
 document.getElementById('btn_dev_open').onclick = () => dev_open();
 document.getElementById('btn_dev_close').onclick = dev_close;
+
+
+// ---- the pcapng recording, done by the backend: the box here only shows its state and asks
+// for a start or stop. Whatever the backend sends on the 'rec' port is a status, the answer to
+// a request and the push after a change made through the api alike, so one loop shows them all
+// and the buttons do not wait for anything. While recording the count is refreshed every second.
+
+let rec_timer = null;
+
+function rec_show(st) {
+    let elem = document.getElementById('rec_status');
+    document.getElementById('btn_rec_start').disabled = !!st.on;
+    document.getElementById('btn_rec_stop').disabled = !st.on;
+    let detail = st.path ? `${escape_html(st.path)} | ${st.pkts} ${L('packets')}, ${st.marks} ${L('marks')}` : '';
+    if (st.on)
+        detail += `, ${readable_size(st.size)}`;
+    let html = st.on ? `<span style="color: #c00">●</span> ${L('Recording')}: ${detail}`
+                     : `${L('Not recording')}` + (detail ? ` (${L('last')}: ${detail})` : '');
+    if (st.err)
+        html += ` <span style="color: #c00">${escape_html(st.err)}</span>`;
+    elem.innerHTML = html;
+    if (st.on && !rec_timer)
+        rec_timer = setInterval(() => rec_req('get'), 1000);
+    if (!st.on && rec_timer) {
+        clearInterval(rec_timer);
+        rec_timer = null;
+    }
+}
+
+async function rec_req(action) {
+    await csa.rec_sock.sendto({'action': action}, ['server', 'rec']);
+}
+
+async function init_rec() {
+    csa.rec_sock = new CDWebSocket(csa.ws_ns, 'rec');
+    document.getElementById('btn_rec_start').onclick = () => rec_req('start');
+    document.getElementById('btn_rec_stop').onclick = () => rec_req('stop');
+    await rec_req('get');
+    (async () => {
+        while (true) {
+            let ret = await csa.rec_sock.recvfrom(3000);
+            if (ret)
+                rec_show(ret[0]);
+            else if (!('server' in csa.ws_ns.connections))
+                return;
+        }
+    })();
+}
 
 
 // ---- the external api (api_serve.py): the serial port, the same way the buttons above do it

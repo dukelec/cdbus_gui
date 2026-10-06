@@ -38,7 +38,8 @@ api = {
     'waits': {},    # req id: future
     'backs': {},    # ws path: [future], waiting for a reloaded page to say hello
     'id': 0,
-    'allow_iap': True
+    'allow_iap': True,
+    'csa': None     # the backend's state, for what the backend does itself: the recording
 }
 
 
@@ -378,6 +379,62 @@ async def h_serial_close(request):
     return web.json_response(await call_index('serial_close'))
 
 
+# ---- the pcapng recording: done by the backend itself, no page involved, but the index page
+# is told so its Record box follows, and the call is printed in its log like the serial ones
+
+def recorder():
+    rec = (api['csa'] or {}).get('rec')
+    if not rec:
+        raise web.HTTPNotFound(text='err: the backend talks udp (main_udp.py), there is no bus to record\n')
+    return rec
+
+
+async def h_rec_get(request):
+    return web.json_response(recorder().status())
+
+
+async def h_rec_start(request):
+    rec = recorder()
+    body = (await request.text()).strip()
+    try:
+        args = json.loads(body) if body else {}
+    except Exception as err:
+        raise web.HTTPBadRequest(text=f'err: body is not json: {err}\n')
+    if not isinstance(args, dict):
+        raise web.HTTPBadRequest(text='err: body must be a json object: {"comment": "..."}\n')
+    comment = args.get('comment')
+    if comment is not None and not isinstance(comment, str):
+        raise web.HTTPBadRequest(text='err: comment must be a string\n')
+    dev = api['csa'].get('dev')
+    port = f'{dev.portstr} @ {dev.baud}' if dev else 'no port open'
+    try:
+        path = rec.start(dev_str=f'{port}, local address 80:{api["csa"]["net"]:02x}:{api["csa"]["mac"]:02x}',
+                         comment=comment or None)
+    except (OSError, RuntimeError) as err:
+        await api_log('/', f'rec start err: {err}', True)
+        raise web.HTTPBadRequest(text=f'err: {err}\n')
+    await api_log('/', f'rec start: {path}')
+    await rec.notify()
+    return web.json_response(rec.status())
+
+
+async def h_rec_stop(request):
+    rec = recorder()
+    if rec.stop():
+        st = rec.status()
+        await api_log('/', f'rec stop: {st["path"]}, {st["pkts"]} packets, {st["marks"]} marks')
+        await rec.notify()
+    return web.json_response(rec.status())
+
+
+async def h_rec_mark(request):
+    rec = recorder()
+    text = (await request.text()).strip() or 'api'
+    if not rec.mark(text):
+        raise web.HTTPBadRequest(text='err: not recording\n')
+    return web.json_response(rec.status())
+
+
 async def h_iap_post(request):
     if not api['allow_iap']:
         raise web.HTTPForbidden(text='err: iap is disabled, the backend was started with --api-no-iap\n')
@@ -408,6 +465,13 @@ CDBUS GUI external API. A page for the device must be opened in the browser.
                                           fills in the index page and opens,
                                           either one left out keeps the box's
   POST   /api/serial/close                close the serial port
+  GET    /api/rec                         pcapng recording: on, file, packets,
+                                          marks, size
+  POST   /api/rec/start                   record the bus to records/<time>.pcapng,
+                                          body {"comment": "..."} optional
+  POST   /api/rec/stop                    stop recording
+  POST   /api/rec/mark                    put a mark into the recording, body is
+                                          its text
   GET    /api/devs                        list opened device pages
   GET    /api/dev/{dev}/info              device info, reg list, plot list
   GET    /api/dev/{dev}/reg               read all readable regs      [?names=a,b]
@@ -470,6 +534,10 @@ async def start_api(addr, port):
         web.get('/api/serial', h_serial_get),
         web.post('/api/serial/open', h_serial_open),
         web.post('/api/serial/close', h_serial_close),
+        web.get('/api/rec', h_rec_get),
+        web.post('/api/rec/start', h_rec_start),
+        web.post('/api/rec/stop', h_rec_stop),
+        web.post('/api/rec/mark', h_rec_mark),
         web.get('/api/devs', h_devs),
         web.get('/api/dev/{dev}/info', h_info),
         web.get('/api/dev/{dev}/reg', h_reg_get),
@@ -500,6 +568,7 @@ async def start_api(addr, port):
 
 def api_init(csa, addr='localhost', port=8911, allow_iap=True):
     api['allow_iap'] = allow_iap
+    api['csa'] = csa
     api['sock'] = CDWebSocket(ws_ns, 'api')
     cd_watch.create_task(api_service(), 'api_service')
     cd_watch.create_task(start_api(addr, port), 'api_server')

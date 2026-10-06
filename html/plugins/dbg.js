@@ -109,6 +109,9 @@ async function dbg_service() {
         if (e.code == 'Enter' && e.type == 'keydown') {
             term.writeln('');
             origin_log.push('\n');
+            // the same blank line goes into the pcapng recording as a mark, if one is running;
+            // nothing comes back, the backend keeps quiet about a mark it has no recording for
+            csa.dbg.mark_sock.sendto({'action': 'mark', 'text': csa.arg.name || 'index'}, ['server', 'rec']);
             return false;
         }
         if (e.key == "F5")
@@ -163,6 +166,7 @@ async function init_dbg() {
     let port = await alloc_port(9);
     console.log(`init_dbg, alloc port: ${port}`);
     csa.dbg.sock = new CDWebSocket(csa.ws_ns, port);
+    csa.dbg.mark_sock = new CDWebSocket(csa.ws_ns, 'mark');
     
     document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="./libs/xterm-5.6.0-beta.129.css">');
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);

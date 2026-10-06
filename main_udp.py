@@ -28,6 +28,7 @@ from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web, get_asset_ver
 import cd_watch
 import cfg_edit
+import cd_pcap
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -338,6 +339,7 @@ if __name__ == "__main__":
     cd_watch.create_task(cfgs_service(), 'cfgs_service')
     cd_watch.create_task(dev_service(), 'dev_service')
     cd_watch.create_task(port_service(), 'port_service')
+    cd_watch.create_task(cd_pcap.rec_service(None, ws_ns), 'rec_service') # no bus here: marks are dropped, the rest refused
     cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
     cd_watch.create_task(cd_watch.watch_service(), 'watch_service')
     

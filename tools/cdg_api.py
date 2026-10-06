@@ -88,6 +88,27 @@ class CdgApi:
     def serial_close(self):
         return json.loads(self._req('POST', '/serial/close', None, '', dev=False))
 
+    # ---------------------------------------------------------- pcapng recording
+
+    def rec(self):
+        """{'on': bool, 'path': the file (of the last recording when off), 'pkts':,
+        'marks':, 'size':, 'start': iso time}"""
+        return json.loads(self._req('GET', '/rec', dev=False))
+
+    def rec_start(self, comment=None):
+        """Record every frame on the bus to records/<time>.pcapng, for Wireshark with the
+        cdbus.lua of cdbus_tools. Refused while a recording is on. Returns what rec() does."""
+        body = json.dumps({'comment': comment}) if comment else ''
+        return json.loads(self._req('POST', '/rec/start', None, body, dev=False))
+
+    def rec_stop(self):
+        return json.loads(self._req('POST', '/rec/stop', None, '', dev=False))
+
+    def rec_mark(self, text='api'):
+        """Put a mark into the recording, the same thing Enter in a Logs window does, to find
+        the step of a script in the capture. Refused while not recording."""
+        return json.loads(self._req('POST', '/rec/mark', None, text, dev=False))
+
     # ---------------------------------------------------------- groups
 
     def groups(self, gset=None):

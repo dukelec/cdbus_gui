@@ -31,6 +31,19 @@
 
         <br>
         <div class="container">
+            <h1 class="title is-size-4"><span>${L('Record')}</span> <span class="is-size-6">pcapng</span></h1>
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+                <button class="button is-small" id="btn_rec_start">${L('Start')}</button>
+                <button class="button is-small" id="btn_rec_stop">${L('Stop')}</button>
+                <span id="rec_status"></span>
+            </div>
+            <div class="container">
+                <span class="has-text-grey is-size-7">${L('Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.')}</span>
+            </div>
+        </div>
+
+        <br>
+        <div class="container">
             <h1 class="title is-size-4"><span>${L('Available')}</span></h1>
             <div class="content">
                 <ul class="content" id="dev_list">

@@ -27,6 +27,7 @@ from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web, get_asset_ver
 import cd_watch
 import cfg_edit
+import cd_pcap
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -34,6 +35,7 @@ from cdnet.utils.log import *
 from cdnet.utils.cd_args import CdArgs
 from cdnet.dev.cdbus_serial import CDBusSerial
 from cdnet.utils.serial_get_port import get_ports
+from cdnet.utils.crc import modbus_crc
 from cdnet.dispatch import *
 from cdnet.parser import *
 
@@ -43,6 +45,7 @@ csa = {
     'net': 0x00,    # local net
     'mac': 0x00,    # local mac
     'proxy': None,  # cdbus frame proxy socket
+    'rec': None,    # pcapng recorder (cd_pcap.Recorder)
     'cfgs': [],     # config list
     'palloc': {},   # ports alloc, url_path: []
 }
@@ -67,6 +70,16 @@ else:
 
 logging.getLogger('websockets').setLevel(logging.WARNING)
 logger = logging.getLogger(f'cdgui')
+
+
+# the frame as it is on the wire: the driver strips the crc on the way in and adds it on the way
+# out, the recording keeps it, so a capture is the bus itself
+def with_crc(frame):
+    return frame + modbus_crc(frame).to_bytes(2, byteorder='little')
+
+def dev_str(): # goes into the recording's interface description
+    port = f'{csa["dev"].portstr} @ {csa["dev"].baud}' if csa['dev'] else 'no port open'
+    return f'{port}, local address 80:{csa["net"]:02x}:{csa["mac"]:02x}'
 
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
@@ -99,6 +112,7 @@ def proxy_rx():
         try:
             frame = dev.recv(timeout=0.5)
             if frame:
+                csa['rec'].frame(with_crc(frame), outbound=False) # before parsing: a frame the parser rejects is still on the bus
                 if frame[3] & 0x80:
                     rx = cdnet_l1.from_frame(frame, csa['net'])
                     logger.log(logging.VERBOSE, f'proxy_rx l1: {frame}')
@@ -134,8 +148,8 @@ async def cdbus_proxy_service():
                 frame = cdnet_l0.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
                                            wc_dat['dst'], wc_dat['dat'])
                 logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
-            if csa['dev']:
-                csa['dev'].send(frame)
+            if csa['dev'] and not csa['dev'].send(frame): # recorded only once it went out
+                csa['rec'].frame(with_crc(frame), outbound=True)
         except Exception as err:
             logger.warning(f'proxy_tx: fmt err: {err}')
 
@@ -276,12 +290,14 @@ if __name__ == "__main__":
     csa['async_loop'] = asyncio.new_event_loop()
     asyncio.set_event_loop(csa['async_loop'])
     csa['proxy'] = CDWebSocket(ws_ns, 'proxy')
+    csa['rec'] = cd_pcap.Recorder(app=f'cdbus_gui {get_asset_ver()}')
     cd_watch.init(csa['async_loop'])
     cd_watch.start_thread(proxy_rx, 'proxy_rx')
     cd_watch.create_task(start_web(port=http_port), 'web_server', fatal=True)
     cd_watch.create_task(cfgs_service(), 'cfgs_service')
     cd_watch.create_task(dev_service(), 'dev_service')
     cd_watch.create_task(port_service(), 'port_service')
+    cd_watch.create_task(cd_pcap.rec_service(csa['rec'], ws_ns, dev_str), 'rec_service')
     cd_watch.create_task(cdbus_proxy_service(), 'proxy_tx')
     cd_watch.create_task(cd_watch.watch_service(dev_check), 'watch_service')
     

@@ -28,7 +28,6 @@ from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web, get_asset_ver
 import cd_watch
 import cfg_edit
-import cd_pcap
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -36,7 +35,7 @@ from cdnet.utils.log import *
 from cdnet.utils.cd_args import CdArgs
 from cdnet.utils.crc import modbus_crc
 from cdnet.parser import cdnet_l0, cdnet_l1
-import cd_replay # after the path to pycdnet is set
+import cd_pcap, cd_replay # after the path to pycdnet is set, both use its pcapng writer
 
 
 csa = {
@@ -262,12 +261,16 @@ async def cdbus_proxy_service():
             if not s:
                 logger.warning(f'proxy_tx: port {src_port:#x} not bound')
                 continue
-            s.sendto(wc_dat['dat'], (dst_ip, dst_port))
-            try:
+            try: # recorded before the send, or the reply could be recorded ahead of it
                 csa['rec'].frame(rec_frame((own_addr(wc_dat['dst'][0]), src_port), wc_dat['dst'], wc_dat['dat']), outbound=True)
-            except Exception as err:
+            except Exception as err: # a packet no frame can hold is not recorded, but still sent
                 logger.warning(f'proxy_tx: not recorded, no frame holds it: port {src_port:#x} -> {wc_dat["dst"]}, '
                                f'{len(wc_dat["dat"])} bytes ({err!r})')
+            try:
+                s.sendto(wc_dat['dat'], (dst_ip, dst_port))
+            except OSError as err:
+                csa['rec'].mark(f'tx failed: {err}') # the frame above never went out
+                raise
         except Exception as err:
             logger.warning(f'proxy_tx: err: {err}')
 

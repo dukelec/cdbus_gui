@@ -520,6 +520,9 @@ window.addEventListener('load', async function() {
     console.log("load app");
     
     init_nav();     // translate the page and draw the top bar
+    let hint = document.getElementById('rec_hint');
+    hint.innerHTML = hint.innerHTML.replace('cdbus_tools',
+            '<a href="https://github.com/dukelec/cdbus_tools" target="_blank">cdbus_tools</a>');
     
     csa.db = await new Idb();
     init_ws();

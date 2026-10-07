@@ -49,7 +49,7 @@
             <span id="rec_status"></span>
         </div>
         <div class="container">
-            <span class="has-text-grey is-size-7">${L('Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.')}</span>
+            <span class="has-text-grey is-size-7" id="rec_hint">${L('Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the wireshark/cdbus.lua of cdbus_tools.')}</span>
         </div>
     </div>
     <br>
@@ -65,7 +65,7 @@
             <input id="rp_file" type="file" accept=".pcapng" style="display:none;">
             <span id="rp_info"></span>
         </div>
-        <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; flex-wrap: wrap;">
+        <div class="is-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; flex-wrap: wrap;">
             <span>${L('Play to')}</span> <input type="text" size="7" id="rp_to"> s
             <select id="rp_speed">
                 <option value="0">${L('at once')}</option>

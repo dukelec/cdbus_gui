@@ -27,7 +27,6 @@ from cd_ws import CDWebSocket, CDWebSocketNS
 from web_serve import ws_ns, start_web, get_asset_ver
 import cd_watch
 import cfg_edit
-import cd_pcap
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'pycdnet'))
 
@@ -38,7 +37,7 @@ from cdnet.utils.serial_get_port import get_ports
 from cdnet.utils.crc import modbus_crc
 from cdnet.dispatch import *
 from cdnet.parser import *
-import cd_replay # after the path to pycdnet is set
+import cd_pcap, cd_replay # after the path to pycdnet is set, both use its pcapng writer
 
 csa = {
     'async_loop': None,
@@ -85,7 +84,8 @@ def dev_str(): # goes into the recording's interface description
 
 
 # proxy to html: ('/x0:00:dev_mac', host_port) <- ('server', 'proxy'): { 'src': src, 'dat': payloads }
-# ts_ns: the time of the packet when it is replayed from a recording, else now
+# ts_ns: when the packet came in, as the serial thread stamped it, or its time in the recording
+# when replayed; None: now
 async def proxy_rx_rpt(rx, ts_ns=None):
     src, dst, dat = rx
     logger.debug(f'rx_rpt: src: {src}, dst: {dst}, dat: {dat}')
@@ -114,16 +114,17 @@ def proxy_rx():
             continue
         frame = None
         try:
-            frame = dev.recv(timeout=0.5)
-            if frame:
-                csa['rec'].frame(with_crc(frame), outbound=False) # before parsing: a frame the parser rejects is still on the bus
+            rx_ts = dev.recv(timeout=0.5, with_ts=True)
+            if rx_ts:
+                ts_ns, frame = rx_ts    # stamped by the serial thread as it read the frame in
+                csa['rec'].frame(with_crc(frame), outbound=False, ts_ns=ts_ns) # before parsing: a frame the parser rejects is still on the bus
                 if frame[3] & 0x80:
                     rx = cdnet_l1.from_frame(frame, csa['net'])
                     logger.log(logging.VERBOSE, f'proxy_rx l1: {frame}')
                 else:
                     rx = cdnet_l0.from_frame(frame, csa['net'])
                     logger.log(logging.VERBOSE, f'proxy_rx l0: {frame}')
-                asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx), csa['async_loop']).result()
+                asyncio.run_coroutine_threadsafe(proxy_rx_rpt(rx, ts_ns), csa['async_loop']).result()
         except Exception as err:
             logger.warning(f'proxy_rx: err: {err}, frame: {frame}')
 
@@ -152,8 +153,14 @@ async def cdbus_proxy_service():
                 frame = cdnet_l0.to_frame((f'{wc_src[0][1:3]}:{csa["net"]:02x}:{csa["mac"]:02x}', wc_src[1]), \
                                            wc_dat['dst'], wc_dat['dat'])
                 logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
-            if csa['dev'] and not csa['dev'].send(frame): # recorded only once it went out
+            dev = csa['dev']
+            if dev:
+                # recorded before the write: the reply can be back before write() returns to this
+                # thread, and recorded only then the frame would land behind its own reply
                 csa['rec'].frame(with_crc(frame), outbound=True)
+                err = dev.send(frame)
+                if err:
+                    csa['rec'].mark(f'tx failed: {err}') # the frame above never reached the bus
         except Exception as err:
             logger.warning(f'proxy_tx: fmt err: {err}')
 

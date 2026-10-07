@@ -78,6 +78,7 @@ class RecorderTests(unittest.TestCase):
         self.rec.frame(req, outbound=True, ts_ns=1_700_000_000_123_456_789)
         self.assertTrue(self.rec.mark('motor'))
         self.rec.frame(rep, outbound=False, ts_ns=1_700_000_000_123_456_790)
+        self.rec.sync()     # the writer thread has them in the file
         st = self.rec.status()
         self.assertTrue(st['on'])
         self.assertEqual((st['pkts'], st['marks']), (2, 1))
@@ -147,11 +148,49 @@ class RecorderTests(unittest.TestCase):
         for n in range(0, 300, 7):
             self.rec.frame(bytes(range(n % 256)) * (n // 256 + 1), outbound=bool(n & 8))
         self.rec.mark('')
+        self.rec.sync()
         st = self.rec.status()
-        self.assertEqual(st['size'], os.path.getsize(path))   # flushed as it goes
+        self.assertEqual(st['size'], os.path.getsize(path))   # unbuffered, on disk as it goes
         blks = blocks(Path(path).read_bytes())
         self.assertEqual(len(blks), 3 + st['pkts'] + st['marks'])
         self.rec.stop()
+
+    def test_stop_drains_the_queue(self):
+        # frames and marks are only queued by the caller, in order; stop() writes what is queued
+        # before it closes the file, and nothing queued afterwards goes anywhere
+        path = self.rec.start()
+        for n in range(1000):
+            self.rec.frame(with_crc(bytes([n & 0xff, 0, 1, n >> 8])), outbound=bool(n & 1))
+            if n % 100 == 0:
+                self.rec.mark(f'm{n}')
+        self.assertTrue(self.rec.stop())
+        self.rec.frame(with_crc(b'\x00\xfe\x02\x40\x01'), outbound=True)
+        self.assertEqual((self.rec.status()['pkts'], self.rec.status()['marks']), (1000, 10))
+        blks = blocks(Path(path).read_bytes())
+        self.assertEqual(len(blks), 3 + 1010)
+        ids = [struct.unpack_from('<I', b[1])[0] for b in blks[3:]]
+        self.assertEqual(ids[:3], [0, 1, 0])    # m0 right after frame 0: the order is the queue's
+        self.assertEqual(ids.count(1), 10)
+
+    def test_ctrl_c_leaves_a_whole_file(self):
+        # a KeyboardInterrupt in the main thread ends the process through atexit, where the recorder
+        # writes what is still queued and closes the file: every block is there, none torn
+        prog = (f'import sys, signal, time\n'
+                f'sys.path.insert(0, {str(ROOT)!r}); sys.path.insert(0, {str(ROOT / "pycdnet")!r})\n'
+                f'import cd_pcap\n'
+                f'rec = cd_pcap.Recorder(rec_dir=sys.argv[1])\n'
+                f'print(rec.start())\n'
+                f'for n in range(3000): rec.frame(bytes([n & 0xff]) * 60, outbound=False)\n'
+                f'rec.mark("bye")\n'
+                f'signal.raise_signal(signal.SIGINT)\n'
+                f'time.sleep(5)\n')
+        out = subprocess.run([sys.executable, '-c', prog, self.td.name], capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(out.returncode, 0, out.stdout)
+        self.assertIn('KeyboardInterrupt', out.stderr)
+        path = out.stdout.strip()
+        blks = blocks(Path(path).read_bytes())     # asserts every block whole, front and back
+        self.assertEqual(len(blks), 3 + 3000 + 1)
+        self.assertEqual(blks[-1][1][20:23], b'bye')
 
 
 if __name__ == '__main__':

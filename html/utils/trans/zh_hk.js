@@ -43,8 +43,8 @@ let trans_zh_hk = {
     'packets': '個包',
     'marks': '個標記',
     'last': '上次',
-    'Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the cdbus.lua of cdbus_tools.':
-        '總線上的每一幀都會寫入 records/*.pcapng；在任一日誌窗口按回車會在記錄中插入一個標記。用 Wireshark 載入 cdbus_tools 裡的 cdbus.lua 後即可打開該檔案。',
+    'Every frame on the bus goes into records/*.pcapng; Enter in any Logs window puts a mark into it. Open the file in Wireshark with the wireshark/cdbus.lua of cdbus_tools.':
+        '總線上的每一幀都會寫入 records/*.pcapng；在任一日誌窗口按回車會在記錄中插入一個標記。用 Wireshark 載入 cdbus_tools 裡的 wireshark/cdbus.lua 後即可打開該檔案。',
     'Replay': '回放',
     'Load': '載入',
     'Play to': '播放到',

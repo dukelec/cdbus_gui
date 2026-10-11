@@ -301,6 +301,8 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
 }
 ```
 
+ - "iap": "reboot" and "keep_bl" are the register addresses of `do_reboot` and `keep_bl`. With "keep_bl" set, the bootloader is searched for by writing `keep_bl` repeatedly until it is acked (one frame locks a bootloader that only listens briefly after power-up), then the device info is read to tell the bootloader from an app. The probe period is derived from the baud rate (20 ms at 115200), or set in ms with an optional "probe_period". Without "keep_bl", the device info is polled instead.
+
  - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way, as does any other "xxx_r" / "xxx_w" pair, each one a set to pick on the device page).
  - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
  - The "x_fmt" of "plot" data corresponds to two packet formats:

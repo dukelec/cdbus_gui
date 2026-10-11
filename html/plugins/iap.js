@@ -190,6 +190,41 @@ async function keep_in_bl() {
     }
 }
 
+// the serial baud rate the backend opened the port with, null if unknown
+async function get_baud() {
+    csa.cmd_sock.flush();
+    await csa.cmd_sock.sendto({'action': 'get'}, ['server', 'dev']);
+    let ret = await csa.cmd_sock.recvfrom(1000);
+    return (ret && ret[0] && ret[0].baud) ? ret[0].baud : null;
+}
+
+// Lock the bl with a single frame: a keep_bl write, repeated every period until
+// it is acked. A bl waiting for commands after power-up listens only for a short
+// window (some 100 ms), and with the frame itself being the lock, only the probe
+// period counts against it, not the dev_info reply or the host turnaround of
+// the read-info-first way. An app that gets the write ignores it (keep_bl is
+// shown but not used there). No flush between
+// probes: an ack held back by the adapter (FTDI latency timer 16 ms by default)
+// or by the bl printing still counts, every probe has the same content.
+async function probe_keep_bl(period) {
+    let d = new Uint8Array([0x20, 0, 0, 1]);
+    let dv = new DataView(d.buffer);
+    dv.setUint16(1, csa.cfg.iap.keep_bl, true);
+    await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x5], 'dat': d}, ['server', 'proxy']);
+    let ret = await csa.iap.proxy_sock.recvfrom(period);
+    return ret && ret[0].src[1] == 0x0005 && ret[0].dat.length == 1 && (ret[0].dat[0] & 0xf) == 0;
+}
+
+// period for probe_keep_bl: the write and its ack are some 20 bytes on the bus,
+// leave room for the bl being busy and the adapter's latency
+function probe_period(baud) {
+    if (csa.cfg.iap.probe_period)
+        return csa.cfg.iap.probe_period;
+    if (!baud)
+        return 100;
+    return Math.max(20, Math.ceil(40 * 10 * 1000 / baud)); // 40 byte times, 20 ms at >= 20 kbps
+}
+
 async function do_reboot(bl_args) {
     let d = new Uint8Array([0x20, 0, 0, bl_args]);
     let dv = new DataView(d.buffer);
@@ -248,28 +283,50 @@ async function do_iap() {
     
     let retry_cnt = 0;
     let reboot_cnt = 0;
+    let use_keep_bl = 'keep_bl' in csa.cfg.iap;
+    let period = use_keep_bl ? probe_period(await get_baud()) : 100;
+    console.log(`find bl: ${use_keep_bl ? 'keep_bl' : 'read info'} probe, period ${period} ms`);
+    csa.iap.proxy_sock.flush();
     while (action.startsWith('bl') && !csa.iap.stop) {
     
-        csa.iap.proxy_sock.flush();
-        await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
-        console.log('read info wait ret');
-        let ret = await csa.iap.proxy_sock.recvfrom(100);
-        console.log('read info ret', ret);
+        let ret;
+        if (use_keep_bl) {
+            if (!await probe_keep_bl(period)) {
+                ret = null;
+            } else {
+                // locked something, see who: the bl, or an app at the same baud
+                csa.iap.proxy_sock.flush();
+                await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
+                console.log('read info wait ret');
+                ret = await csa.iap.proxy_sock.recvfrom(500);
+                console.log('read info ret', ret);
+            }
+        } else {
+            csa.iap.proxy_sock.flush();
+            await csa.iap.proxy_sock.sendto({'dst': [csa.arg.tgt, 0x1], 'dat': new Uint8Array([])}, ['server', 'proxy']);
+            console.log('read info wait ret');
+            ret = await csa.iap.proxy_sock.recvfrom(period);
+            console.log('read info ret', ret);
+        }
         if (ret && ret[0].src[1] == 0x0001) {
             let s = dat2str(ret[0].dat);
             if (s.includes('(bl)')) {
                 console.log(`found (bl): ${s}`);
-                if (await keep_in_bl()) {
+                // the keep_bl probe already locked it; keep_in_bl is a no-op without keep_bl
+                if (!use_keep_bl && await keep_in_bl()) {
                     document.getElementById('iap_progress').innerText = `keep_in_bl failed`;
                 } else {
                     document.getElementById('iap_progress').innerText = `keep_in_bl succeeded`;
                     break;
                 }
             } else {
+                // the bl comes back with keep_bl set from the app's reboot request,
+                // the next probe locks it at once
                 console.log('not found (bl), reboot');
                 document.getElementById('iap_progress').innerText = `Not found string "(bl)", reboot...`;
                 await do_reboot(1);
                 reboot_cnt++;
+                csa.iap.proxy_sock.flush(); // a late reboot ack is not a probe ack
             }
         } else {
             let retry_str;
@@ -279,9 +336,9 @@ async function do_iap() {
             case 2: retry_str = '|'; break;
             case 3: retry_str = '/'; break;
             }
-            console.log('read info time out');
+            console.log(use_keep_bl ? 'keep_bl time out' : 'read info time out');
             document.getElementById('iap_progress').innerHTML =
-                `Try read info <span style="font-family: monospace;">(${retry_str})</span> | try reboot: ${reboot_cnt}`;
+                `Try ${use_keep_bl ? 'keep_bl' : 'read info'} <span style="font-family: monospace;">(${retry_str})</span> | try reboot: ${reboot_cnt}`;
         }
         if (++retry_cnt >= 4)
             retry_cnt = 0;

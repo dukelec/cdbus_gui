@@ -56,3 +56,6 @@ GTAGS
 
 # pcapng recordings made from the index page
 /records/
+
+# the windows package, tools/build_win.sh
+/dist/

@@ -14,6 +14,10 @@ Python version >= 3.8
 #### Usage:
 Run `main.py`, then open the following URL in your web browser: http://localhost:8910
 
+For Windows users without Python, `tools/build_win.sh` (run on Linux) makes `dist/cdbus_gui-<version>-win64.zip`:
+the embeddable Python with the dependencies and this tool. Unzip it anywhere and run `cdbus_gui.bat`
+(`cdbus_gui_udp.bat` for `main_udp.py`), it opens the page in the browser by itself. Windows 10 or later, x64.
+
 Every page carries a top bar with the tool version and a language picker (Auto follows the browser,
 otherwise English / Simplified Chinese / Traditional Chinese, the choice is remembered per browser).
 Hovering the version shows the full asset version, the same `v3.0-<hash of all own front end files>`

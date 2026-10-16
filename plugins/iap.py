@@ -5,7 +5,9 @@
 # Author: Duke Fong <d@d-l.io>
 
 from intelhex import IntelHex
+import sys
 import asyncio
+import subprocess
 from cd_ws import CDWebSocket
 from web_serve import ws_ns
 import cd_watch
@@ -51,12 +53,31 @@ def select_ihex_file_tk():
         root.destroy()
 
 
+def select_ihex_file_win():
+    # the embeddable python of the windows package (tools/build_win.sh) has neither wx nor tk,
+    # use the dialog of .net through powershell; a hidden topmost form keeps it above the browser
+    ps = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+          "Add-Type -AssemblyName System.Windows.Forms; "
+          "$d = New-Object System.Windows.Forms.OpenFileDialog; "
+          "$d.Title = 'Select Intel HEX firmware'; "
+          "$d.Filter = 'Intel HEX (*.hex;*.ihex)|*.hex;*.ihex|All files (*.*)|*.*'; "
+          "$o = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}; "
+          "if ($d.ShowDialog($o) -eq 'OK') { $d.FileName }")
+    r = subprocess.run(['powershell', '-NoProfile', '-STA', '-Command', ps], capture_output=True,
+                       check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+    return r.stdout.decode('utf-8-sig').strip()
+
+
 def select_ihex_file():
-    try:
-        return select_ihex_file_wx()
-    except Exception as err:
-        logging.warning(f'wx file chooser unavailable, fallback to Tk: {err}')
-        return select_ihex_file_tk()
+    choosers = [select_ihex_file_wx]
+    if sys.platform == 'win32':
+        choosers.append(select_ihex_file_win)
+    for chooser in choosers:
+        try:
+            return chooser()
+        except Exception as err:
+            logging.warning(f'{chooser.__name__} unavailable: {err}')
+    return select_ihex_file_tk()
 
 
 async def iap_service(): # config r/w    

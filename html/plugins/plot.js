@@ -458,6 +458,15 @@ function make_chart(idx, name, series) {
             ],
             drawSeries: [
                 (u, si) => plot_draw_breaks(idx, u, si)
+            ],
+            // the observer only hears the box change: a chart rebuilt in a box that keeps its
+            // size (new channels, re-calc) stayed at the width and height above until the box
+            // was dragged. Not right after new uPlot(): the chart gets its size in a later
+            // microtask, a box without a set height measured before that is short by the whole
+            // chart, and the chart shrank to nothing for good. Nor in the hook itself: uPlot
+            // holds back a size set while it is still drawing
+            ready: [
+                u => queueMicrotask(() => plot_fit(idx, u))
             ]
         }
     };
@@ -466,6 +475,17 @@ function make_chart(idx, name, series) {
 
     console.log(opts, idx);
     return new uPlot(opts, null, document.getElementById(`plot${idx}`));
+}
+
+function plot_fit(idx, u) {
+    let elm = document.getElementById(`plot${idx}`);
+    let title_height = elm.querySelector('.u-title').offsetHeight;
+    let legend_height = elm.querySelector('.u-legend').offsetHeight;
+    // the content box, not the border box: offsetWidth counts a scrollbar in, so a chart
+    // sized by it stayed too wide for the space left beside the scrollbar it caused
+    let height = Math.max(elm.clientHeight - title_height - legend_height, 20);
+    //console.log(`plot${idx} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
+    u.setSize({width: elm.clientWidth, height});
 }
 
 
@@ -1312,16 +1332,7 @@ async function init_plot() {
         let u = make_chart(i, `Plot${i}`, series);
         csa.plot.plots.push(u);
         
-        const observer = new ResizeObserver(() => {
-            let elm = document.getElementById(`plot${i}`);
-            let title_height = elm.querySelector('.u-title').offsetHeight;
-            let legend_height = elm.querySelector('.u-legend').offsetHeight;
-            // the content box, not the border box: offsetWidth counts a scrollbar in, so a chart
-            // sized by it stayed too wide for the space left beside the scrollbar it caused
-            let height = Math.max(elm.clientHeight - title_height - legend_height, 20);
-            //console.log(`plot${i} fit: width: ${elm.clientWidth}, height: ${height} (${elm.clientHeight})`);
-            csa.plot.plots[i].setSize({width: elm.clientWidth, height});
-        });
+        const observer = new ResizeObserver(() => plot_fit(i, csa.plot.plots[i]));
         observer.observe(document.getElementById(`plot${i}`));
         
         document.getElementById(`plot${i}_len`).onchange = async () => {

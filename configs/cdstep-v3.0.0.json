@@ -58,7 +58,7 @@
         
         // button groups
         "reg_r": [["magic_code","save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en","dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["tp_pos","tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["ref_volt","lim_en"],["set_home","state"],["tgt_pos","meas_pos"],["loop_cnt"],["drv_mo"],["string_test"]],
-        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["tp_pos"],["tp_speed","tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["ref_volt","md_val"],["lim_en"],["set_home"],["state"],["tgt_pos"],["string_test"]],
+        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["tp_pos"],["tp_speed","tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["ref_volt","md_val"],["lim_en"],["set_home"],["state"],["string_test"]],
         "less_r": [["tp_pos","tp_accel"],["state","loop_cnt"]],
         "less_w": [["tp_pos"],["tp_speed","tp_accel"],["state"]]
     },

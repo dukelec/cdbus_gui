@@ -182,7 +182,24 @@ def own_origins(port):
     return [f'http://{h}:{port}' for h in ('localhost', '127.0.0.1', '[::1]')] + [None]
 
 
+# A browser opens a spare tcp connection or two ahead of time (preconnect) and closes it unused,
+# without sending a byte. websockets reports every one as "opening handshake failed" at ERROR with
+# a traceback three exceptions deep, so a page reload left a pair of them in the log. A client that
+# hangs up before its request is complete is no fault: keep one debug line for it. Every other
+# handshake failure (a request that is there but malformed) is logged as before.
+class HungUpFilter(logging.Filter):
+    def filter(self, record):
+        exc = record.exc_info[1] if record.exc_info else None
+        if isinstance(exc, websockets.exceptions.InvalidMessage) and isinstance(exc.__cause__, EOFError):
+            logger.debug('ws: a connection closed before sending a request (browser preconnect)')
+            return False
+        return True
+
+_hung_up_filter = HungUpFilter()
+
+
 async def start_web(addr='localhost', port=8910):
+    logging.getLogger('websockets.server').addFilter(_hung_up_filter)  # adding it again is a no-op
     process = functools.partial(http_file_server, origins=own_origins(port))
     # max_size: the page answers an api request in one message, and a whole waveform buffer is a
     # few MB; the default limit of 1 MB closed the connection (1009) and took the page down

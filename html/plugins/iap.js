@@ -10,6 +10,7 @@ import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat, read_
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
 import { Idb } from '../utils/idb.js?v=__V__';
 import { csa, alloc_port } from '../common.js?v=__V__';
+import { stop_period_read } from './reg.js?v=__V__';
 
 
 let html = `
@@ -246,6 +247,7 @@ async function stop_iap() {
 async function do_iap() {
     document.getElementById('iap_start').disabled = true;
     document.getElementById('iap_stop').disabled = csa.iap.stop = false;
+    await stop_period_read();
     document.getElementById('iap_epoch').innerText = '';
     document.getElementById('iap_progress').innerText = '--';
     let blk_size = 128;

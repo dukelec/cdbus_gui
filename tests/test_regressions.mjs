@@ -45,7 +45,7 @@ test('toggling periodic reads during a pending round keeps one timer', async () 
     const pending = [];
     const nodes = { keep_read: { checked: true }, read_period: { value: '200' },
         dev_read_all: { onclick: () => new Promise(r => pending.push(r)) } };
-    const ctx = context({ document: { getElementById: id => nodes[id] },
+    const ctx = context({ csa: {}, document: { getElementById: id => nodes[id] },
         setTimeout: fn => { timers.set(++seq, fn); return seq; }, clearTimeout: id => timers.delete(id) });
     vm.runInContext(source('html/plugins/reg.js'), ctx);
     const first = vm.runInContext('period_read()', ctx);
@@ -161,13 +161,38 @@ test('stopping during a pending periodic read prevents rescheduling', async () =
     const timers = [];
     const nodes = { keep_read: { checked: true }, read_period: { value: '200' },
         dev_read_all: { onclick: () => new Promise(r => release = r) } };
-    const ctx = context({ document: { getElementById: id => nodes[id] }, setTimeout: fn => timers.push(fn) });
+    const ctx = context({ csa: {}, document: { getElementById: id => nodes[id] }, setTimeout: fn => timers.push(fn) });
     vm.runInContext(source('html/plugins/reg.js'), ctx);
     const pending = vm.runInContext('period_read()', ctx);
     nodes.keep_read.checked = false;
     await vm.runInContext('period_read()', ctx);
     release();
     await pending;
+    assert.equal(timers.length, 0);
+});
+
+test('an upgrade stops periodic reads after the round in flight and keeps them off', async () => {
+    let release;
+    let reads = 0;
+    const timers = [];
+    const csa = { iap: { stop: true } };
+    const nodes = { keep_read: { checked: true }, read_period: { value: '200' },
+        dev_read_all: { onclick: () => ++reads > 1 ? Promise.resolve() : new Promise(r => release = r) } };
+    const ctx = context({ csa, document: { getElementById: id => nodes[id] },
+        setTimeout: fn => timers.push(fn), sleep: ms => new Promise(r => setTimeout(r, ms)) });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    const pending = vm.runInContext('period_read()', ctx);
+    csa.iap.stop = false;
+    let stopped = false;
+    const stop = vm.runInContext('stop_period_read()', ctx).then(() => stopped = true);
+    await new Promise(r => setTimeout(r, 30));
+    assert.equal(stopped, false);
+    release();
+    await Promise.all([pending, stop]);
+    nodes.keep_read.checked = true;     // ticked again while upgrading
+    await vm.runInContext('period_read()', ctx);
+    assert.equal(nodes.keep_read.checked, false);
+    assert.equal(reads, 1);
     assert.equal(timers.length, 0);
 });
 

@@ -5,7 +5,7 @@
  */
 
 import { L } from '../utils/lang.js?v=__V__'
-import { escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
+import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
 import { fmt_size, reg2str, reg_fill_one, rbw_refresh, read_reg_val, str2reg, write_reg_val,
@@ -792,6 +792,8 @@ let read_running = false;
 async function period_read() {
     clearTimeout(read_timer);
     read_timer = null;
+    if (csa.iap && !csa.iap.stop)   // no reads while upgrading, see stop_period_read()
+        document.getElementById('keep_read').checked = false;
     if (!document.getElementById('keep_read').checked) {
         return;
     }
@@ -812,6 +814,18 @@ async function period_read() {
         if (document.getElementById('keep_read').checked)
             read_timer = setTimeout(period_read, Number.isFinite(ms) && ms > 0 ? ms : 200);
     }
+}
+
+
+// iap calls it before it starts: the reads going on alongside made upgrades fail
+async function stop_period_read() {
+    let keep_read = document.getElementById('keep_read');
+    if (keep_read)
+        keep_read.checked = false;
+    clearTimeout(read_timer);
+    read_timer = null;
+    while (read_running)    // let the round in flight finish first
+        await sleep(10);
 }
 
 
@@ -998,4 +1012,4 @@ async function init_reg() {
 }
 
 
-export { init_reg, reg_idx_by_name, in_button_edit, groups_get, groups_set };
+export { init_reg, reg_idx_by_name, in_button_edit, groups_get, groups_set, stop_period_read };

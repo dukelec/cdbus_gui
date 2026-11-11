@@ -78,6 +78,13 @@ logger = logging.getLogger(f'cdgui')
 def with_crc(frame):
     return frame + modbus_crc(frame).to_bytes(2, byteorder='little')
 
+# what was written to the port and when, from dev.recv() so that it stays in order with the replies
+def dev_tx_rec(ts_ns, frame, err):
+    if err:
+        csa['rec'].mark(f'tx failed: {err}', ts_ns=ts_ns) # the frame above never reached the bus
+    else:
+        csa['rec'].frame(with_crc(frame), outbound=True, ts_ns=ts_ns)
+
 def dev_str(): # goes into the recording's interface description
     port = f'{csa["dev"].portstr} @ {csa["dev"].baud}' if csa['dev'] else 'no port open'
     return f'{port}, local address 80:{csa["net"]:02x}:{csa["mac"]:02x}'
@@ -155,12 +162,7 @@ async def cdbus_proxy_service():
                 logger.log(logging.VERBOSE, f'proxy_tx frame l0: {frame}')
             dev = csa['dev']
             if dev:
-                # recorded before the write: the reply can be back before write() returns to this
-                # thread, and recorded only then the frame would land behind its own reply
-                csa['rec'].frame(with_crc(frame), outbound=True)
-                err = dev.send(frame)
-                if err:
-                    csa['rec'].mark(f'tx failed: {err}') # the frame above never reached the bus
+                dev.send(frame) # recorded by dev_tx_rec()
         except Exception as err:
             logger.warning(f'proxy_tx: fmt err: {err}')
 
@@ -182,7 +184,7 @@ async def dev_handle(sock, dat, src):
             await sock.sendto('err: dev: already opened, close it first to apply new settings', src)
         else:
             cd_watch.clear_fault('serial')
-            csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'])
+            csa['dev'] = CDBusSerial(dat['port'], baud=dat['baud'], on_tx=dev_tx_rec)
             await sock.sendto('successed', src)
     
     elif dat['action'] == 'close' and csa['dev']:

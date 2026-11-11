@@ -10,7 +10,7 @@ import { CDWebSocket } from './utils/cd_ws.js?v=__V__';
 
 const WS_CLOSE_DUPLICATE = 4001; // server close code: same page already opened in another window
 
-const VERSION = 'v3.30';     // shown in the nav bar, web_serve.py reads it from here
+const VERSION = 'v3.31';     // shown in the nav bar, web_serve.py reads it from here
 // replaced by web_serve.py with "<VERSION>-<hash of all own front end files>", the same
 // string the ?v= of every own css / js / module url carries, so a changed front end
 // means changed urls and the browser is bound to fetch the new files
@@ -302,6 +302,18 @@ function show_faults(faults) {
 // answer the commands the backend relays from the external api (api_serve.py) with the functions
 // of `cmds`, one at a time: one finishes before the next starts
 async function api_serve(sock, cmds) {
+    // edge put a background page to sleep after 15 min and the api stalled with it,
+    // a page holding a web lock is left awake: hold one while the backend is connected
+    let ws = csa.ws_ns.connections['server'];
+    if (!navigator.locks)   // http on an address other than localhost is not a secure context
+        console.warn('api: no navigator.locks, the page may sleep in the background');
+    else if (ws)
+        navigator.locks.request('cdbus_gui_awake', { mode: 'shared' }, () => new Promise(resolve => {
+            if (ws.readyState != WebSocket.OPEN)
+                return resolve();
+            ws.addEventListener('close', resolve, { once: true });
+        })).catch(err => console.warn('api: awake lock:', err));
+    
     let queue = Promise.resolve();
     while (true) {
         let [dat, src] = await sock.recvfrom();

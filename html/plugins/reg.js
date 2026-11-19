@@ -139,32 +139,34 @@ function in_reg_rw(reg_rw, addr) { // test if in range
     return null;
 }
 
-// the group set shown: 'reg' for reg_r / reg_w, or the xxx of an xxx_r / xxx_w pair
+// the group set shown, one of reg.sets of the config file
 function cur_mode() {
     return document.getElementById('reg_mode').value;
 }
 
-// every xxx_r / xxx_w set, in the order the config file first names it (the json5 parser, msgpack
-// and the js object all keep that order); reg is the default and always there, first when the file
-// has neither reg_r nor reg_w
+// one side ('r' / 'w') of a set as the config file has it
+function cfg_groups(mode, rw) {
+    return csa.cfg.reg.sets?.[mode]?.[rw];
+}
+
+// every set, in the order the config file names it (the json5 parser, msgpack and the js object
+// all keep that order); reg is the default and always there, first when the file has no reg set
 function mode_names() {
-    let names = [];
-    for (let key in csa.cfg.reg) {
-        let m = key.match(/^(\w+)_[rw]$/);
-        if (m && !names.includes(m[1]))
-            names.push(m[1]);
-    }
+    let names = Object.keys(csa.cfg.reg.sets || {});
     if (!names.includes('reg'))
         names.unshift('reg');
     return names;
 }
 
+// this browser's edits, shaped like reg.sets of the config file, with only the sides that differ
+async function local_sets() {
+    return await csa.db.get('tmp', `${csa.arg.name}/reg.sets`) ?? {};
+}
+
 // the groups of a set in effect: this browser's edited copy of each side, else the config file's
-// (a side edited back to what the file has is stored as null, so each side falls back on its own)
 async function mode_groups(mode) {
-    let r = await csa.db.get('tmp', `${csa.arg.name}/reg.${mode}_r`);
-    let w = await csa.db.get('tmp', `${csa.arg.name}/reg.${mode}_w`);
-    return [r ?? csa.cfg.reg[`${mode}_r`], w ?? csa.cfg.reg[`${mode}_w`]];
+    let loc = (await local_sets())[mode] ?? {};
+    return [loc.r ?? cfg_groups(mode, 'r'), loc.w ?? cfg_groups(mode, 'w')];
 }
 
 // offer reg plus every set that has at least one group, keeping the page's choice when it is
@@ -178,7 +180,7 @@ async function update_mode_select(keep=null) {
         if (m == 'reg' || m == keep || (r && r.length) || (w && w.length))
             names.push(m);
     }
-    sel.innerHTML = names.map(m => `<option value="${m}">${m}</option>`).join('');
+    sel.innerHTML = names.map(m => `<option value="${escape_html(m)}">${escape_html(m)}</option>`).join('');
     sel.value = names.includes(csa.reg.mode) ? csa.reg.mode : 'reg';
     sel.disabled = names.length < 2;
     sel.title = names.length < 2 ? L('No other register group set to choose') : '';
@@ -478,10 +480,10 @@ async function button_edit() {
         render_edit_bar();
         // save to idb, only what differs from the config file
         let mode = cur_mode();
-        await save_reg_db(`${mode}_r`, reg_rw2reg_cfg(csa.reg.reg_r));
-        await save_reg_db(`${mode}_w`, reg_rw2reg_cfg(csa.reg.reg_w));
-        console.log(`new ${mode}_r values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
-        console.log(`new ${mode}_w values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
+        await save_reg_db(mode, 'r', reg_rw2reg_cfg(csa.reg.reg_r));
+        await save_reg_db(mode, 'w', reg_rw2reg_cfg(csa.reg.reg_w));
+        console.log(`new sets.${mode}.r values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
+        console.log(`new sets.${mode}.w values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
         // the edit may have emptied a set, or Load Default refilled one
         await update_mode_select();
         await init_reg_rw();
@@ -491,39 +493,40 @@ async function button_edit() {
 // back to the config file for the set being edited, the other sets keep their local edits
 async function button_def() {
     let mode = cur_mode();
-    csa.reg.reg_r = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_r`]);
-    csa.reg.reg_w = reg_cfg2reg_rw(csa.cfg.reg[`${mode}_w`]);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_r`, null);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.${mode}_w`, null);
+    csa.reg.reg_r = reg_cfg2reg_rw(cfg_groups(mode, 'r'));
+    csa.reg.reg_w = reg_cfg2reg_rw(cfg_groups(mode, 'w'));
+    await save_reg_db(mode, 'r', null);
+    await save_reg_db(mode, 'w', null);
     edit_select(false);
     alert('Load default succeeded.');
 }
 
-async function save_reg_db(name, val) {
-    let same = JSON.stringify(val) == JSON.stringify(csa.cfg.reg[name] || []);
-    await csa.db.set('tmp', `${csa.arg.name}/reg.${name}`, same ? null : val);
+// keep one side of a set in this browser; null, or the same as the file has, drops it
+async function save_reg_db(mode, rw, val) {
+    let sets = await local_sets();
+    let s = sets[mode] ??= {};
+    if (val == null || JSON.stringify(val) == JSON.stringify(cfg_groups(mode, rw) || []))
+        delete s[rw];
+    else
+        s[rw] = val;
+    if (!s.r && !s.w)
+        delete sets[mode];
+    await csa.db.set('tmp', `${csa.arg.name}/reg.sets`, sets);
 }
 
 // push the edited button groups back into the json5 config file, so they
 // become the default for every browser instead of only this one
 async function reg_save_file() {
     let mode = cur_mode();
-    let cur = {};
-    cur[`${mode}_r`] = reg_rw2reg_cfg(csa.reg.reg_r);
-    cur[`${mode}_w`] = reg_rw2reg_cfg(csa.reg.reg_w);
-    for (let m of mode_names()) {   // and whatever was edited in the other sets
-        if (m == mode)
-            continue;
-        for (let n of [`${m}_r`, `${m}_w`]) {
-            let v = await csa.db.get('tmp', `${csa.arg.name}/reg.${n}`);
-            if (v)
-                cur[n] = v;
-        }
-    }
+    let loc = await local_sets();
     let vals = [];
-    for (let n in cur) {
-        if (JSON.stringify(cur[n]) != JSON.stringify(csa.cfg.reg[n] || []))
-            vals.push({ path: ['reg', n], val: cur[n] });
+    for (let m of mode_names()) {
+        for (let rw of ['r', 'w']) {
+            // the set in use as the page runs it, the others only where they were edited
+            let v = m == mode ? reg_rw2reg_cfg(rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w) : loc[m]?.[rw];
+            if (v && JSON.stringify(v) != JSON.stringify(cfg_groups(m, rw) || []))
+                vals.push({ path: ['reg', 'sets', m, rw], val: v });
+        }
     }
     if (!vals.length) {
         alert(L('The config file already matches, nothing to save.'));
@@ -536,8 +539,9 @@ async function reg_save_file() {
     try {
         await save_cfg_file(vals);
         for (let v of vals) { // the file is the default now, drop the local copy
-            csa.cfg.reg[v.path[1]] = v.val;
-            await csa.db.set('tmp', `${csa.arg.name}/reg.${v.path[1]}`, null);
+            let [, , m, rw] = v.path;
+            ((csa.cfg.reg.sets ??= {})[m] ??= {})[rw] = v.val;
+            await save_reg_db(m, rw, null);
         }
         alert(L('Saved to %s, the previous version is kept as a .bak file.')
               .replace('%s', csa.arg.cfg));
@@ -613,15 +617,15 @@ async function groups_set(a) {
                                    (await mode_groups(mode)).map(reg_cfg2reg_rw);
     let [reg_r, reg_w] = ['r', 'w'].map((rw, i) =>  // all checked before anything changes
             a[rw] === undefined ? cur[i] :
-            a[rw] === null ? reg_cfg2reg_rw(csa.cfg.reg[`${mode}_${rw}`]) : groups_parse(a[rw], rw));
+            a[rw] === null ? reg_cfg2reg_rw(cfg_groups(mode, rw)) : groups_parse(a[rw], rw));
     
     csa.reg.mode = mode;
     csa.reg.reg_r = reg_r;
     csa.reg.reg_w = reg_w;
     if (a.save) {
-        await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, mode);
-        await save_reg_db(`${mode}_r`, reg_rw2reg_cfg(reg_r));
-        await save_reg_db(`${mode}_w`, reg_rw2reg_cfg(reg_w));
+        await csa.db.set('tmp', `${csa.arg.name}/reg.set`, mode);
+        await save_reg_db(mode, 'r', reg_rw2reg_cfg(reg_r));
+        await save_reg_db(mode, 'w', reg_rw2reg_cfg(reg_w));
     }
     await update_mode_select(mode);
     update_reg_rw_btn('r');
@@ -890,7 +894,7 @@ async function init_reg() {
     await init_pin();
     // the group set (reg by default) and the read period are remembered per device page,
     // the read switch itself always starts off
-    csa.reg.mode = await csa.db.get('tmp', `${csa.arg.name}/reg.mode`) || 'reg';
+    csa.reg.mode = await csa.db.get('tmp', `${csa.arg.name}/reg.set`) || 'reg';
     document.getElementById('read_period').value =
             await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`) || '200';
     await update_mode_select();
@@ -905,7 +909,7 @@ async function init_reg() {
     document.getElementById(`button_def`).onclick = button_def;
     document.getElementById('reg_mode').onchange = async () => {
         csa.reg.mode = cur_mode();
-        await csa.db.set('tmp', `${csa.arg.name}/reg.mode`, csa.reg.mode);
+        await csa.db.set('tmp', `${csa.arg.name}/reg.set`, csa.reg.mode);
         await update_mode_select();     // drops a set the api filled without saving it
         await init_reg_rw();
     };

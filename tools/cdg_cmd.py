@@ -198,7 +198,7 @@ def get_reg_info(name):
 def get_rw_grp(name, rw='r'):
     if name not in csa['regs']:
         return None
-    grps = csa['cfg']['reg'][f'reg_{rw}']
+    grps = csa['cfg']['reg'].get('sets', {}).get('reg', {}).get(rw, [])
     addr_len_list = []
     for i in range(len(grps)):
         g = grps[i]

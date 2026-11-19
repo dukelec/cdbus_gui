@@ -13,7 +13,6 @@
 # are lost, which is why only the spans the user actually changed are sent.
 
 import os
-import re
 import json
 import json5
 import shutil
@@ -180,9 +179,8 @@ def _j(v):
 
 def _style(path):
     last = path[-1]
-    # the register group sets: reg_r / reg_w and any other xxx_r / xxx_w the page offers
-    if len(path) == 2 and path[0] == 'reg' and isinstance(last, str) and re.fullmatch(r'\w+_[rw]', last):
-        return 'compact'
+    if path[:2] == ['reg', 'sets']:     # the register group sets: reg.sets.<set>.r / .w
+        return 'sets'
     if last == 'label':
         return 'inline'
     if last == 'cal':
@@ -194,8 +192,13 @@ def _style(path):
 
 def _fmt(val, style, indent, nl='\n'):
     pad = ' ' * (indent + 4)
-    if style == 'compact':      # one long line, as the reg groups are written
-        return json.dumps(val, separators=(',', ':'), ensure_ascii=False)
+    if style == 'sets':     # an object one member per line, a group list on one long line
+        if not isinstance(val, dict):
+            return json.dumps(val, separators=(',', ':'), ensure_ascii=False)
+        if not val:
+            return '{}'
+        rows = [f'{pad}{_j(k)}: {_fmt(v, style, indent + 4, nl)}' for k, v in val.items()]
+        return '{' + nl + (',' + nl).join(rows) + nl + ' ' * indent + '}'
     if style == 'inline':
         return _j(val)
     if style == 'dict':
@@ -238,6 +241,9 @@ def _col(s, i):
 def _edit(s, path, val, nl):
     """Return (start, end, text): the span to replace, empty for an insert."""
     style = _style(path)
+    # a group set, or reg.sets itself, the file does not have yet comes along with the value
+    while style == 'sets' and len(path) > 2 and not find_value(s, path[:-1]):
+        path, val = path[:-1], {path[-1]: val}
     if len(path) == 1:
         p_start = _skip_ws(s, 0)
     else:
@@ -269,8 +275,9 @@ def _edit(s, path, val, nl):
         at = members[-1][3]
         head = ',' + nl + ' ' * indent
         tail = ''
-    else:
-        indent = _col(s, p_start) + 4
+    else:   # one step in from the line the '{' is on, not from the '{' itself
+        line = s[s.rfind('\n', 0, p_start) + 1:p_start]
+        indent = len(line) - len(line.lstrip(' ')) + 4
         at = p_start + 1
         head = nl + ' ' * indent
         tail = nl + ' ' * (indent - 4)
@@ -284,14 +291,12 @@ def update_cfg(cfg_dir, name, vals):
         text = f.read()
     nl = '\r\n' if '\r\n' in text else '\n'
 
-    edits = []
     for v in vals:
         path = v['path']
         if not isinstance(path, list) or not path:
             raise ValueError(f'bad key path: {path}')
-        edits.append(_edit(text, path, v['val'], nl))
-
-    for start, end, new in sorted(edits, reverse=True):
+        # one after another: the r and w of a new set must not both add the set
+        start, end, new = _edit(text, path, v['val'], nl)
         text = text[:start] + new + text[end:]
 
     # never leave a file we cannot read back, and never report a value as saved that the

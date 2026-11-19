@@ -30,8 +30,12 @@
             [ 0x0050, 2, "H", 1, "port_offset", "Offset of the host side udp port, 0: none" ],
         ],
         
-        "reg_r": [["magic_code","conf_ver"],["conf_from","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx","port_offset"]],
-        "reg_w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx"],["net","port_offset"]]
+        "sets": {
+            "reg": {
+                "r": [["magic_code","conf_ver"],["conf_from","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_baud_h"],["bus_cfg_filter_m","bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx","port_offset"]],
+                "w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["limit_baudrate0","limit_baudrate1"],["ip_pfx"],["net","port_offset"]]
+            }
+        }
     },
     
     

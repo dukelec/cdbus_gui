@@ -26,11 +26,17 @@
         ],
 
         // button groups
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["gpo_pins"]],
-        "reg_w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-                  ["bus_cfg_filter","bus_cfg_max_idle_len"],["bus_cfg_tx_pre_len"],["dbg_en"],["gpo_pins"]],
-        "less_r": [],
-        "less_w": []
+        "sets": {
+            "reg": {
+                "r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["gpo_pins"]],
+                "w": [["magic_code"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+                      ["bus_cfg_filter","bus_cfg_max_idle_len"],["bus_cfg_tx_pre_len"],["dbg_en"],["gpo_pins"]]
+            },
+            "less": {
+                "r": [],
+                "w": []
+            }
+        }
     },
 
     "iap": { "reboot": 0x0005, "keep_bl": 0x0006, "batch_pkts": 3 }

@@ -94,10 +94,16 @@
             [ 0x04f8, 6, "[h]", 0, "pwm_uvw", "" ]
         ],
         
-        "reg_r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_vd"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"]],
-        "reg_w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"]],
-        "less_r": [["tp_pos"],["tp_speed","tp_accel"],["state","tgt_iq"]],
-        "less_w": [["tp_pos"],["tp_speed","tp_accel"],["state"],["tgt_speed"],["tgt_iq"]]
+        "sets": {
+            "reg": {
+                "r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_vd"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"]],
+                "w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"]]
+            },
+            "less": {
+                "r": [["tp_pos"],["tp_speed","tp_accel"],["state","tgt_iq"]],
+                "w": [["tp_pos"],["tp_speed","tp_accel"],["state"],["tgt_speed"],["tgt_iq"]]
+            }
+        }
     },
     
     "plot": {

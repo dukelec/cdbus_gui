@@ -40,12 +40,18 @@
             [ 0x0078, 8, "[I]", 0, "img_read", "Read offset and length" ]
         ],
 
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","agc"],["capture_ctrl","led_en"],
-                  ["hdr_cnt"],["img_len","img_read"]],
-        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],
-                  ["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","cam_dst_port"],["width","agc"],["capture_ctrl"],["led_en"]],
-        "less_r": [["capture_ctrl", "capture_state"]],
-        "less_w": [["capture_ctrl"]]
+        "sets": {
+            "reg": {
+                "r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","agc"],["capture_ctrl","led_en"],
+                      ["hdr_cnt"],["img_len","img_read"]],
+                "w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],["bus_cfg_filter_m"],["bus_cfg_mode"],
+                      ["bus_cfg_idle_wait_len","bus_cfg_tx_pre_len"],["dbg_en"],["cam_dst_addr","cam_dst_port"],["width","agc"],["capture_ctrl"],["led_en"]]
+            },
+            "less": {
+                "r": [["capture_ctrl", "capture_state"]],
+                "w": [["capture_ctrl"]]
+            }
+        }
     },
 
     "pic": { "fmt": "jpeg", "port": 0x10 },

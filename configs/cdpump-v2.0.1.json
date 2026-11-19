@@ -42,13 +42,19 @@
         ],
         
         // button groups
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],
-                  ["dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["sen_pressure","loop_cnt"]],
-        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-                  ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],["dbg_raw[0]"],
-                  ["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"]],
-        "less_r": [],
-        "less_w": []
+        "sets": {
+            "reg": {
+                "r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],
+                      ["dbg_raw[0]"],["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"],["sen_pressure","loop_cnt"]],
+                "w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+                      ["bus_cfg_filter","bus_cfg_tx_pre_len"],["dbg_en"],["dbg_raw_msk"],["dbg_raw[0]"],
+                      ["pid_pressure_kp","pid_pressure_out_max"],["set_pressure"]]
+            },
+            "less": {
+                "r": [],
+                "w": []
+            }
+        }
     },
     
     "plot": {

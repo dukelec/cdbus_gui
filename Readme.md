@@ -75,8 +75,8 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Hover over a register to view its description, type, and default value.
  - Registers are grouped for atomic R/W; groups can be edited freely.
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
- - The drop-down next to `Read All` / `Write All` picks the group set: `reg` for `reg_r` / `reg_w`, the default,
-   which lists every register, or the `xxx` of any other `xxx_r` / `xxx_w` pair in the config (e.g. `less`),
+ - The drop-down next to `Read All` / `Write All` picks the group set out of `"sets"` in the config: `reg`, the default,
+   which lists every register, or any other set (e.g. `less`),
    which only lists the registers its groups cover. The sets are offered in the order the config file has them. While `Button Edit` is on every register is listed,
    so one can be added to a group. A set without any group is not offered; with only `reg` left the
    drop-down is locked.
@@ -255,17 +255,23 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
         ],
         
         // button groups
-        "reg_r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
-                  ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
-                  ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
-                  ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
-        "reg_w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
-                  ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],
-                  ["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],
-                  ["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],
-                  ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]],
-        "less_r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
-        "less_w": [["tc_pos"],["tc_speed","tc_accel"],["state"]],
+        "sets": {
+            "reg": {
+                "r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
+                      ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
+                      ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
+                      ["state"],["tc_state","cur_pos"],["tc_vc","tc_ac"],["loop_cnt"],["string_test"]],
+                "w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["bus_cfg_mac"],["bus_cfg_baud_l","bus_cfg_baud_h"],
+                      ["bus_cfg_filter_m"],["bus_cfg_mode"],["bus_cfg_tx_permit_len","bus_cfg_tx_pre_len"],["dbg_en"],
+                      ["qxchg_mcast"],["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],
+                      ["ref_volt","md_val"],["set_home"],["lim_en"],["tc_pos"],["tc_speed","tc_accel"],["tc_accel_emg"],
+                      ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]]
+            },
+            "less": {
+                "r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
+                "w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]
+            }
+        },
         
         // registers the top bar starts out with
         "pin": ["tc_pos", "state"]
@@ -307,7 +313,7 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
 
  - "iap": "reboot" and "keep_bl" are the register addresses of `do_reboot` and `keep_bl`. With "keep_bl" set, the bootloader is searched for by writing `keep_bl` repeatedly until it is acked (one frame locks a bootloader that only listens briefly after power-up), then the device info is read to tell the bootloader from an app. The probe period is derived from the baud rate (20 ms at 115200), or set in ms with an optional "probe_period". Without "keep_bl", the device info is polled instead.
 
- - "reg_r" and "reg_w" are the default register group configurations; you can leave them empty and edit via the UI (after editing, the browser debug window will print them; "less_r" and "less_w" work the same way, as does any other "xxx_r" / "xxx_w" pair, each one a set to pick on the device page).
+ - "sets" holds the register group sets, each one a set to pick on the device page, with "r" for the read groups and "w" for the write groups; "reg" is the default set. You can leave them empty and edit via the UI (after editing, the browser debug window will print them, and `Update Config File` writes them into "sets").
  - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.

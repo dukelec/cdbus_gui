@@ -75,11 +75,19 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - Hover over a register to view its description, type, and default value.
  - Registers are grouped for atomic R/W; groups can be edited freely.
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
- - The drop-down next to `Read All` / `Write All` picks the group set out of `"sets"` in the config: `reg`, the default,
-   which lists every register, or any other set (e.g. `less`),
-   which only lists the registers its groups cover. The sets are offered in the order the config file has them. While `Button Edit` is on every register is listed,
-   so one can be added to a group. A set without any group is not offered; with only `reg` left the
-   drop-down is locked.
+ - The drop-down next to `Read All` / `Write All` picks the group set out of `"sets"` in the config: the first one, the
+   default (named `default` in the bundled configs), or any other set (e.g. `less`). Each set lists the registers its `"show"` names, or every register but the ones its
+   `"hide"` names (one of the two, every register with neither; written like the groups, `["first", "last"]` for a
+   run of registers or `["name"]` for one), plus any register one of its groups covers. A listed
+   register outside the groups of a side has a dead `R` or `W` button. The sets are offered in the order the config
+   file has them. A set other than the default without any group that lists no register is not offered;
+   with only the default left the drop-down is locked.
+ - A set can bring registers of its own in a `"list"` (rows as in `reg.list`), e.g. the project private registers of one
+   firmware branch, which may sit at the same addresses as another branch's. They join the register list by address
+   only while the set is in use, so picking such a set, or leaving it, reloads the page.
+ - In `Button Edit`, `Show` / `Hide` act on the registers picked on either side: a hidden register leaves its groups,
+   and one that is enabled is shown. Hidden registers stay out of the list unless `Show Hidden` is ticked, then they
+   are listed greyed, so one can be shown again.
  - The chosen set and the read period are remembered per device page (by its name);
    the periodic read switch itself always starts off.
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
@@ -256,7 +264,7 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
         
         // button groups
         "sets": {
-            "reg": {
+            "default": {
                 "r": [["magic_code","save_conf"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["dbg_en"],["qxchg_mcast"],
                       ["qxchg_set","qxchg_ret"],["dbg_raw_msk"],["dbg_raw[0]","dbg_raw[1]"],["ref_volt","lim_en"],
                       ["tc_pos","tc_accel"],["tc_accel_emg"],["pid_pos_kp","pid_pos_kd"],["cal_pos","cal_speed"],
@@ -268,6 +276,7 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
                       ["pid_pos_kp","pid_pos_kd"],["state"],["string_test"]]
             },
             "less": {
+                "show": [["tc_pos","tc_accel"],["state","loop_cnt"]],
                 "r": [["tc_pos","tc_accel"],["state","loop_cnt"]],
                 "w": [["tc_pos"],["tc_speed","tc_accel"],["state"]]
             }
@@ -313,7 +322,7 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
 
  - "iap": "reboot" and "keep_bl" are the register addresses of `do_reboot` and `keep_bl`. With "keep_bl" set, the bootloader is searched for by writing `keep_bl` repeatedly until it is acked (one frame locks a bootloader that only listens briefly after power-up), then the device info is read to tell the bootloader from an app. The probe period is derived from the baud rate (20 ms at 115200), or set in ms with an optional "probe_period". Without "keep_bl", the device info is polled instead.
 
- - "sets" holds the register group sets, each one a set to pick on the device page, with "r" for the read groups and "w" for the write groups; "reg" is the default set. You can leave them empty and edit via the UI (after editing, the browser debug window will print them, and `Update Config File` writes them into "sets").
+ - "sets" holds the register group sets, each one a set to pick on the device page, with "r" for the read groups and "w" for the write groups, and either "show" or "hide" to pick the registers it lists (every register with neither), in the same `["first", "last"]` / `["name"]` form as the groups, and optionally a "list" of registers of its own; the first set is the default, the one a page starts with. You can leave them empty and edit via the UI (after editing, the browser debug window will print them, and `Update Config File` writes them into "sets").
  - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.

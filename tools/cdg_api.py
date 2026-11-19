@@ -113,7 +113,7 @@ class CdgApi:
 
     def groups(self, gset=None):
         """R / W button groups of the set in use, or of set `gset`:
-        {'set': 'reg', 'sets': [...], 'r': [[first, last], [name], ...], 'w': [...]}"""
+        {'set': 'default', 'sets': [...], 'r': [[first, last], [name], ...], 'w': [...]}"""
         return json.loads(self._req('GET', '/groups', {'set': gset} if gset else None))
 
     def set_groups(self, r=..., w=..., gset=None, save=False):

@@ -141,6 +141,7 @@ body > section.section {
 .reg_row_name .level { margin: 5px 0; }
 .reg_row_name .level-right { margin: 0 8px 0 4px; font-family: monospace; }
 .reg_row_val { margin: 5px 0; flex: 0 0 200px; }
+.reg_hidden .reg_row_name { opacity: 0.4; }   /* listed by Show Hidden while editing */
 
 .columns.is-gapless > .is-1.reg_btn_pin {
     width: 24px;

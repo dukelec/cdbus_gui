@@ -382,12 +382,17 @@ test('a timed out register transfer moves to the other port, a late answer lands
 test('the edit bar transforms the groups as data and the list is drawn from them', () => {
     const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b'], [2,2,'H',0,'c'], [8,1,'B',0,'d']];
     const elm = {};
-    for (const reg of list)
+    for (const reg of list) {
         for (const k of ['reg', 'reg_btn_r', 'reg_btn_w'])
             elm[`${k}.${reg[4]}`] = { style: {} };
+        elm[`reg_row.${reg[4]}`] = { style: {}, classList: { toggle() {} } };
+    }
+    const show_hidden = { checked: false };
+    const document = { getElementById: id => id == 'show_hidden' ? show_hidden : { appendChild() {} } };
     const csa = { cfg: { reg: { list } },
-        reg: { elm, reg_r: [[0,2]], reg_w: [], editing: true, sel: { r: new Set(), w: new Set() } } };
-    const ctx = context({ ...constants, csa });
+        reg: { elm, reg_r: [[0,2]], reg_w: [], vis: new Set(['a', 'b', 'c', 'd']), editing: true,
+               sel: { r: new Set(), w: new Set() } } };
+    const ctx = context({ ...constants, csa, document });
     vm.runInContext(source('html/plugins/reg.js'), ctx);
     const groups = () => JSON.stringify(csa.reg.reg_r);
     vm.runInContext("update_reg_rw_btn('r')", ctx);
@@ -413,8 +418,170 @@ test('the edit bar transforms the groups as data and the list is drawn from them
     elm['reg_btn_r.b'].onclick();
     vm.runInContext("edit_apply(['disable'])", ctx);                      // taking b out splits the group
     assert.equal(groups(), '[[0,1],[2,7]]');
+    elm['reg_btn_w.c'].onclick();
+    vm.runInContext("edit_apply(['hide'])", ctx);                         // Hide takes c out of both sides
+    assert.equal(groups(), '[[0,1],[8,1]]');
+    assert.equal(JSON.stringify(csa.reg.reg_w), '[[0,2],[8,1]]');
+    assert.equal(csa.reg.vis.has('c'), false);
+    assert.equal(csa.reg.vis.has('b'), true);                             // b is only disabled, still shown
+    vm.runInContext("edit_select(true)", ctx);                            // Select All leaves hidden c out
+    assert.equal(csa.reg.sel.r.size, 3);
+    show_hidden.checked = true;
+    vm.runInContext("edit_select(true)", ctx);                            // unless Show Hidden lists it
+    assert.equal(csa.reg.sel.r.size, 4);
+    vm.runInContext("edit_select(false)", ctx);
+    elm['reg_btn_r.c'].onclick();
+    vm.runInContext("edit_apply(['show'])", ctx);                         // Show brings it back, groups as they are
+    assert.equal(csa.reg.vis.has('c'), true);
+    assert.equal(groups(), '[[0,1],[8,1]]');
     csa.reg.editing = false;                                              // back to reading and writing
     vm.runInContext("update_reg_rw_btn('r')", ctx);
     assert.equal(typeof elm['reg_btn_r.a'].onclick, 'function');
     assert.equal(elm['reg_btn_r.b'].onclick, null);
+});
+
+test('a show list split or in another order is no local edit, a run is saved as one range, and a null set does not break the checks', async () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b'], [2,1,'B',0,'c']];
+    const store = {};
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { less: { show: [['c'], ['a']], r: [['a']] }, x: null } } },
+        reg: { reg_r: [[0,1]], reg_w: [] },
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const errs = [];
+    const ctx = context({ ...constants, csa, show_cfg_error: e => errs.push(e) });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    vm.runInContext('check_sets()', ctx);
+    assert.equal(errs.length, 0);
+    assert.equal(vm.runInContext("JSON.stringify([...vis_from_list('less', [['b', 'c']])])", ctx), '["b","c"]');
+    const save = "(async () => { for (let [k, v] of mode_vals('less')) await save_reg_db('less', k, v); })()";
+    csa.reg.vis = vm.runInContext("vis_from_list('less', cfg_val('less', 'show'))", ctx);
+    await vm.runInContext(save, ctx);
+    assert.equal(JSON.stringify(store['n/reg.sets']), '{}');
+    csa.reg.vis.add('b');                                                 // a real change is kept
+    await vm.runInContext(save, ctx);
+    assert.equal(JSON.stringify(store['n/reg.sets']), '{"less":{"show":[["a","c"]]}}');
+});
+
+test('the checks name unknown registers in groups too, and saving a set drops a list of the other kind', async () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b']];
+    const store = { 'n/reg.sets': { less: { hide: [['a']] } } };  // from when the file used hide for less
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { default: { r: [['a', 'nope']], w: [['b']] }, less: { show: [['a']], w: [['typo']] } } } },
+        reg: { reg_r: [], reg_w: [] },
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const errs = [];
+    const ctx = context({ ...constants, csa, show_cfg_error: e => errs.push(e) });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    vm.runInContext('check_sets()', ctx);
+    assert.deepEqual(errs, ['reg.sets.default.r names registers the list does not have: nope',
+                            'reg.sets.less.w names registers the list does not have: typo']);
+    await vm.runInContext("save_reg_db('less', 'r', [['a']])", ctx);
+    assert.equal(JSON.stringify(store['n/reg.sets']), '{"less":{"r":[["a"]]}}');
+});
+
+test('the first set is the default whatever its name, a file without sets gets one', async () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b']];
+    const sel = {};
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { main: { show: [] }, empty: { show: [] }, less: { r: [['a']] } } } },
+        reg: { mode: 'reg' },   // remembered from before the rename, the file has no such set now
+        db: { get: async () => undefined } };
+    const ctx = context({ ...constants, csa, escape_html: x => x, document: { getElementById: () => sel } });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    await vm.runInContext('update_mode_select()', ctx);
+    assert.equal(sel.value, 'main');
+    assert.equal(sel.innerHTML, '<option value="main">main</option><option value="less">less</option>');
+    delete csa.cfg.reg.sets;
+    assert.equal(JSON.stringify(vm.runInContext('mode_names()', ctx)), '["default"]');
+});
+
+test('a set brings registers of its own: merged in by address while in use, a switch to or from it reloads', async () => {
+    const list = [[0,1,'B',0,'a'], [4,1,'B',0,'b']];
+    const store = { 'n/reg.set': 'z' };
+    const sel = {};
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { default: { r: [['a', 'b']] },
+                                    z: { list: [[2,2,'H',0,'z1']], r: [['a'], ['z1']] },
+                                    r: { list: [[2,1,'B',0,'r1'], [3,1,'B',0,'r2']], show: [['r1', 'r2']] } } } },
+        reg: {},
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const errs = [];
+    const ctx = context({ ...constants, csa, escape_html: x => x, val2hex: x => x.toString(16), reg_range_err: () => null,
+                          show_cfg_error: e => errs.push(e), document: { getElementById: () => sel } });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    await vm.runInContext('use_set_regs()', ctx);
+    assert.equal(JSON.stringify(csa.cfg.reg.list.map(r => r[4])), '["a","z1","b"]');
+    assert.equal(vm.runInContext('check_reg_list()', ctx), true);
+    vm.runInContext('check_sets()', ctx);
+    assert.deepEqual(errs, []);                                     // r1 / r2 belong to set r
+    await vm.runInContext('update_mode_select()', ctx);
+    assert.equal(sel.value, 'z');                                   // r is offered, none of it is in the list now
+    assert.equal(sel.innerHTML, '<option value="default">default</option><option value="z">z</option><option value="r">r</option>');
+    assert.equal(vm.runInContext("needs_reload('default')", ctx), true);
+    assert.equal(vm.runInContext("needs_reload('z')", ctx), false);
+    await assert.rejects(vm.runInContext("groups_set({ set: 'default' })", ctx), /reloads the page/);
+    await assert.rejects(vm.runInContext("groups_get('r')", ctx), /registers of its own/);
+
+    csa.cfg.reg.list = list;                                        // one on top of the file's list is an overlap
+    csa.cfg.reg.sets.r.list = [[4,1,'B',0,'r1']];
+    store['n/reg.set'] = 'r';
+    await vm.runInContext('use_set_regs()', ctx);
+    vm.runInContext('check_reg_list()', ctx);
+    assert.match(errs.at(-1), /out of order.*b 0x4\+1 -> r1 0x4/);
+});
+
+test('a set that is gone hands over to the default with a reload when the list changes, and no reload drops an edit or an upgrade', async () => {
+    const list = [[0,1,'B',0,'a'], [4,1,'B',0,'b']];
+    // less was emptied in this browser, the default brings a register of its own
+    const store = { 'n/reg.set': 'less', 'n/reg.sets': { less: { r: [], show: [] } } };
+    const sel = {}, alerts = [];
+    let reloads = 0;
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { default: { list: [[2,1,'B',0,'d1']], r: [['a', 'b']] }, less: { show: [['a']], r: [['a']] } } } },
+        reg: {},
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const ctx = context({ ...constants, csa, escape_html: x => x, alert: m => alerts.push(m), location: { reload: () => reloads++ },
+                          document: { getElementById: () => sel } });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    await vm.runInContext('use_set_regs()', ctx);
+    assert.equal(csa.cfg.reg.list.length, 2);                       // started as less, without d1
+    await vm.runInContext('update_mode_select()', ctx);
+    assert.deepEqual([sel.value, store['n/reg.set'], reloads], ['default', 'default', 1]);
+
+    csa.reg.mode = 'default';                                       // the page after that reload
+    for (const [state, msg] of [[{ editing: true }, /Button Edit/], [{ iap: { stop: false } }, /upgrade/]]) {
+        csa.reg.editing = !!state.editing;
+        csa.iap = state.iap;
+        sel.value = 'less';
+        await vm.runInContext('mode_change()', ctx);
+        assert.match(alerts.at(-1), msg);
+        assert.deepEqual([sel.value, store['n/reg.set'], reloads], ['default', 'default', 1]);
+    }
+});
+
+test('the translation files parse', () => {
+    for (const f of fs.readdirSync(`${root}/html/utils/trans`))
+        new vm.Script(source(`html/utils/trans/${f}`), { filename: f });
+});
+
+test('no set switch while the groups are edited, not even one that keeps the reg list', async () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b']];
+    const store = { 'n/reg.set': 'default' };
+    const sel = {}, alerts = [];
+    let reloads = 0;
+    const csa = { arg: { name: 'n' },
+        cfg: { reg: { list, sets: { default: { r: [['a', 'b']] }, less: { r: [['a']] } } } },
+        reg: {},
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const ctx = context({ ...constants, csa, escape_html: x => x, alert: m => alerts.push(m), location: { reload: () => reloads++ },
+                          document: { getElementById: () => sel } });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    await vm.runInContext('use_set_regs()', ctx);
+    await vm.runInContext('update_mode_select()', ctx);
+    assert.equal(vm.runInContext("needs_reload('less')", ctx), false);
+    csa.reg.editing = true;
+    sel.value = 'less';
+    await vm.runInContext('mode_change()', ctx);
+    assert.match(alerts.at(-1), /Button Edit/);
+    assert.deepEqual([sel.value, csa.reg.mode, store['n/reg.set'], reloads], ['default', 'default', 'default', 0]);
 });

@@ -76,6 +76,9 @@ let trans_zh_cn = {
     'Ungroup': '取消组',
     'Enable': '使能',
     'Disable': '禁用',
+    'Show': '显示',
+    'Hide': '隐藏',
+    'Show Hidden': '显示隐藏的',
     'Select All': '选择全部',
     'Load Default': '加载默认',
     'Update Config File': '更新配置文件',
@@ -152,6 +155,8 @@ let trans_zh_cn = {
     '%s: expected %s values, got %s': '%s：需要 %s 个值，实际为 %s 个',
     '%s: %s is outside %s': '%s：%s 超出允许范围 %s',
     'reg.pin must be a list of register names.': 'reg.pin 必须是寄存器名称的列表。',
+    'reg.sets.%s has both show and hide, only show is used.': 'reg.sets.%s 同时有 show 和 hide，只用 show。',
+    'reg.sets.%s names registers the list does not have: %s': 'reg.sets.%s 里有寄存器列表中没有的名字：%s',
     'Register list is empty.': '寄存器列表为空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表顺序有误，地址必须递增且不重叠：%s',
     'Plot list is empty.': '波形列表为空。',
@@ -179,7 +184,8 @@ let trans_zh_cn = {
     '"%s" is not a number': '"%s" 不是数字',
     'The plot config register %s is in no W group, add one with Button Edit.': '波形配置寄存器 %s 不在任何 W 分组中，请用“按键编辑”添加。',
     '"%s" is not a hex byte': '"%s" 不是十六进制字节',
-    'The button groups are being edited (Button Edit is on), finish that first.': '正在编辑按钮分组（按键编辑 已打开），请先完成。'
+    'The button groups are being edited (Button Edit is on), finish that first.': '正在编辑按钮分组（按键编辑 已打开），请先完成。',
+    'An upgrade is running, switch the set once it is done.': '正在升级，完成后再切换寄存器分组。'
 };
 
 export { trans_zh_cn };

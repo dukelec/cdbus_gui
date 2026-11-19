@@ -12,6 +12,7 @@ Args:
   --debug   | -d    # debug level: debug
 
   --cfg   CFG_FILE  # always required
+  --set   SET_NAME  # register group set of the config, default: the first one
 
   --tty   PORT      # default: ttyACM0
   --baud  BAUD      # default: 115200
@@ -53,6 +54,7 @@ csa = {
     'sock': None,
     
     'cfg': None,
+    'set': {},      # the group set in use, one of reg.sets of the config
 
     # reg_name(.n) : {
     #   fmt:
@@ -97,14 +99,24 @@ def cdg_cmd_init(doc=None):
 
     csa['logger'] = logging.getLogger(f'cdgui_cmd')
 
+    # the set picks the groups, and the registers it brings of its own ("list") join the reg list
+    with open(cfg_file) as f:
+        csa['cfg'] = json5.load(f)
+    reg = csa['cfg']['reg']
+    sets = reg.get('sets') or {}
+    set_name = args.get("--set", dft=next(iter(sets), None))
+    if set_name != None and set_name not in sets:
+        print(f'unknown set: {set_name}, the config file has: {", ".join(sets)}')
+        exit(-1)
+    csa['set'] = sets.get(set_name) or {}
+    reg['list'] = sorted(reg['list'] + csa['set'].get('list', []), key=lambda r: r[0])
+
     dev = CDBusSerial(tty_str, baud=baud)
 
     CDNetIntf(dev, mac=local_mac)
     csa['sock'] = CDNetSocket(('', 0x40))
     sock_dbg = CDNetSocket(('', 9))
 
-    with open(cfg_file) as f:
-        csa['cfg'] = json5.load(f)
     _thread.start_new_thread(dbg_echo, ())
     list_all_reg()
 
@@ -198,7 +210,7 @@ def get_reg_info(name):
 def get_rw_grp(name, rw='r'):
     if name not in csa['regs']:
         return None
-    grps = csa['cfg']['reg'].get('sets', {}).get('reg', {}).get(rw, [])
+    grps = csa['set'].get(rw, [])
     addr_len_list = []
     for i in range(len(grps)):
         g = grps[i]

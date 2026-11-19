@@ -96,6 +96,7 @@
             [ 0x044a, 2, "h", 0, "tgt_id", "Id target" ],
             [ 0x044c, 2, "h", 0, "tgt_vq", "Vq target" ],
             [ 0x044e, 2, "h", 0, "tgt_vd", "Vd target" ],
+            [ 0x0450, 2, "h", 0, "tgt_elec_angle", "Electrical angle target, set in voltage mode, follows meas_elec_angle from current mode up" ],
             [ 0x0490, 2, "H", 1, "meas_encoder", "Encoder value" ],
             [ 0x0492, 2, "h", 0, "meas_elec_angle", "Measured electrical angle" ],
             [ 0x0494, 4, "i", 1, "meas_pos", "Measured position" ],
@@ -113,17 +114,31 @@
             [ 0x04e6, 6, "[h]", 0, "meas_i", "" ],
             [ 0x04ec, 6, "[h]", 0, "pwm_dbg0", "" ],
             [ 0x04f2, 6, "[h]", 0, "pwm_dbg1", "" ],
-            [ 0x04f8, 6, "[h]", 0, "pwm_uvw", "" ]
+            [ 0x04f8, 6, "[h]", 0, "pwm_uvw", "" ],
+            [ 0x050e, 2, "H", 0, "drv_error_flag", "Detailed gate-driver error flags" ],
+            [ 0x0510, 2, "H", 1, "nob_encoder", "Encoder value before adding bias" ],
+            [ 0x0514, 4, "i", 1, "nob_pos", "Position before adding bias" ],
+            [ 0x0518, 4, "f", 0, "meas_rpm_avg", "" ],
+            [ 0x051c, 4, "f", 0, "meas_iq_avg_f", "" ],
+            [ 0x0520, 4, "f", 0, "tgt_vq_avg_f", "" ],
+            [ 0x0524, 4, "f", 0, "bus_voltage_f", "" ],
+            [ 0x0528, 4, "f", 0, "motor_temp_f", "" ]
         ],
         
         "sets": {
-            "reg": {
-                "r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["smo_v_alpha_real","smo_e_beta"],["pll_theta","sl_state"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_vd"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"]],
-                "w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["sl_start"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"]]
+            "default": {
+                "hide": [["smo_l","sl_state"],["tgt_id"]],
+                "r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_iq"],["tgt_vq","tgt_elec_angle"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"],["drv_error_flag","motor_temp_f"]],
+                "w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"],["tgt_elec_angle"]]
             },
             "less": {
+                "show": [["tp_pos","tp_accel"],["state","tgt_iq"]],
                 "r": [["tp_pos"],["tp_speed","tp_accel"],["state","tgt_iq"]],
                 "w": [["tp_pos"],["tp_speed","tp_accel"],["state"],["tgt_speed"],["tgt_iq"]]
+            },
+            "sensorless": {
+                "r": [["magic_code"],["conf_ver","save_conf"],["mac","bus_tx_pre_len"],["dbg_en","dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles","bias_pos"],["cali_voltage","temp_warn"],["tp_pos","tp_accel"],["tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp","pid_pos_out_max"],["pid_speed_kp","pid_speed_out_max"],["pid_iq_kp","pid_iq_out_max"],["pid_id_kp","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["smo_v_alpha_real","smo_e_beta"],["pll_theta","sl_state"],["enc_cali","state"],["error_flag","warn_flag"],["tgt_pos","tgt_elec_angle"],["meas_encoder","meas_id"],["bus_voltage","tgt_vq_avg"],["loop_cnt","adc_sel"],["meas_i","pwm_uvw"],["drv_error_flag","motor_temp_f"]],
+                "w": [["conf_ver","conf_from"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["nominal_voltage","enc_linear_max"],["anticog_en","anticog_ratio_vq"],["motor_wire_swap"],["motor_poles"],["bias_encoder"],["bias_pos"],["cali_voltage","temp_warn"],["tp_pos"],["tp_speed"],["tp_accel"],["tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["pid_speed_kp","pid_speed_ki"],["pid_speed_out_min","pid_speed_out_max"],["pid_iq_kp","pid_iq_ki"],["pid_iq_out_min","pid_iq_out_max"],["pid_id_kp","pid_id_ki"],["pid_id_out_min","pid_id_out_max"],["smo_l","smo_eps"],["pll_kp","pll_ki"],["sl_start"],["enc_cali"],["state"],["error_flag","warn_flag"],["tgt_pos"],["tgt_speed"],["tgt_iq"],["tgt_vq","tgt_vd"],["tgt_elec_angle"]]
             }
         }
     },
@@ -138,17 +153,26 @@
         "plots": [
             {
                 // "color": ["black", "red", "green"]
+                // with the sensorless firmware, plot0 shows SMO / PLL instead:
+                // "label": ["N", "smo_v_alpha_real", "smo_v_beta_real", "smo_i_alpha_real", "smo_i_beta_real", "smo_i_alpha", "smo_i_beta",
+                //           "smo_e_alpha", "smo_e_beta", "pll_atan2", "meas_elec_angle"],
+                // "cal": { "meas_elec_angle_f": "let a = _d[10].at(-1) / 32768 * 3.1415926; if (a < 0) a += 3.1415926 * 2; return a;" },
                 "cfg_reg": "dbg_raw",
                 "x_fmt": "H1",
-                "label": ["N", "smo_v_alpha_real", "smo_v_beta_real", "smo_i_alpha_real", "smo_i_beta_real", "smo_i_alpha", "smo_i_beta",
-                               "smo_e_alpha", "smo_e_beta", "pll_atan2", "meas_elec_angle"],
+                "label": ["N", "meas_iq", "meas_id", "tgt_iq", "tgt_vq", "tgt_vd", "meas_encoder"],
                 "cal": {
-                    "meas_elec_angle_f": "                          \
-                        let a = _d[10].at(-1) / 32768 * 3.1415926;  \
-                        if (a < 0)                                  \
-                            a += 3.1415926 * 2;                     \
-                        return a;                                   \
-                    "
+                    "sq_err": "_d[1].at(-1) - _d[3].at(-1)", // data1 - data3
+                    "sq_err_avg": "                  \
+                        let a = 0;                   \
+                        for (let i = 0; i < 5; i++)  \
+                            a += _d[7].at(-1-i);     \
+                        return a / 5;",
+                    "sq_err_avg2": "                        \
+                        if (_d[7]._f == undefined)          \
+                            _d[7]._f = 0;                   \
+                        let err = _d[7].at(-1) - _d[7]._f;  \
+                        _d[7]._f += err * 0.02;             \
+                        return _d[7]._f;"
                 },
                 "fft": {
                     "sample_rate": 20751.953,

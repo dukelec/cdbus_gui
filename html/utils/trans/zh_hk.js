@@ -75,6 +75,9 @@ let trans_zh_hk = {
     'Ungroup': '取消組',
     'Enable': '使能',
     'Disable': '禁用',
+    'Show': '顯示',
+    'Hide': '隱藏',
+    'Show Hidden': '顯示隱藏的',
     'Select All': '選擇全部',
     'Load Default': '加載預設',
     'Update Config File': '更新配置文件',
@@ -151,6 +154,8 @@ let trans_zh_hk = {
     '%s: expected %s values, got %s': '%s：需要 %s 個值，實際為 %s 個',
     '%s: %s is outside %s': '%s：%s 超出允許範圍 %s',
     'reg.pin must be a list of register names.': 'reg.pin 必須是暫存器名稱的列表。',
+    'reg.sets.%s has both show and hide, only show is used.': 'reg.sets.%s 同時有 show 和 hide，只用 show。',
+    'reg.sets.%s names registers the list does not have: %s': 'reg.sets.%s 裏有暫存器列表中沒有的名字：%s',
     'Register list is empty.': '寄存器列表為空。',
     'Register list is out of order, addresses must ascend without overlap: %s': '寄存器列表順序有誤，地址必須遞增且不重疊：%s',
     'Plot list is empty.': '波形列表為空。',
@@ -178,7 +183,8 @@ let trans_zh_hk = {
     '"%s" is not a number': '"%s" 不是數字',
     'The plot config register %s is in no W group, add one with Button Edit.': '波形配置寄存器 %s 不在任何 W 分組中，請用「按鍵編輯」添加。',
     '"%s" is not a hex byte': '"%s" 不是十六進制位元組',
-    'The button groups are being edited (Button Edit is on), finish that first.': '正在編輯按鈕分組（按鍵編輯 已打開），請先完成。'
+    'The button groups are being edited (Button Edit is on), finish that first.': '正在編輯按鈕分組（按鍵編輯 已打開），請先完成。',
+    'An upgrade is running, switch the set once it is done.': '正在升級，完成後再切換寄存器分組。'
 };
 
 export { trans_zh_hk };

@@ -144,18 +144,98 @@ function cur_mode() {
     return document.getElementById('reg_mode').value;
 }
 
-// one side ('r' / 'w') of a set as the config file has it
-function cfg_groups(mode, rw) {
-    return csa.cfg.reg.sets?.[mode]?.[rw];
+// one member of a set as the config file has it: the 'r' / 'w' groups, or the 'show' / 'hide' list
+function cfg_val(mode, key) {
+    return csa.cfg.reg.sets?.[mode]?.[key];
+}
+
+// the list a set picks its registers by: show names the ones it shows, hide the ones it does not;
+// hide when the file has neither, so a set without one shows every register
+function vis_kind(mode) {
+    return cfg_val(mode, 'show') ? 'show' : 'hide';
+}
+
+// the names of the registers a set shows, from its show / hide list, and back. The list is
+// written like the groups, ["first", "last"] or ["name"]; back, each run of the list is one entry
+function vis_from_list(mode, list) {
+    let picked = new Set();
+    for (let g of list || []) {
+        let i0 = reg_idx_by_name(g[0]), i1 = reg_idx_by_name(g.at(-1));
+        for (let i = i0; i0 != null && i1 != null && i <= i1; i++)
+            picked.add(i);
+    }
+    let show = vis_kind(mode) == 'show';
+    return new Set(csa.cfg.reg.list.filter((r, i) => picked.has(i) == show).map(r => r[R_ID]));
+}
+
+function vis_to_list(mode, vis) {
+    let show = vis_kind(mode) == 'show';
+    let ret = [], prev = false;
+    for (let r of csa.cfg.reg.list) {
+        let hit = vis.has(r[R_ID]) == show;
+        if (hit && prev)
+            ret.at(-1)[1] = r[R_ID];
+        else if (hit)
+            ret.push([r[R_ID]]);
+        prev = hit;
+    }
+    return ret;
+}
+
+// a set picks its registers by show or by hide, never both, and names only registers of the list:
+// a group with an unknown name is dropped without a word otherwise
+function check_sets() {
+    let own = own_regs(csa.reg.mode);
+    let file_ids = csa.cfg.reg.list.filter(r => !own.includes(r)).map(r => r[R_ID]);
+    for (let m in csa.cfg.reg.sets) {
+        if (cfg_val(m, 'show') && cfg_val(m, 'hide'))
+            show_cfg_error(L('reg.sets.%s has both show and hide, only show is used.').replace('%s', m));
+        let known = new Set([...file_ids, ...own_regs(m).map(r => r[R_ID])]);
+        for (let key of ['show', 'hide', 'r', 'w']) {
+            let v = cfg_val(m, key);
+            let bad = (Array.isArray(v) ? v.flat() : []).filter(id => !known.has(id));
+            if (bad.length)
+                show_cfg_error(L('reg.sets.%s names registers the list does not have: %s')
+                               .replace('%s', `${m}.${key}`).replace('%s', bad.join(', ')));
+        }
+    }
+}
+
+// a member of a set as the page would write the file's back: a show / hide list as runs in list
+// order, so that a hand written one split or ordered otherwise does not count as edited
+function cfg_norm(mode, key) {
+    let v = cfg_val(mode, key) || [];
+    return key == 'r' || key == 'w' ? v : vis_to_list(mode, vis_from_list(mode, v));
 }
 
 // every set, in the order the config file names it (the json5 parser, msgpack and the js object
-// all keep that order); reg is the default and always there, first when the file has no reg set
+// all keep that order); the first is the default, a file without sets gets an empty one
 function mode_names() {
     let names = Object.keys(csa.cfg.reg.sets || {});
-    if (!names.includes('reg'))
-        names.unshift('reg');
-    return names;
+    return names.length ? names : ['default'];
+}
+
+// the registers a set brings of its own, its "list": the page runs on the reg list with those of
+// the set in use merged in, so a switch to or from such a set reloads the page
+function own_regs(mode) {
+    return cfg_val(mode, 'list') || [];
+}
+
+function needs_reload(mode) {
+    return mode != csa.reg.mode && (own_regs(mode).length || own_regs(csa.reg.mode).length) > 0;
+}
+
+// the set the page starts with, and its registers put in place by address
+async function use_set_regs() {
+    let names = mode_names();
+    let saved = await csa.db.get('tmp', `${csa.arg.name}/reg.set`);
+    csa.reg.mode = names.includes(saved) ? saved : names[0];
+    let list = [...csa.cfg.reg.list];
+    for (let r of own_regs(csa.reg.mode)) {
+        let i = list.findIndex(x => x[R_ADDR] > r[R_ADDR]);
+        list.splice(i < 0 ? list.length : i, 0, r);
+    }
+    csa.cfg.reg.list = list;
 }
 
 // this browser's edits, shaped like reg.sets of the config file, with only the sides that differ
@@ -163,44 +243,66 @@ async function local_sets() {
     return await csa.db.get('tmp', `${csa.arg.name}/reg.sets`) ?? {};
 }
 
-// the groups of a set in effect: this browser's edited copy of each side, else the config file's
+// a set in effect, [r, w, the names it shows]: this browser's edited copy of each member, else
+// the config file's
 async function mode_groups(mode) {
     let loc = (await local_sets())[mode] ?? {};
-    return [loc.r ?? cfg_groups(mode, 'r'), loc.w ?? cfg_groups(mode, 'w')];
+    let k = vis_kind(mode);
+    return [loc.r ?? cfg_val(mode, 'r'), loc.w ?? cfg_val(mode, 'w'),
+            vis_from_list(mode, loc[k] ?? cfg_val(mode, k))];
 }
 
-// offer reg plus every set that has at least one group, keeping the page's choice when it is
-// still there; with only reg left there is nothing to choose, so the select is locked. `keep` is
-// offered in any case: a set the api has just given groups to, without saving them
+// offer the default set plus every other one that has a group or shows a register, keeping the
+// page's choice when it is still there; with only the default left there is nothing to choose,
+// so the select is locked. `keep` is offered in any case: a set the api has just given groups
+// to, without saving them
 async function update_mode_select(keep=null) {
     let sel = document.getElementById('reg_mode');
+    let all = mode_names();
     let names = [];
-    for (let m of mode_names()) {
-        let [r, w] = await mode_groups(m);
-        if (m == 'reg' || m == keep || (r && r.length) || (w && w.length))
+    for (let m of all) {
+        let [r, w, vis] = await mode_groups(m);
+        if (m == all[0] || m == keep || r?.length || w?.length || vis.size || own_regs(m).length)
             names.push(m);
     }
     sel.innerHTML = names.map(m => `<option value="${escape_html(m)}">${escape_html(m)}</option>`).join('');
-    sel.value = names.includes(csa.reg.mode) ? csa.reg.mode : 'reg';
+    sel.value = names.includes(csa.reg.mode) ? csa.reg.mode : names[0];
+    if (needs_reload(sel.value)) {  // the set in use is gone, e.g. emptied by an edit, and the list is not its
+        await csa.db.set('tmp', `${csa.arg.name}/reg.set`, sel.value);
+        location.reload();
+    }
+    csa.reg.mode = sel.value;
     sel.disabled = names.length < 2;
     sel.title = names.length < 2 ? L('No other register group set to choose') : '';
 }
 
-// a set other than reg only shows the regs a read or a write group covers, but all of them while
-// the groups are being edited, or there would be no way to add one; the shown rows are then split
-// over the two columns again the way init_reg_list() does it
+// a register is in the set in use when the set shows it, or a group covers it: a hidden one in a
+// group would have its unseen value written along
+function reg_in_set(reg) {
+    return csa.reg.vis.has(reg[R_ID]) || in_reg_rw(csa.reg.reg_r, reg[R_ADDR]) != null ||
+           in_reg_rw(csa.reg.reg_w, reg[R_ADDR]) != null;
+}
+
+// while editing, Show Hidden lists the rest as well, greyed, so one can be shown again
+function list_hidden() {
+    return in_button_edit() && document.getElementById('show_hidden').checked;
+}
+
+// the rows of the set in use, split over the two columns again the way init_reg_list() does it
 function layout_reg_rows() {
     let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
-    let all = cur_mode() == 'reg' || in_button_edit();
     let rows = csa.cfg.reg.list.map(reg => ({
         elm: csa.reg.elm[`reg_row.${reg[R_ID]}`],
-        show: all || in_reg_rw(csa.reg.reg_r, reg[R_ADDR]) != null || in_reg_rw(csa.reg.reg_w, reg[R_ADDR]) != null,
+        in_set: reg_in_set(reg),
         lines: reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1
     }));
+    for (let r of rows)
+        r.show = r.in_set || list_hidden();
     let max_line = rows.reduce((n, r) => n + (r.show ? r.lines : 0), 0);
     let cur_line = 0;
     for (let r of rows) {
         r.elm.style.display = r.show ? '' : 'none';
+        r.elm.classList.toggle('reg_hidden', !r.in_set);
         list[cur_line <= max_line/2 ? 0 : 1].appendChild(r.elm);
         if (r.show)
             cur_line += r.lines;
@@ -441,22 +543,39 @@ function edit_marks(marks, sel, op) {
     return marks;
 }
 
-// run the edit bar's buttons over the picked registers of both sides, then drop the pick
+// run the edit bar's buttons over the picked registers of both sides, then drop the pick. Show
+// and hide take a register picked on either side, and hiding one takes it out of its groups;
+// enabling one shows it, so it stays in view, and out of use, once it is disabled again
 function edit_apply(ops) {
+    let both = new Set([...csa.reg.sel.r, ...csa.reg.sel.w]);
+    for (let reg of csa.cfg.reg.list) {
+        if (!both.has(reg[R_ADDR]))
+            continue;
+        if (ops.includes('hide'))
+            csa.reg.vis.delete(reg[R_ID]);
+        else if (ops.includes('show') || ops.includes('enable'))
+            csa.reg.vis.add(reg[R_ID]);
+    }
     for (let rw of ['r', 'w']) {
         let marks = groups_to_marks(rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w);
-        for (let op of ops)
-            edit_marks(marks, csa.reg.sel[rw], op);
+        for (let op of ops) {
+            if (op == 'hide')
+                edit_marks(marks, both, 'disable');
+            else if (op != 'show')
+                edit_marks(marks, csa.reg.sel[rw], op);
+        }
         csa.reg[rw == 'r' ? 'reg_r' : 'reg_w'] = marks_to_groups(marks);
         csa.reg.sel[rw].clear();
         update_reg_rw_btn(rw);
     }
+    layout_reg_rows();
 }
 
-// pick every register on both sides, or none
+// pick every register listed on both sides, or none
 function edit_select(all) {
+    let listed = csa.cfg.reg.list.filter(r => list_hidden() || reg_in_set(r));
     for (let rw of ['r', 'w']) {
-        csa.reg.sel[rw] = new Set(all ? csa.cfg.reg.list.map(r => r[R_ADDR]) : []);
+        csa.reg.sel[rw] = new Set(all ? listed.map(r => r[R_ADDR]) : []);
         update_reg_rw_btn(rw);
     }
 }
@@ -470,8 +589,9 @@ async function button_edit() {
     if (!csa.reg.editing) {
         csa.reg.editing = true;
         csa.reg.sel = { r: new Set(), w: new Set() };
+        document.getElementById('show_hidden').checked = false;
         render_edit_bar();
-        layout_reg_rows();  // every register, so one can be added to a group
+        layout_reg_rows();
         build_pin_bar();    // the bar steps aside, its R / W would mean something else now
         update_reg_rw_btn('r');
         update_reg_rw_btn('w');
@@ -480,10 +600,10 @@ async function button_edit() {
         render_edit_bar();
         // save to idb, only what differs from the config file
         let mode = cur_mode();
-        await save_reg_db(mode, 'r', reg_rw2reg_cfg(csa.reg.reg_r));
-        await save_reg_db(mode, 'w', reg_rw2reg_cfg(csa.reg.reg_w));
-        console.log(`new sets.${mode}.r values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_r)));
-        console.log(`new sets.${mode}.w values:`, JSON.stringify(reg_rw2reg_cfg(csa.reg.reg_w)));
+        for (let [key, val] of mode_vals(mode)) {
+            await save_reg_db(mode, key, val);
+            console.log(`new sets.${mode}.${key} values:`, JSON.stringify(val));
+        }
         // the edit may have emptied a set, or Load Default refilled one
         await update_mode_select();
         await init_reg_rw();
@@ -493,23 +613,33 @@ async function button_edit() {
 // back to the config file for the set being edited, the other sets keep their local edits
 async function button_def() {
     let mode = cur_mode();
-    csa.reg.reg_r = reg_cfg2reg_rw(cfg_groups(mode, 'r'));
-    csa.reg.reg_w = reg_cfg2reg_rw(cfg_groups(mode, 'w'));
-    await save_reg_db(mode, 'r', null);
-    await save_reg_db(mode, 'w', null);
+    let k = vis_kind(mode);
+    csa.reg.reg_r = reg_cfg2reg_rw(cfg_val(mode, 'r'));
+    csa.reg.reg_w = reg_cfg2reg_rw(cfg_val(mode, 'w'));
+    csa.reg.vis = vis_from_list(mode, cfg_val(mode, k));
+    for (let key of ['r', 'w', k])
+        await save_reg_db(mode, key, null);
     edit_select(false);
+    layout_reg_rows();
     alert('Load default succeeded.');
 }
 
-// keep one side of a set in this browser; null, or the same as the file has, drops it
-async function save_reg_db(mode, rw, val) {
+// the set in use as the page runs it, written the way the config file writes it
+function mode_vals(mode) {
+    return [['r', reg_rw2reg_cfg(csa.reg.reg_r)], ['w', reg_rw2reg_cfg(csa.reg.reg_w)],
+            [vis_kind(mode), vis_to_list(mode, csa.reg.vis)]];
+}
+
+// keep one member of a set in this browser; null, or the same as the file has, drops it
+async function save_reg_db(mode, key, val) {
     let sets = await local_sets();
     let s = sets[mode] ??= {};
-    if (val == null || JSON.stringify(val) == JSON.stringify(cfg_groups(mode, rw) || []))
-        delete s[rw];
+    if (val == null || JSON.stringify(val) == JSON.stringify(cfg_norm(mode, key)))
+        delete s[key];
     else
-        s[rw] = val;
-    if (!s.r && !s.w)
+        s[key] = val;
+    delete s[vis_kind(mode) == 'show' ? 'hide' : 'show'];   // left from before the file changed kind
+    if (!Object.keys(s).length)
         delete sets[mode];
     await csa.db.set('tmp', `${csa.arg.name}/reg.sets`, sets);
 }
@@ -521,11 +651,12 @@ async function reg_save_file() {
     let loc = await local_sets();
     let vals = [];
     for (let m of mode_names()) {
-        for (let rw of ['r', 'w']) {
-            // the set in use as the page runs it, the others only where they were edited
-            let v = m == mode ? reg_rw2reg_cfg(rw == 'r' ? csa.reg.reg_r : csa.reg.reg_w) : loc[m]?.[rw];
-            if (v && JSON.stringify(v) != JSON.stringify(cfg_groups(m, rw) || []))
-                vals.push({ path: ['reg', 'sets', m, rw], val: v });
+        // the set in use as the page runs it, the others only where they were edited (a list
+        // of the kind the file no longer uses is left out)
+        let cur = m == mode ? mode_vals(m) : ['r', 'w', vis_kind(m)].map(k => [k, loc[m]?.[k]]);
+        for (let [key, v] of cur) {
+            if (v && JSON.stringify(v) != JSON.stringify(cfg_norm(m, key)))
+                vals.push({ path: ['reg', 'sets', m, key], val: v });
         }
     }
     if (!vals.length) {
@@ -539,9 +670,9 @@ async function reg_save_file() {
     try {
         await save_cfg_file(vals);
         for (let v of vals) { // the file is the default now, drop the local copy
-            let [, , m, rw] = v.path;
-            ((csa.cfg.reg.sets ??= {})[m] ??= {})[rw] = v.val;
-            await save_reg_db(m, rw, null);
+            let [, , m, key] = v.path;
+            ((csa.cfg.reg.sets ??= {})[m] ??= {})[key] = v.val;
+            await save_reg_db(m, key, null);
         }
         alert(L('Saved to %s, the previous version is kept as a .bak file.')
               .replace('%s', csa.arg.cfg));
@@ -599,8 +730,10 @@ async function groups_get(mode=null) {
     mode ??= cur_mode();
     let names = check_mode(mode);
     let r = csa.reg.reg_r, w = csa.reg.reg_w;
+    if (mode != cur_mode() && own_regs(mode).length)
+        throw new Error(`set ${mode} brings registers of its own, its groups are known only while it is in use`);
     if (mode != cur_mode())
-        [r, w] = (await mode_groups(mode)).map(reg_cfg2reg_rw);
+        [r, w] = (await mode_groups(mode)).slice(0, 2).map(reg_cfg2reg_rw);
     return { set: mode, sets: names, r: reg_rw2reg_cfg(r), w: reg_rw2reg_cfg(w) };
 }
 
@@ -613,15 +746,18 @@ async function groups_set(a) {
         throw new Error('the groups are being edited on the page (Button Edit is on), try again once that is done');
     let mode = a.set ?? cur_mode();
     check_mode(mode);
-    let cur = mode == cur_mode() ? [csa.reg.reg_r, csa.reg.reg_w] :
-                                   (await mode_groups(mode)).map(reg_cfg2reg_rw);
+    if (needs_reload(mode))
+        throw new Error(`a switch to or from a set with registers of its own reloads the page, pick ${mode} in the drop-down`);
+    let [r0, w0, vis] = mode == cur_mode() ? [csa.reg.reg_r, csa.reg.reg_w, csa.reg.vis] :
+                                             (await mode_groups(mode)).map((v, i) => i < 2 ? reg_cfg2reg_rw(v) : v);
     let [reg_r, reg_w] = ['r', 'w'].map((rw, i) =>  // all checked before anything changes
-            a[rw] === undefined ? cur[i] :
-            a[rw] === null ? reg_cfg2reg_rw(cfg_groups(mode, rw)) : groups_parse(a[rw], rw));
-    
+            a[rw] === undefined ? [r0, w0][i] :
+            a[rw] === null ? reg_cfg2reg_rw(cfg_val(mode, rw)) : groups_parse(a[rw], rw));
+
     csa.reg.mode = mode;
     csa.reg.reg_r = reg_r;
     csa.reg.reg_w = reg_w;
+    csa.reg.vis = vis;
     if (a.save) {
         await csa.db.set('tmp', `${csa.arg.name}/reg.set`, mode);
         await save_reg_db(mode, 'r', reg_rw2reg_cfg(reg_r));
@@ -779,11 +915,31 @@ async function init_pin() {
 }
 
 
+// the drop-down picked another set: not while the groups are edited, the edit would be lost;
+// one that changes the reg list reloads the page, which must not break an upgrade off
+async function mode_change() {
+    let reload = needs_reload(cur_mode());
+    let busy = in_button_edit() ? L('The button groups are being edited (Button Edit is on), finish that first.') :
+               reload && csa.iap && !csa.iap.stop ? L('An upgrade is running, switch the set once it is done.') : null;
+    if (busy) {
+        document.getElementById('reg_mode').value = csa.reg.mode;
+        alert(busy);
+        return;
+    }
+    csa.reg.mode = cur_mode();
+    await csa.db.set('tmp', `${csa.arg.name}/reg.set`, csa.reg.mode);
+    if (reload)
+        return location.reload();
+    await update_mode_select();     // drops a set the api filled without saving it
+    await init_reg_rw();
+}
+
 async function init_reg_rw() {
-    let [reg_r, reg_w] = await mode_groups(cur_mode());
+    let [reg_r, reg_w, vis] = await mode_groups(cur_mode());
     console.log(`init reg ${cur_mode()} groups:`, reg_r, reg_w);
     csa.reg.reg_r = reg_cfg2reg_rw(reg_r);
     csa.reg.reg_w = reg_cfg2reg_rw(reg_w);
+    csa.reg.vis = vis;
     update_reg_rw_btn('r');
     update_reg_rw_btn('w');
     layout_reg_rows();
@@ -842,6 +998,7 @@ async function init_reg() {
         elm: {},        // cache dom elements
         editing: false, // Button Edit is on
         sel: { r: new Set(), w: new Set() },    // the picked buttons of each side while editing
+        vis: new Set(),                         // the names the set in use shows, see mode_groups()
         pin: { ids: [], elm: {}, slot: null }   // the rows mirrored in the top bar
     };
     csa.plugins.push('reg');
@@ -857,7 +1014,7 @@ async function init_reg() {
         <div class="container">
             <h2 class="title is-size-4"><span>${L('Regs')}</span></h2>
         
-            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0;">
+            <div class="is-inline-flex" style="align-items: center; gap: 0.3rem; margin: 5px 0; flex-wrap: wrap;">
                 <button class="button is-small" id="dev_read_all">${L('Read All')}</button>
                 <button class="button is-small" id="dev_write_all">${L('Write All')}</button>
                 |
@@ -871,6 +1028,9 @@ async function init_reg() {
                 <button class="button is-small" id="group_off">${L('Ungroup')}</button>
                 <button class="button is-small" id="enable_on">${L('Enable')}</button>
                 <button class="button is-small" id="enable_off">${L('Disable')}</button>
+                <button class="button is-small" id="vis_on">${L('Show')}</button>
+                <button class="button is-small" id="vis_off">${L('Hide')}</button>
+                <label class="checkbox"><input type="checkbox" id="show_hidden"> <span>${L('Show Hidden')}</span></label>
                 <button class="button is-small" id="button_all">${L('Select All')}</button>
                 <button class="button is-small" id="button_def">${L('Load Default')}</button>
                 <button class="button is-small" id="save_reg_file">${L('Update Config File')}</button>
@@ -887,14 +1047,16 @@ async function init_reg() {
         <br>
     `;
     document.getElementsByTagName('section')[0].insertAdjacentHTML('beforeend', html);
-    
+
+    // the group set (the first one by default) and the read period are remembered per device
+    // page, the read switch itself always starts off
+    if (csa.cfg.reg?.list?.length)
+        await use_set_regs();
     if (!check_reg_list())  // nothing to build a list from, the banner says so
         return;
+    check_sets();
     init_reg_list();
     await init_pin();
-    // the group set (reg by default) and the read period are remembered per device page,
-    // the read switch itself always starts off
-    csa.reg.mode = await csa.db.get('tmp', `${csa.arg.name}/reg.set`) || 'reg';
     document.getElementById('read_period').value =
             await csa.db.get('tmp', `${csa.arg.name}/reg.read_period`) || '200';
     await update_mode_select();
@@ -905,14 +1067,12 @@ async function init_reg() {
     document.getElementById(`group_off`).onclick = () => edit_apply(['ungroup']);
     document.getElementById(`enable_on`).onclick = () => edit_apply(['enable']);
     document.getElementById(`enable_off`).onclick = () => edit_apply(['disable']);
+    document.getElementById(`vis_on`).onclick = () => edit_apply(['show']);
+    document.getElementById(`vis_off`).onclick = () => edit_apply(['hide']);
+    document.getElementById(`show_hidden`).onchange = () => { edit_select(false); layout_reg_rows(); };
     document.getElementById(`button_all`).onclick = () => edit_select(true);
     document.getElementById(`button_def`).onclick = button_def;
-    document.getElementById('reg_mode').onchange = async () => {
-        csa.reg.mode = cur_mode();
-        await csa.db.set('tmp', `${csa.arg.name}/reg.set`, csa.reg.mode);
-        await update_mode_select();     // drops a set the api filled without saving it
-        await init_reg_rw();
-    };
+    document.getElementById('reg_mode').onchange = mode_change;
     document.getElementById('read_period').oninput = async () => {
         let val = document.getElementById('read_period').value.trim();
         if (Number(val) > 0) {  // keep the last good one, an empty box would read with no delay

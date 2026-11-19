@@ -166,7 +166,9 @@ config file writes them: `["first", "last"]` covers every register from
 one element of a `{}` register. `POST .../groups` replaces them: send `r`
 and / or `w`, a side left out stays as it is, `null` puts back what the config
 file has. `"set": "less"` switches the page to that set first, the same as
-picking it in the drop-down. The groups are checked before anything changes:
+picking it in the drop-down; a switch to or from a set with registers of its
+own is refused, it reloads the page, pick that one in the drop-down. The
+groups are checked before anything changes:
 an unknown register, a group whose `last` comes before its `first`, or two
 groups that overlap are refused. The reply is the groups now in use.
 

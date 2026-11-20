@@ -171,6 +171,7 @@ let trans_zh_tw = {
     'shared by all plots, "name": base, ofs, len, fmt':
         '所有波形共用，格式 "名稱": 基址, 偏移, 長度, 類型',
     'The config file already matches, nothing to save.': '配置文件已經一致，無需寫入。',
+    'Load default succeeded.': '加載預設成功。',
     'Write the button groups into %s?': '將按鍵分組寫入 %s？',
     'Write the plot settings into %s?': '將波形設置寫入 %s？',
     'Saved to %s, the previous version is kept as a .bak file.':

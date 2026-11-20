@@ -6,32 +6,32 @@
             [ 0x0000, 2, "H", 1, "magic_code", "Magic code: 0xcdcd" ],
             [ 0x0002, 2, "H", 1, "conf_ver", "Config version" ],
             [ 0x0004, 1, "B", 1, "conf_from", "0: default config, 1: all from flash, 2: partly from flash" ],
-            [ 0x0005, 1, "B", 0, "do_reboot", "Reboot: 1 stay in bootloader, 2 boot app" ],
-            [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash" ],
+            [ 0x0005, 1, "B", 0, "do_reboot", "Reboot: 1 stay in bootloader, 2 boot app", [0, 2] ],
+            [ 0x0007, 1, "b", 0, "save_conf", "Write 1 to save current config to flash", [0, 1] ],
 
             [ 0x0008, 1, "B", 0, "dbg_en", "1: Report debug message to host, 0: do not report" ],
 
-            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254" ],
+            [ 0x000c, 1, "B", 1, "bus_cfg_mac", "RS-485 port id, range: 0~254", [0, 254] ],
             [ 0x0010, 4, "I", 0, "bus_cfg_baud_l", "RS-485 baud rate for first byte" ],
             [ 0x0014, 4, "I", 0, "bus_cfg_baud_h", "RS-485 baud rate for follow bytes" ],
             [ 0x0018, 2, "[B]", 1, "bus_cfg_filter_m", "Multicast address" ],
-            [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Traditional, 1: Arbitration, 2: Break Sync" ],
+            [ 0x001a, 1, "B", 0, "bus_cfg_mode", "0: Traditional, 1: Arbitration, 2: Break Sync", [0, 2] ],
             [ 0x001c, 2, "H", 0, "bus_cfg_tx_permit_len", "Allow send wait time" ],
             [ 0x001e, 2, "H", 0, "bus_cfg_max_idle_len", "Max idle wait time for BS mode" ],
             [ 0x0020, 1, "B", 0, "bus_cfg_tx_pre_len", "Active TX_EN before TX" ],
 
             [ 0x0080, 1, "B", 1, "p_mac", "Predefined remote rs485 address" ],
-            [ 0x008d, 1, "B", 0, "k_en", "Key enable (bit0: ble, bit1: udp)" ],
+            [ 0x008d, 1, "B", 0, "k_en", "Key enable (bit0: ble, bit1: udp)", [0, 3] ],
             [ 0x008e, 24, "[c]", 0, "k_pwd", "Key string" ],
 
-            [ 0x00a6, 1, "B", 0, "ble_itvl_min", "" ],
-            [ 0x00a7, 1, "B", 0, "ble_itvl_max", "" ],
+            [ 0x00a6, 1, "B", 0, "ble_itvl_min", "", [6, 255] ],
+            [ 0x00a7, 1, "B", 0, "ble_itvl_max", "", [6, 255] ],
             [ 0x00a8, 32, "[c]", 0, "wifi_ssid", "" ],
             [ 0x00c8, 64, "[c]", 0, "wifi_pwd", "" ],
             [ 0x0108, 1, "B", 0, "wifi_conf", "bit[3:0]- 0: turn off, 1: station; bit[7:6]- band: 0: auto, 1: 2.4g, 2: 5g" ],
 
-            [ 0x0109, 1, "B", 0, "proxy_sel", "1: ble, 2: wifi" ],
-            [ 0x010a, 1, "b", 0, "ble_stop", "1: stop advertisement" ],
+            [ 0x0109, 1, "B", 0, "proxy_sel", "1: ble, 2: wifi", [1, 2] ],
+            [ 0x010a, 1, "b", 0, "ble_stop", "1: stop advertisement", [0, 1] ],
             [ 0x0118, 1, "b", 0, "k_st_ble", "Key verify status" ],
             [ 0x011c, 4, "I", 1, "k_random", "" ],
             [ 0x0120, 2, "H", 1, "k_cnt_rx_ble", "" ],
@@ -50,7 +50,7 @@
             [ 0x016c, 16, "[B]", 2, "local_ip[1]", "" ],
             [ 0x017c, 16, "[B]", 2, "local_ip[2]", "" ],
             [ 0x018c, 16, "[B]", 2, "local_ip[3]", "" ],
-            [ 0x019c, 1, "B", 0, "scan_start", "Write 1 to start wifi scan" ],
+            [ 0x019c, 1, "B", 0, "scan_start", "Write 1 to start wifi scan", [0, 1] ],
             [ 0x019d, 20, "[B]", 0, "scan_auth", "0: open, 1: wep, 2: wpa_psk, 3: wpa2_psk, 4: wpa_wpa2_psk ..." ],
             [ 0x01b1, 20, "[b]", 0, "scan_rssi", "" ],
             [ 0x01c5, 32, "[c]", 0, "scan_ssid[0]", "" ],
@@ -74,26 +74,41 @@
             [ 0x0405, 32, "[c]", 0, "scan_ssid[18]", "" ],
             [ 0x0425, 32, "[c]", 0, "scan_ssid[19]", "" ]
         ],
+        
+        // section titles over the list: the register a section starts with -> title
+        "seps": {
+            "magic_code": "System",
+            "dbg_en": "Debug",
+            "bus_cfg_mac": "Bus",
+            "p_mac": "Proxy",
+            "buzzer_en": "Printer",
+            "k_en": "Proxy key",
+            "ble_itvl_min": "Wireless",
+            "k_st_ble": "Key status",
+            "dptz_cnt": "Printer status",
+            "ble_mtu_cur": "Wireless status",
+            "scan_start": "Wi-Fi scan"
+        },
     
         // button groups
         "sets": {
             "default": {
                 "r": [["magic_code"],["conf_ver"],["conf_from"],["do_reboot","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["k_en","k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf","ble_stop"],["k_st_ble","k_random"],["k_cnt_rx_ble","k_cnt_tx_udp"],["ble_mtu_cur","ble_itvl_cur"],["wifi_rssi","wifi_state"],["remote_ip","remote_port"],["local_ip[0]","local_ip[3]"],["scan_start"],["scan_auth","scan_rssi"],["scan_ssid[0]","scan_ssid[3]"],["scan_ssid[4]","scan_ssid[7]"],["scan_ssid[8]","scan_ssid[11]"],["scan_ssid[12]","scan_ssid[15]"],["scan_ssid[16]","scan_ssid[18]"],["scan_ssid[19]"]],
-                "w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["k_en"],["k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf"],["proxy_sel"],["ble_stop"],["remote_ip","remote_port"],["scan_start"],["scan_ssid[19]"]]
+                "w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["k_en"],["k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf"],["proxy_sel"],["ble_stop"],["remote_ip","remote_port"],["scan_start"]]
             },
             "printer": {
                 "list": [
-                    [ 0x0081, 1, "b", 0, "buzzer_en", "" ],
-                    [ 0x0082, 1, "b", 0, "dptz_dis", "1: do not load dptz files from flash to the printer" ],
+                    [ 0x0081, 1, "b", 0, "buzzer_en", "", [0, 1] ],
+                    [ 0x0082, 1, "b", 0, "dptz_dis", "1: do not load dptz files from flash to the printer", [0, 1] ],
                     [ 0x0128, 1, "B", 0, "dptz_cnt", "Number of dptz files in flash" ],
                     [ 0x0129, 1, "B", 1, "dptz_idx", "File loaded in the printer, 0xff: none" ],
-                    [ 0x012a, 1, "B", 0, "dptz_reload", "Write 1 after changing the dptz files in flash" ],
+                    [ 0x012a, 1, "B", 0, "dptz_reload", "Write 1 after changing the dptz files in flash", [0, 1] ],
                     [ 0x012b, 1, "B", 1, "dptz_draft", "File sent behind dptz_idx while it prints, 0xff: none" ],
                     [ 0x0130, 1, "B", 1, "p_state_pre", "" ],
                     [ 0x0131, 1, "B", 1, "p_state", "" ]
                 ],
                 "r": [["magic_code"],["conf_ver"],["conf_from"],["do_reboot","save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["buzzer_en","dptz_dis"],["k_en","k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf","ble_stop"],["k_st_ble","k_random"],["k_cnt_rx_ble","k_cnt_tx_udp"],["dptz_cnt","dptz_draft"],["p_state_pre","p_state"],["ble_mtu_cur","ble_itvl_cur"],["wifi_rssi","wifi_state"],["remote_ip","remote_port"],["local_ip[0]","local_ip[3]"],["scan_start"],["scan_auth","scan_rssi"],["scan_ssid[0]","scan_ssid[3]"],["scan_ssid[4]","scan_ssid[7]"],["scan_ssid[8]","scan_ssid[11]"],["scan_ssid[12]","scan_ssid[15]"],["scan_ssid[16]","scan_ssid[18]"],["scan_ssid[19]"]],
-                "w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["buzzer_en"],["dptz_dis"],["k_en"],["k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf"],["proxy_sel"],["ble_stop"],["dptz_reload"],["p_state_pre","p_state"],["remote_ip","remote_port"],["scan_start"],["scan_ssid[19]"]]
+                "w": [["magic_code"],["conf_ver"],["do_reboot"],["save_conf"],["dbg_en"],["bus_cfg_mac","bus_cfg_tx_pre_len"],["p_mac"],["buzzer_en"],["dptz_dis"],["k_en"],["k_pwd"],["ble_itvl_min","ble_itvl_max"],["wifi_ssid","wifi_pwd"],["wifi_conf"],["proxy_sel"],["ble_stop"],["dptz_reload"],["p_state_pre","p_state"],["remote_ip","remote_port"],["scan_start"]]
             }
         }
     },

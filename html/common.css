@@ -142,6 +142,13 @@ body > section.section {
 .reg_row_name .level-right { margin: 0 8px 0 4px; font-family: monospace; }
 .reg_row_val { margin: 5px 0; flex: 0 0 200px; }
 .reg_hidden .reg_row_name { opacity: 0.4; }   /* listed by Show Hidden while editing */
+.reg_sep {      /* a section title of the list, reg.seps of the config */
+    margin: 0.75rem 0 0.25rem;
+    border-bottom: 1px solid #dbdbdb;
+    font-size: 0.85rem;
+    color: #7a7a7a;
+}
+.reg_sep.reg_hidden { opacity: 0.4; }
 
 .columns.is-gapless > .is-1.reg_btn_pin {
     width: 24px;

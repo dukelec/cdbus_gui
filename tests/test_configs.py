@@ -15,9 +15,13 @@ class ConfigTests(unittest.TestCase):
                 reg = json5.loads(path.read_text(encoding='utf-8'))['reg']
                 lists = [reg['list']] + [s.get('list', []) for s in (reg.get('sets') or {}).values()]
                 names = {r[4] for l in lists for r in l}
-                for lang, descs in (reg.get('trans') or {}).items():
+                seps = reg.get('seps') or {}
+                self.assertEqual(set(seps) - names, set(), 'seps: unknown registers')
+                for lang, t in (reg.get('trans') or {}).items():
                     self.assertIn(lang, LANGS)
-                    self.assertEqual(set(descs) - names, set(), f'{lang}: unknown registers')
+                    self.assertEqual(set(t) - {'list', 'seps'}, set(), f'{lang}: only list and seps')
+                    self.assertEqual(set(t.get('list', {})) - names, set(), f'{lang}: unknown registers')
+                    self.assertEqual(set(t.get('seps', {})) - set(seps), set(), f'{lang}: unknown seps')
 
 
 if __name__ == '__main__':

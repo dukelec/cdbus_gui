@@ -64,7 +64,7 @@ function reg_row_html(reg, p='') {
     let dft_tip = `Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}`;
     let dft_attr = p ? `title="${escape_html(dft_tip)}"` :
                        `class="has-tooltip-arrow has-tooltip-left" data-tooltip="${escape_html(dft_tip)}"`;
-    let desc = escape_html(csa.cfg.reg.trans?.[LANG]?.[reg[R_ID]] || reg[R_DESC] || '');
+    let desc = escape_html(csa.cfg.reg.trans?.[LANG]?.list?.[reg[R_ID]] || reg[R_DESC] || '');
     let name_attr = p ? `class="level-left" title="${desc}"` :
                         `class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" ` +
                         `data-tooltip="${desc}"`;
@@ -95,6 +95,11 @@ function reg_row_html(reg, p='') {
         </div>`;
 }
 
+// reg.seps of the config puts a title over the section of the list a register starts
+function has_sep(reg) {
+    return Object.hasOwn(csa.cfg.reg.seps || {}, reg[R_ID]);
+}
+
 function init_reg_list() {
     let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
     list[0].innerHTML = list[1].innerHTML = '';
@@ -112,9 +117,16 @@ function init_reg_list() {
     for (let i = 0; i < csa.cfg.reg.list.length; i++) {
         let reg = csa.cfg.reg.list[i];
         let count = reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1;
+        let col = list[cur_line <= max_line/2 ? 0 : 1];
+        if (has_sep(reg)) {
+            let title = csa.cfg.reg.trans?.[LANG]?.seps?.[reg[R_ID]] || csa.cfg.reg.seps[reg[R_ID]];
+            csa.reg.elm[`reg_sep.${reg[R_ID]}`] = null;
+            col.insertAdjacentHTML('beforeend',
+                `<div class="reg_sep" id="reg_sep.${reg[R_ID]}">${escape_html(title)}</div>`);
+        }
         for (let key of reg_row_keys(reg))
             csa.reg.elm[key] = null;
-        list[cur_line <= max_line/2 ? 0 : 1].insertAdjacentHTML('beforeend', reg_row_html(reg));
+        col.insertAdjacentHTML('beforeend', reg_row_html(reg));
         cur_line += count;
     }
     
@@ -291,11 +303,19 @@ function list_hidden() {
 // the rows of the set in use, split over the two columns again the way init_reg_list() does it
 function layout_reg_rows() {
     let list = [document.getElementById('reg_list0'), document.getElementById('reg_list1')];
-    let rows = csa.cfg.reg.list.map(reg => ({
-        elm: csa.reg.elm[`reg_row.${reg[R_ID]}`],
-        in_set: reg_in_set(reg),
-        lines: reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1
-    }));
+    let rows = [], sep = null;
+    for (let reg of csa.cfg.reg.list) {
+        let in_set = reg_in_set(reg);
+        if (has_sep(reg))
+            rows.push(sep = { elm: csa.reg.elm[`reg_sep.${reg[R_ID]}`], in_set: false, lines: 1, sep: true });
+        if (sep && in_set)
+            sep.in_set = true;  // a title is in the set while a register under it is
+        rows.push({
+            elm: csa.reg.elm[`reg_row.${reg[R_ID]}`],
+            in_set,
+            lines: reg[R_FMT][0] == '{' ? Math.trunc(reg[R_LEN] / fmt_size(reg[R_FMT])) : 1
+        });
+    }
     for (let r of rows)
         r.show = r.in_set || list_hidden();
     let max_line = rows.reduce((n, r) => n + (r.show ? r.lines : 0), 0);
@@ -303,7 +323,9 @@ function layout_reg_rows() {
     for (let r of rows) {
         r.elm.style.display = r.show ? '' : 'none';
         r.elm.classList.toggle('reg_hidden', !r.in_set);
-        list[cur_line <= max_line/2 ? 0 : 1].appendChild(r.elm);
+        // a title goes to the column of the row under it, never alone at the bottom of the first
+        let at = r.sep ? cur_line + r.lines : cur_line;
+        list[at <= max_line/2 ? 0 : 1].appendChild(r.elm);
         if (r.show)
             cur_line += r.lines;
     }
@@ -621,7 +643,7 @@ async function button_def() {
         await save_reg_db(mode, key, null);
     edit_select(false);
     layout_reg_rows();
-    alert('Load default succeeded.');
+    alert(L('Load default succeeded.'));
 }
 
 // the set in use as the page runs it, written the way the config file writes it
@@ -644,21 +666,12 @@ async function save_reg_db(mode, key, val) {
     await csa.db.set('tmp', `${csa.arg.name}/reg.sets`, sets);
 }
 
-// push the edited button groups back into the json5 config file, so they
-// become the default for every browser instead of only this one
+// push the button groups of the set in use back into the json5 config file, so they become the
+// default for every browser instead of only this one; like Load Default, the other sets are left alone
 async function reg_save_file() {
     let mode = cur_mode();
-    let loc = await local_sets();
-    let vals = [];
-    for (let m of mode_names()) {
-        // the set in use as the page runs it, the others only where they were edited (a list
-        // of the kind the file no longer uses is left out)
-        let cur = m == mode ? mode_vals(m) : ['r', 'w', vis_kind(m)].map(k => [k, loc[m]?.[k]]);
-        for (let [key, v] of cur) {
-            if (v && JSON.stringify(v) != JSON.stringify(cfg_norm(m, key)))
-                vals.push({ path: ['reg', 'sets', m, key], val: v });
-        }
-    }
+    let vals = mode_vals(mode).filter(([key, v]) => JSON.stringify(v) != JSON.stringify(cfg_norm(mode, key)))
+                              .map(([key, v]) => ({ path: ['reg', 'sets', mode, key], val: v }));
     if (!vals.length) {
         alert(L('The config file already matches, nothing to save.'));
         return;
@@ -670,9 +683,9 @@ async function reg_save_file() {
     try {
         await save_cfg_file(vals);
         for (let v of vals) { // the file is the default now, drop the local copy
-            let [, , m, key] = v.path;
-            ((csa.cfg.reg.sets ??= {})[m] ??= {})[key] = v.val;
-            await save_reg_db(m, key, null);
+            let key = v.path[3];
+            ((csa.cfg.reg.sets ??= {})[mode] ??= {})[key] = v.val;
+            await save_reg_db(mode, key, null);
         }
         alert(L('Saved to %s, the previous version is kept as a .bak file.')
               .replace('%s', csa.arg.cfg));

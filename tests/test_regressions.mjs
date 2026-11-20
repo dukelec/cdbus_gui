@@ -585,3 +585,50 @@ test('no set switch while the groups are edited, not even one that keeps the reg
     assert.match(alerts.at(-1), /Button Edit/);
     assert.deepEqual([sel.value, csa.reg.mode, store['n/reg.set'], reloads], ['default', 'default', 'default', 0]);
 });
+
+test('a section title shows while a register under it is listed, and goes to the column of the row under it', () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b'], [2,1,'B',0,'c'], [3,1,'B',0,'d']];
+    const cols = [[], []];
+    const elm = {};
+    for (const id of ['reg_row.a', 'reg_row.b', 'reg_row.c', 'reg_row.d', 'reg_sep.a', 'reg_sep.c'])
+        elm[id] = { style: {}, classList: { toggle(c, v) { elm[id].hidden = v; } } };
+    const column = n => ({ appendChild(e) { for (const c of cols) c.includes(e) && c.splice(c.indexOf(e), 1); cols[n].push(e); } });
+    const show_hidden = { checked: false };
+    const document = { getElementById: id => id == 'show_hidden' ? show_hidden : column(id == 'reg_list0' ? 0 : 1) };
+    const csa = { cfg: { reg: { list, seps: { a: 'A', c: 'C' } } },
+        reg: { elm, reg_r: [], reg_w: [], vis: new Set(['a', 'b', 'c', 'd']) } };
+    const ctx = context({ ...constants, csa, document });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    const names = n => cols[n].map(e => Object.keys(elm).find(k => elm[k] === e));
+    vm.runInContext('layout_reg_rows()', ctx);
+    assert.deepEqual(names(0), ['reg_sep.a', 'reg_row.a', 'reg_row.b']);     // not C alone at the bottom
+    assert.deepEqual(names(1), ['reg_sep.c', 'reg_row.c', 'reg_row.d']);
+    csa.reg.vis = new Set(['a', 'b', 'd']);                                    // d keeps C
+    vm.runInContext('layout_reg_rows()', ctx);
+    assert.equal(elm['reg_sep.c'].style.display, '');
+    csa.reg.vis = new Set(['a', 'b']);                                         // nothing under C is listed
+    vm.runInContext('layout_reg_rows()', ctx);
+    assert.equal(elm['reg_sep.c'].style.display, 'none');
+    csa.reg.editing = true;                                                    // Show Hidden lists it greyed
+    show_hidden.checked = true;
+    vm.runInContext('layout_reg_rows()', ctx);
+    assert.deepEqual([elm['reg_sep.c'].style.display, elm['reg_sep.c'].hidden, elm['reg_sep.a'].hidden], ['', true, false]);
+});
+
+test('Update Config File writes only the set in use and drops its local copy, the other sets keep their edits', async () => {
+    const list = [[0,1,'B',0,'a'], [1,1,'B',0,'b']];
+    const store = { 'n/reg.sets': { default: { r: [['a']] }, less: { w: [['b']] } } };
+    const saved = [], alerts = [];
+    const sel = { value: 'default' }, btn = {};
+    const csa = { arg: { name: 'n', cfg: 'x.json' },
+        cfg: { reg: { list, sets: { default: { r: [['a', 'b']] }, less: { r: [['a']] } } } },
+        reg: { reg_r: [[0,1]], reg_w: [], vis: new Set(['a', 'b']) },
+        db: { get: async (s, k) => store[k], set: async (s, k, v) => { store[k] = v; } } };
+    const ctx = context({ ...constants, csa, alert: m => alerts.push(m), confirm: () => true,
+        save_cfg_file: async v => saved.push(...v), document: { getElementById: id => id == 'reg_mode' ? sel : btn } });
+    vm.runInContext(source('html/plugins/reg.js'), ctx);
+    await vm.runInContext('reg_save_file()', ctx);
+    assert.equal(JSON.stringify(saved), '[{"path":["reg","sets","default","r"],"val":[["a"]]}]');
+    assert.equal(JSON.stringify(store['n/reg.sets']), '{"less":{"w":[["b"]]}}');
+    assert.equal(JSON.stringify(csa.cfg.reg.sets.default.r), '[["a"]]');
+});

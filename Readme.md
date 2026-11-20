@@ -73,6 +73,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
 ### Device Page
  - Displays registers for reading and writing.
  - Hover over a register to view its description, type, and default value.
+ - Titles from "seps" of the config split the list into sections (System, Bus, PID, ...).
  - Registers are grouped for atomic R/W; groups can be edited freely.
  - `R` reads a group, `W` writes it. `Read All` / `Write All` act on all groups.
  - The drop-down next to `Read All` / `Write All` picks the group set out of `"sets"` in the config: the first one, the
@@ -92,7 +93,8 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
    the periodic read switch itself always starts off.
  - Supports arrays and multiple formats, displayed in hexadecimal (`H`) or as byte arrays (`B`).
  - Small notches on the `R`/`W` buttons indicate gaps; groups are read before writing so that the data in gaps remains unchanged.
- - `Update Config File` writes the edited button groups back into the config file.
+ - `Update Config File` writes the button groups of the set in use back into the config file, as `Load Default` drops
+   only this browser's edits of it: the other sets keep theirs.
  - The small pin beside `R` / `W` keeps a register in a bar at the top of the page, which stays in
    view while the page is scrolled, so a register can be worked on while watching a plot. The copy
    up there is the very same value as the one in the list: either can be typed into, and its `R` /
@@ -130,7 +132,7 @@ The payload is encoded using the CDNET protocol. For detailed information, pleas
  - The choice is kept in the browser, like the register button groups. `Load Default` puts the three boxes of that dialog back to the config file, this plot's channels and formulas plus the shared overlay list; the other plots keep the channels they were given. If the config file is edited so that a saved choice no longer fits, it is dropped on the next page load and the file wins.
  - `Update Config File` in the same dialog writes the channels, formulas and overlays into the config file instead. A formula may span several lines, indent the follow up lines.
 
-`Update Config File` replaces only the spans that belong to the keys you changed, so the rest of the file, its comments and its layout included, stays byte for byte the same. Comments **inside** a replaced span are lost. The previous version of the file is kept next to it as `<name>.json.bak`, overwritten on each save. After a successful write the browser copy is dropped, so the file is the one source again, and `Load Default` from then on means what the file now says. Every value written is read back before the file is replaced, so a key the file names twice, or anything else the parser reads differently, is reported instead of saved.
+`Update Config File` replaces only the spans that belong to the keys you changed, so the rest of the file, its comments and its layout included, stays byte for byte the same. Comments **inside** a replaced span are lost. The previous version of the file is kept next to it as `<name>.json.bak`, overwritten on each save. After a successful write the browser copy of what was written is dropped, so the file is the one source for it again, and `Load Default` from then on means what the file now says. Every value written is read back before the file is replaced, so a key the file names twice, or anything else the parser reads differently, is reported instead of saved.
 
 <img src="doc/p4.avif">  
 
@@ -262,6 +264,9 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
             [ 0x0128, 10, "[c]", 0, "string_test", "String test" ]
         ],
         
+        // section titles over the list: the register a section starts with -> title
+        "seps": { "magic_code": "System", "bus_cfg_mac": "Bus", "tc_pos": "Trap planner", "pid_pos_kp": "PID" },
+        
         // button groups
         "sets": {
             "default": {
@@ -285,10 +290,15 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
         // registers the top bar starts out with
         "pin": ["tc_pos", "state"],
         
-        // descriptions in other languages by register name, the list's own ones are the fallback
+        // other languages: "list" for the register descriptions, "seps" for the section titles
         "trans": {
-            "zh-CN": { "tc_pos": "设置目标位置", "state": "0：关闭驱动，1：使能驱动" },
-            "zh-TW": { "tc_pos": "設置目標位置", "state": "0：關閉驅動，1：使能驅動" }
+            "zh-CN": {
+                "list": { "tc_pos": "设置目标位置", "state": "0：关闭驱动，1：使能驱动" },
+                "seps": { "pid_pos_kp": "PID 参数" }
+            },
+            "zh-TW": {
+                "list": { "tc_pos": "設置目標位置", "state": "0：關閉驅動，1：使能驅動" }
+            }
         }
     },
     
@@ -329,8 +339,9 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
  - "iap": "reboot" and "keep_bl" are the register addresses of `do_reboot` and `keep_bl`. With "keep_bl" set, the bootloader is searched for by writing `keep_bl` repeatedly until it is acked (one frame locks a bootloader that only listens briefly after power-up), then the device info is read to tell the bootloader from an app. The probe period is derived from the baud rate (20 ms at 115200), or set in ms with an optional "probe_period". Without "keep_bl", the device info is polled instead.
 
  - "sets" holds the register group sets, each one a set to pick on the device page, with "r" for the read groups and "w" for the write groups, and either "show" or "hide" to pick the registers it lists (every register with neither), in the same `["first", "last"]` / `["name"]` form as the groups, and optionally a "list" of registers of its own; the first set is the default, the one a page starts with. You can leave them empty and edit via the UI (after editing, the browser debug window will print them, and `Update Config File` writes them into "sets").
+ - "seps" puts a title over a section of the register list, keyed by the register the section starts with, a register a set brings of its own included. A title is left out while no register of its section is listed, and `""` gives a plain line.
  - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
- - "trans" holds the register descriptions in other languages, by language ("zh-CN", or "zh-TW" for any traditional Chinese) and then by register name, the registers a set brings of its own included. The page shows the one of the language it runs in, and the description in "list" where there is none, so only a few may be translated. `tests/test_configs.py` checks that every name is a register of the config.
+ - "trans" holds the texts in other languages, by language ("zh-CN", or "zh-TW" for any traditional Chinese), each one shaped like "reg": "list" has the register descriptions by register name, the registers a set brings of its own included, and "seps" the section titles. The page shows the ones of the language it runs in, and the English ones where there is none, so only a few may be translated. `tests/test_configs.py` checks that every name is known to the config.
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.

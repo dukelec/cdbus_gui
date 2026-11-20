@@ -5,7 +5,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-// cat zh_hk.js | cconv -f UTF8 -t UTF8-CN
+// cat zh_tw.js | cconv -f UTF8 -t UTF8-CN
 let trans_zh_cn = {
     // nav
     'Move up': '上移',

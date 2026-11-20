@@ -4,7 +4,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-import { L } from '../utils/lang.js?v=__V__'
+import { L, LANG } from '../utils/lang.js?v=__V__'
 import { sleep, escape_html, date2num, val2hex, dat2str, dat2hex, hex2dat,
          read_file, download, readable_size, blob2dat } from '../utils/helper.js?v=__V__';
 import { CDWebSocket } from '../utils/cd_ws.js?v=__V__';
@@ -64,7 +64,7 @@ function reg_row_html(reg, p='') {
     let dft_tip = `Default: --\nFormat: ${reg[R_FMT]}${reg_range_tip(reg)}`;
     let dft_attr = p ? `title="${escape_html(dft_tip)}"` :
                        `class="has-tooltip-arrow has-tooltip-left" data-tooltip="${escape_html(dft_tip)}"`;
-    let desc = escape_html(reg[R_DESC] || '');
+    let desc = escape_html(csa.cfg.reg.trans?.[LANG]?.[reg[R_ID]] || reg[R_DESC] || '');
     let name_attr = p ? `class="level-left" title="${desc}"` :
                         `class="level-left has-tooltip-arrow has-tooltip-multiline has-tooltip-right" ` +
                         `data-tooltip="${desc}"`;

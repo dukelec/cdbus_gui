@@ -309,7 +309,7 @@ def cfg_load_err(cfg):
     if not cfg:
         return None
     try:
-        with open(cfg_edit.cfg_path('configs', cfg, write=False)) as c_file:
+        with open(cfg_edit.cfg_path('configs', cfg, write=False), encoding='utf-8') as c_file:
             json5.load(c_file)
     except (OSError, ValueError) as err:
         return f'{cfg}: {err}'

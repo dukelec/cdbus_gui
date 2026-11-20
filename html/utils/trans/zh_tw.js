@@ -5,7 +5,7 @@
  * Author: Duke Fong <d@d-l.io>
  */
 
-let trans_zh_hk = {
+let trans_zh_tw = {
     // nav
     'Move up': '上移',
     'Move down': '下移',
@@ -187,4 +187,4 @@ let trans_zh_hk = {
     'An upgrade is running, switch the set once it is done.': '正在升級，完成後再切換寄存器分組。'
 };
 
-export { trans_zh_hk };
+export { trans_zh_tw };

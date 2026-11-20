@@ -45,8 +45,8 @@ class ConfigServiceTests(unittest.IsolatedAsyncioTestCase):
                         replies.append(data)
 
                 # Redirect only config-file opens; never modify the user's configs.
-                def config_open(path):
-                    return open(root / Path(path).name, encoding='utf-8')
+                def config_open(path, **kw):
+                    return open(root / Path(path).name, **kw)
 
                 tree = ast.parse((ROOT / filename).read_text())
                 fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef)

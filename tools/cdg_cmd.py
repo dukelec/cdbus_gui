@@ -100,7 +100,7 @@ def cdg_cmd_init(doc=None):
     csa['logger'] = logging.getLogger(f'cdgui_cmd')
 
     # the set picks the groups, and the registers it brings of its own ("list") join the reg list
-    with open(cfg_file) as f:
+    with open(cfg_file, encoding='utf-8') as f:
         csa['cfg'] = json5.load(f)
     reg = csa['cfg']['reg']
     sets = reg.get('sets') or {}

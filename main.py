@@ -226,7 +226,7 @@ async def cfgs_service(): # read configs
         
         elif dat['action'] == 'get_cfg':
             try:
-                with open(cfg_edit.cfg_path('configs', dat['cfg'], write=False)) as c_file:
+                with open(cfg_edit.cfg_path('configs', dat['cfg'], write=False), encoding='utf-8') as c_file:
                     c = json5.load(c_file)
             except (OSError, ValueError) as err:
                 logger.warning(f'cfgs: get_cfg {dat.get("cfg")}: {err}')

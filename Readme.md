@@ -283,7 +283,13 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
         },
         
         // registers the top bar starts out with
-        "pin": ["tc_pos", "state"]
+        "pin": ["tc_pos", "state"],
+        
+        // descriptions in other languages by register name, the list's own ones are the fallback
+        "trans": {
+            "zh-CN": { "tc_pos": "设置目标位置", "state": "0：关闭驱动，1：使能驱动" },
+            "zh-TW": { "tc_pos": "設置目標位置", "state": "0：關閉驅動，1：使能驅動" }
+        }
     },
     
     "plot": {
@@ -324,6 +330,7 @@ See [doc/api.md](doc/api.md) for the endpoints and how to use them.
 
  - "sets" holds the register group sets, each one a set to pick on the device page, with "r" for the read groups and "w" for the write groups, and either "show" or "hide" to pick the registers it lists (every register with neither), in the same `["first", "last"]` / `["name"]` form as the groups, and optionally a "list" of registers of its own; the first set is the default, the one a page starts with. You can leave them empty and edit via the UI (after editing, the browser debug window will print them, and `Update Config File` writes them into "sets").
  - "pin" is the set of registers the top bar of the device page starts out with; from then on the browser remembers what is pinned, so this is only the starting point.
+ - "trans" holds the register descriptions in other languages, by language ("zh-CN", or "zh-TW" for any traditional Chinese) and then by register name, the registers a set brings of its own included. The page shows the one of the language it runs in, and the description in "list" where there is none, so only a few may be translated. `tests/test_configs.py` checks that every name is a register of the config.
  - The "x_fmt" of "plot" data corresponds to two packet formats:
    * "x1 a1 b1 a2 b2 …" – x-axis data is shared across groups. "H" denotes a uint16_t counter, incremented each loop; a number after "H" gives the delta to recover subsequent x values.
    * "x1 a1 b1 x2 a2 b2 …" – each data set has its own x value, suitable for variable loop periods.

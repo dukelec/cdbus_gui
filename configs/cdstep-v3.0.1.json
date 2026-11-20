@@ -88,6 +88,26 @@
                 "r": [["magic_code","save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en","dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["tp_pos","tp_max_err"],["tp_state","tp_vel_out"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["ref_volt","lim_en"],["prj_conf_ver","force_rpt_dst_port"],["set_home","state"],["tgt_pos","meas_pos"],["loop_cnt"],["drv_mo"],["string_test"]],
                 "w": [["magic_code","conf_ver"],["do_reboot"],["save_conf"],["mac","bus_filter_m"],["bus_mode","bus_tx_pre_len"],["dbg_en"],["dbg_raw_en"],["dbg_raw"],["qxchg_mcast"],["qxchg_set","qxchg_ret"],["tp_pos"],["tp_speed","tp_max_err"],["pid_pos_kp"],["pid_pos_out_min","pid_pos_out_max"],["ref_volt","md_val"],["lim_en"],["force_rpt_en","force_rpt_dst_port"],["set_home"],["state"],["string_test"]]
             }
+        },
+        
+        // descriptions in other languages by register name, the list's own ones are the fallback
+        "trans": {
+            "zh-CN": {
+                "save_conf": "写 1 保存当前配置到 flash",
+                "mac": "RS-485 端口地址，范围：0~254",
+                "bus_mode": "0：传统，1：仲裁，2：Break Sync，3：全双工",
+                "tp_pos": "设置目标位置",
+                "state": "0：停止，5：梯形规划位置模式",
+                "force_threshold": "设置力阈值"
+            },
+            "zh-TW": {
+                "save_conf": "寫 1 保存當前配置到 flash",
+                "mac": "RS-485 端口地址，範圍：0~254",
+                "bus_mode": "0：傳統，1：仲裁，2：Break Sync，3：全雙工",
+                "tp_pos": "設置目標位置",
+                "state": "0：停止，5：梯形規劃位置模式",
+                "force_threshold": "設置力閾值"
+            }
         }
     },
     
